@@ -127,18 +127,20 @@ export default function LoginPage() {
             {/* Role Selection Buttons */}
             <div className="role-buttons">
               <button
+                type="button"
                 className="role-btn"
-                onClick={() => handleRegister('provider')}
+                onClick={() => navigate('/vendor/register')}
                 disabled={loading}
               >
                 <span className="role-btn-icon">🏭</span>
-                <span className="role-btn-label">Provider</span>
+                <span className="role-btn-label">Vendor</span>
                 <span className="role-btn-desc">Sell spare parts</span>
               </button>
 
               <button
+                type="button"
                 className="role-btn"
-                onClick={() => handleRegister('buyer')}
+                onClick={() => navigate('/buyer/register')}
                 disabled={loading}
               >
                 <span className="role-btn-icon">🛒</span>

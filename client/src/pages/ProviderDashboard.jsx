@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
@@ -10,6 +11,7 @@ export default function ProviderDashboard() {
   const [provider, setProvider] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchProfile();
@@ -45,9 +47,29 @@ export default function ProviderDashboard() {
       <Navbar />
 
       <div className="dashboard-container">
-        <div className="dashboard-header">
-          <h1>Provider Dashboard 🏭</h1>
-          <p>Manage your company profile and product listings</p>
+        <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1>Provider Dashboard 🏭</h1>
+            <p>Manage your company profile and product listings</p>
+          </div>
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button 
+              className="btn btn-primary"
+              onClick={() => navigate('/provider/add-data')}
+              style={{ fontWeight: 'bold' }}
+            >
+              + Add New Parts
+            </button>
+            
+            <button 
+              className="btn btn-secondary"
+              onClick={() => navigate('/provider/inquiries')}
+              style={{ background: 'var(--teal-accent)', color: '#091524', fontWeight: 'bold' }}
+            >
+              📨 View Inquiries
+            </button>
+          </div>
         </div>
 
         {loading ? (

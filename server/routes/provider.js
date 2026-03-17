@@ -66,6 +66,61 @@ router.post('/register', authenticateToken, async (req, res) => {
   }
 });
 
+// Bulk Insert Products for Provider
+router.post('/bulk-products', authenticateToken, async (req, res) => {
+  try {
+    const { products } = req.body;
+    
+    if (!products || !Array.isArray(products) || products.length === 0) {
+      return res.status(400).json({ error: 'No valid products provided' });
+    }
+
+    // Get provider profile for this user
+    const existingProvider = await sql`
+      SELECT id FROM providers WHERE user_id = ${req.user.id}
+    `;
+
+    if (existingProvider.length === 0) {
+      return res.status(404).json({ error: 'Provider profile not found' });
+    }
+
+    const providerId = existingProvider[0].id;
+
+    let insertedCount = 0;
+    for (const p of products) {
+      if (p.productName && p.category && p.price) {
+        await sql`
+          INSERT INTO products (
+            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description
+          )
+          VALUES (
+            ${providerId}, 
+            ${p.productName}, 
+            ${p.category}, 
+            ${p.brand || null}, 
+            ${p.modelNumber || null}, 
+            ${p.partNumber || null}, 
+            ${p.manufacturedAt || null}, 
+            ${p.location || null}, 
+            ${p.price}, 
+            ${p.quantity || 0}, 
+            ${p.description || null}
+          )
+        `;
+        insertedCount++;
+      }
+    }
+
+    res.status(201).json({
+      message: `Successfully added ${insertedCount} products.`,
+      insertedCount
+    });
+  } catch (error) {
+    console.error('Bulk insert error:', error);
+    res.status(500).json({ error: 'Internal server error processing bulk insert' });
+  }
+});
+
 // Get provider profile
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
@@ -104,6 +159,79 @@ router.get('/products', async (req, res) => {
     res.json({ products });
   } catch (error) {
     console.error('Products fetch error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get provider inquiries
+router.get('/inquiries', authenticateToken, async (req, res) => {
+  try {
+    const existingProvider = await sql`
+      SELECT id FROM providers WHERE user_id = ${req.user.id}
+    `;
+
+    if (existingProvider.length === 0) {
+      return res.status(404).json({ error: 'Provider profile not found' });
+    }
+
+    const providerId = existingProvider[0].id;
+
+    const inquiries = await sql`
+      SELECT i.*, 
+             p.product_name, p.part_number,
+             b.ship_name, b.imo_number, b.ship_type, b.email as buyer_email, b.phone as buyer_phone,
+             u.username as buyer_username
+      FROM inquiries i
+      LEFT JOIN products p ON i.product_id = p.id
+      JOIN buyers b ON i.buyer_id = b.id
+      JOIN users u ON b.user_id = u.id
+      WHERE i.provider_id = ${providerId}
+      ORDER BY i.created_at DESC
+    `;
+
+    res.json(inquiries);
+  } catch (error) {
+    console.error('Inquiries fetch error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update inquiry status
+router.put('/inquiries/:id/status', authenticateToken, async (req, res) => {
+  try {
+    const inquiryId = req.params.id;
+    const { status } = req.body; // 'accepted' or 'rejected'
+    
+    if (!['accepted', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    const existingProvider = await sql`
+      SELECT id FROM providers WHERE user_id = ${req.user.id}
+    `;
+
+    if (existingProvider.length === 0) {
+      return res.status(404).json({ error: 'Provider profile not found' });
+    }
+    const providerId = existingProvider[0].id;
+
+    // Verify this inquiry belongs to this provider
+    const inquiryQuery = await sql`
+      SELECT id FROM inquiries WHERE id = ${inquiryId} AND provider_id = ${providerId}
+    `;
+    if (inquiryQuery.length === 0) {
+      return res.status(403).json({ error: 'Not authorized for this inquiry' });
+    }
+
+    await sql`
+      UPDATE inquiries 
+      SET status = ${status}
+      WHERE id = ${inquiryId}
+    `;
+
+    res.json({ message: `Inquiry marked as ${status}` });
+  } catch (error) {
+    console.error('Inquiry status update error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
