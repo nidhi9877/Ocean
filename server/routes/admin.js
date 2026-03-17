@@ -34,6 +34,22 @@ router.get('/providers', async (req, res) => {
   }
 });
 
+// Get all buyers
+router.get('/buyers', async (req, res) => {
+  try {
+    const buyers = await sql`
+      SELECT b.*, u.username 
+      FROM buyers b
+      JOIN users u ON b.user_id = u.id
+      ORDER BY b.created_at DESC
+    `;
+    res.json(buyers);
+  } catch (error) {
+    console.error('Error fetching buyers:', error);
+    res.status(500).json({ error: 'Failed to fetch buyers' });
+  }
+});
+
 // Get basic platform statistics
 router.get('/stats', async (req, res) => {
   try {

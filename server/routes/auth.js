@@ -11,7 +11,7 @@ const router = Router();
 // Register a new user
 router.post('/register', async (req, res) => {
   try {
-    const { username, password, role } = req.body;
+    const { username, password, role, email, phone, imo_number, ship_name, ship_type } = req.body;
 
     if (!username || !password || !role) {
       return res.status(400).json({ error: 'Username, password, and role are required' });
@@ -19,6 +19,13 @@ router.post('/register', async (req, res) => {
 
     if (!['buyer', 'provider'].includes(role)) {
       return res.status(400).json({ error: 'Role must be either "buyer" or "provider"' });
+    }
+
+    // Additional validation for buyer
+    if (role === 'buyer') {
+      if (!email || !phone || !imo_number || !ship_name || !ship_type) {
+        return res.status(400).json({ error: 'All buyer details (email, phone, IMO, ship name, ship type) are required' });
+      }
     }
 
     // Check if username already exists
@@ -39,6 +46,23 @@ router.post('/register', async (req, res) => {
     `;
 
     const user = result[0];
+
+    // If buyer, insert buyer details
+    if (role === 'buyer') {
+      await sql`
+        INSERT INTO buyers (user_id, email, phone, imo_number, ship_name, ship_type)
+        VALUES (${user.id}, ${email}, ${phone}, ${imo_number}, ${ship_name}, ${ship_type})
+      `;
+    }
+
+    // If provider, insert basic provider details
+    if (role === 'provider') {
+      const { companyName, companyType, address } = req.body;
+      await sql`
+        INSERT INTO providers (user_id, company_name, contact_person, email, phone, address, description)
+        VALUES (${user.id}, ${companyName || username}, ${username}, ${email}, ${phone}, ${address || 'Not specified'}, ${companyType || ''})
+      `;
+    }
 
     // Generate JWT token
     const token = jwt.sign(

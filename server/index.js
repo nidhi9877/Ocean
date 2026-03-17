@@ -5,6 +5,7 @@ import { initDatabase } from './db.js';
 import authRoutes from './routes/auth.js';
 import providerRoutes from './routes/provider.js';
 import adminRoutes from './routes/admin.js';
+import buyerRoutes from './routes/buyer.js';
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/provider', providerRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/buyer', buyerRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

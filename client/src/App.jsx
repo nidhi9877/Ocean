@@ -2,8 +2,13 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import ProviderForm from './pages/ProviderForm';
+import VendorRegister from './pages/VendorRegister';
+import BuyerRegister from './pages/BuyerRegister';
+import AddBulkData from './pages/AddBulkData';
 import BuyerDashboard from './pages/BuyerDashboard';
 import ProviderDashboard from './pages/ProviderDashboard';
+import ProviderInquiries from './pages/ProviderInquiries';
+import BuyerInquiries from './pages/BuyerInquiries';
 import WelcomePage from './pages/WelcomePage';
 import AdminDashboard from './pages/AdminDashboard';
 import './index.css';
@@ -58,6 +63,14 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/vendor/register"
+        element={<VendorRegister />}
+      />
+      <Route
+        path="/buyer/register"
+        element={<BuyerRegister />}
+      />
+      <Route
         path="/admin"
         element={<AdminDashboard />}
       />
@@ -78,10 +91,34 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/provider/add-data"
+        element={
+          <ProtectedRoute>
+            <AddBulkData />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/provider/inquiries"
+        element={
+          <ProtectedRoute>
+            <ProviderInquiries />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
             <BuyerDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/buyer/inquiries"
+        element={
+          <ProtectedRoute>
+            <BuyerInquiries />
           </ProtectedRoute>
         }
       />
