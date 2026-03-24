@@ -2,17 +2,17 @@
 
 /* ===== CSS Variables / Design Tokens ===== */
 :root {
-  --ocean-deep: #004b7b;     /* Deep sea blue base */
-  --ocean-dark: #005a92;     /* Dark sea blue */
-  --ocean-mid: #0077be;      /* Primary sea blue */
-  --ocean-light: #0096c7;    /* Lighter sea blue */
-  --ocean-surface: #48cae4;  /* Surface water color */
-  --teal-accent: #00b4d8;    /* Bright sea accent */
-  --teal-glow: #90e0ef;      /* Neon water glow */
-  --teal-dark: #0077b6;      /* Accent dark */
+  --ocean-deep: #6f7bf7;     /* Deep base */
+  --ocean-dark: #5a66e5;     /* Dark accent */
+  --ocean-mid: #7f8cf8;      /* Primary mid */
+  --ocean-light: #9bf8f4;    /* Light accent */
+  --ocean-surface: #aefaf7;  /* Surface color */
+  --teal-accent: #9bf8f4;    /* Bright accent */
+  --teal-glow: #bffffc;      /* Neon glow */
+  --teal-dark: #6f7bf7;      /* Accent dark */
   --coral-accent: #ff6b6b;
   --gold-accent: #ffd700;
-  --ocean-bg: linear-gradient(135deg, var(--ocean-deep) 0%, var(--ocean-mid) 100%);
+  --ocean-bg: linear-gradient(135deg, #9bf8f4 0%, #6f7bf7 100%);
   --text-primary: #ffffff;
   --text-secondary: rgba(255, 255, 255, 0.9);
   --text-muted: rgba(255, 255, 255, 0.65);
@@ -46,7 +46,8 @@ html {
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--ocean-deep);
+  background: var(--ocean-bg);
+  background-attachment: fixed;
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
@@ -68,12 +69,12 @@ body {
   overflow: hidden;
   background: linear-gradient(
     170deg,
-    #040d1a 0%,
-    #0a1628 20%,
-    #0f2035 40%,
-    #132d4a 60%,
-    #0f2035 80%,
-    #0a1628 100%
+    #6f7bf7 0%,
+    #7a94f6 20%,
+    #85acf5 40%,
+    #9bf8f4 60%,
+    #85acf5 80%,
+    #6f7bf7 100%
   );
 }
 
@@ -171,7 +172,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(10, 22, 40, 0.85);
+  background: rgba(111, 123, 247, 0.4);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--glass-border);
@@ -870,4 +871,189 @@ body {
   .stats-grid {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+/* ===== Smart Search Bar ===== */
+.smart-search-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.smart-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50px;
+  transition: all var(--transition-smooth);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.smart-search-bar:focus-within {
+  border-color: var(--teal-accent);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 4px rgba(155, 248, 244, 0.15), 0 8px 30px rgba(0, 0, 0, 0.2);
+}
+
+.smart-search-bar.has-suggestions {
+  border-radius: 24px 24px 0 0;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.smart-search-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.smart-search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 400;
+  letter-spacing: 0.2px;
+}
+
+.smart-search-input::placeholder {
+  color: var(--text-muted);
+  font-weight: 300;
+}
+
+.smart-search-clear {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.smart-search-clear:hover {
+  background: rgba(255, 107, 107, 0.2);
+  color: var(--coral-accent);
+  transform: scale(1.1);
+}
+
+/* Search Spinner */
+.search-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(155, 248, 244, 0.3);
+  border-top-color: var(--teal-accent);
+  border-radius: 50%;
+  animation: searchSpin 0.6s linear infinite;
+}
+
+@keyframes searchSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Suggestions Dropdown */
+.search-suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(70, 80, 180, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 2px solid var(--teal-accent);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0 0 24px 24px;
+  overflow: hidden;
+  z-index: 1000;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  animation: dropdownSlide 0.2s ease-out;
+}
+
+@keyframes dropdownSlide {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.search-suggestion-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.search-suggestion-item:hover,
+.search-suggestion-item.active {
+  background: rgba(155, 248, 244, 0.12);
+  color: var(--text-primary);
+}
+
+.search-suggestion-item.active {
+  background: rgba(155, 248, 244, 0.18);
+}
+
+.suggestion-icon {
+  font-size: 0.85rem;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.suggestion-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-highlight {
+  color: var(--teal-accent);
+  font-weight: 700;
+}
+
+/* Did You Mean */
+.did-you-mean {
+  margin-top: 0.75rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.did-you-mean-link {
+  background: none;
+  border: none;
+  color: var(--teal-accent);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: all var(--transition-fast);
+  padding: 0;
+}
+
+.did-you-mean-link:hover {
+  color: var(--teal-glow);
+  text-decoration-thickness: 2px;
 }

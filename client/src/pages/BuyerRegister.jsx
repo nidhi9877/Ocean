@@ -39,6 +39,16 @@ export default function BuyerRegister() {
       return;
     }
 
+    // Strong password validation
+    const hasText = /[A-Za-z]/.test(formData.password);
+    const hasNumber = /\d/.test(formData.password);
+    const hasSpecial = /[^A-Za-z0-9]/.test(formData.password);
+    
+    if (!hasText || !hasNumber || !hasSpecial || formData.password.length < 8) {
+      setError('Password must be at least 8 characters and contain texts, numbers, and at least one special character');
+      return;
+    }
+
     setError('');
     setLoading(true);
 

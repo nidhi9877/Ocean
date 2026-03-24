@@ -17,6 +17,15 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Username, password, and role are required' });
     }
 
+    // Strong password validation
+    const hasText = /[A-Za-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecial = /[^A-Za-z0-9]/.test(password);
+    
+    if (!hasText || !hasNumber || !hasSpecial || password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters and contain texts, numbers, and at least one special character' });
+    }
+
     if (!['buyer', 'provider'].includes(role)) {
       return res.status(400).json({ error: 'Role must be either "buyer" or "provider"' });
     }
@@ -31,7 +40,17 @@ router.post('/register', async (req, res) => {
     // Check if username already exists
     const existingUser = await sql`SELECT id FROM users WHERE username = ${username}`;
     if (existingUser.length > 0) {
-      return res.status(409).json({ error: 'Username already exists' });
+      return res.status(409).json({ error: 'Username already exists. Please choose a different username.' });
+    }
+
+    // Check if email already exists
+    if (email) {
+      const existingBuyerEmail = await sql`SELECT user_id FROM buyers WHERE email = ${email}`;
+      const existingProviderEmail = await sql`SELECT user_id FROM providers WHERE email = ${email}`;
+      
+      if (existingBuyerEmail.length > 0 || existingProviderEmail.length > 0) {
+        return res.status(409).json({ error: 'Email already exists. Please use a different email address.' });
+      }
     }
 
     // Hash password

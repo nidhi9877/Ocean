@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
+import SmartSearchBar from '../components/SmartSearchBar';
 
 const API = 'http://localhost:5000/api';
 
 export default function BuyerDashboard() {
   const { user, token } = useAuth();
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [allProducts, setAllProducts] = useState([]);
+  const [hasSearched, setHasSearched] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
   
   // Inquiry State
@@ -19,33 +20,26 @@ export default function BuyerDashboard() {
   const [sendingInquiry, setSendingInquiry] = useState(false);
   const [inquiryStatus, setInquiryStatus] = useState({ type: '', msg: '' });
 
+  // Fetch all products once for categories
   useEffect(() => {
-    fetchProducts();
+    const fetchAllProducts = async () => {
+      try {
+        const res = await axios.get(`${API}/provider/products`);
+        setAllProducts(res.data.products || []);
+      } catch (err) {
+        console.error('Failed to fetch products:', err);
+      }
+    };
+    fetchAllProducts();
   }, []);
 
-  const fetchProducts = async () => {
-    try {
-      const res = await axios.get(`${API}/provider/products`);
-      setProducts(res.data.products || []);
-    } catch (err) {
-      console.error('Failed to fetch products:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const categories = [...new Set(allProducts.map((p) => p.category))];
 
-  const categories = [...new Set(products.map((p) => p.category))];
-
-  // Filtering products
-  const filteredProducts = products.filter((p) => {
-    if (!searchTerm) return false; // Force require a search to see list, or we can just filter
-    const matchSearch =
-      p.product_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.part_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.company_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchCategory = !selectedCategory || p.category === selectedCategory;
-    return matchSearch && matchCategory;
-  });
+  // Handle search results from SmartSearchBar
+  const handleSearchResults = useCallback((results, searched) => {
+    setProducts(results);
+    setHasSearched(searched);
+  }, []);
 
   const handleCheckbox = (productId) => {
     const newSelected = new Set(selectedProducts);
@@ -63,9 +57,9 @@ export default function BuyerDashboard() {
     
     let selections = [];
     if (selectionType === 'all') {
-      selections = filteredProducts.map(p => ({ provider_id: p.provider_id, product_id: p.id }));
+      selections = products.map(p => ({ provider_id: p.provider_id, product_id: p.id }));
     } else {
-      selections = filteredProducts
+      selections = products
         .filter(p => selectedProducts.has(p.id))
         .map(p => ({ provider_id: p.provider_id, product_id: p.id }));
     }
@@ -121,16 +115,17 @@ export default function BuyerDashboard() {
           </div>
         </div>
 
-        {/* Search & Filter */}
+        {/* Smart Search & Filter */}
         <div className="glass-card" style={{ padding: '2rem', marginBottom: '2rem' }}>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-            <input
-              className="form-input" style={{ flex: 1, minWidth: '250px', fontSize: '1.1rem', padding: '1rem' }}
-              type="text" placeholder="🔍 Search product name, part number..."
-              value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            <div style={{ flex: 1, minWidth: '300px' }}>
+              <SmartSearchBar 
+                onSearchResults={handleSearchResults} 
+                selectedCategory={selectedCategory}
+              />
+            </div>
             <select
-              className="form-select" style={{ minWidth: '200px' }}
+              className="form-select" style={{ minWidth: '200px', alignSelf: 'flex-start', marginTop: '2px' }}
               value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}
             >
               <option value="">All Categories</option>
@@ -142,15 +137,16 @@ export default function BuyerDashboard() {
         </div>
 
         {/* Search Results */}
-        {!searchTerm ? (
+        {!hasSearched ? (
           <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.8 }}>
             <p style={{ fontSize: '3rem', marginBottom: '1rem' }}>🚢</p>
             <h3>Start by searching for a product</h3>
             <p style={{ color: 'var(--text-secondary)' }}>Discover verified vendors for the equipment you need.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+              💡 Tip: Typos are OK! Search "scroo" and we'll find "screw" for you.
+            </p>
           </div>
-        ) : loading ? (
-          <div className="spinner" style={{ margin: '0 auto' }}></div>
-        ) : filteredProducts.length === 0 ? (
+        ) : products.length === 0 ? (
            <div style={{ textAlign: 'center', padding: '3rem' }}>
             <p style={{ fontSize: '3rem', marginBottom: '1rem' }}>🌊</p>
             <p style={{ color: 'var(--text-secondary)' }}>No vendors found selling matching this product.</p>
@@ -159,34 +155,39 @@ export default function BuyerDashboard() {
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '2rem', alignItems: 'start' }}>
             
             {/* Left Col: Results Grid */}
-            <div className="products-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
-              {filteredProducts.map((product) => (
-                <div key={product.id} className="product-list-card" style={{ position: 'relative' }}>
-                   {selectionType === 'manual' && (
-                    <div style={{ position: 'absolute', top: '15px', right: '15px', zIndex: 10 }}>
-                      <input 
-                        type="checkbox" 
-                        style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                        checked={selectedProducts.has(product.id)}
-                        onChange={() => handleCheckbox(product.id)}
-                      />
-                    </div>
-                  )}
-                  <div style={{ paddingRight: selectionType === 'manual' ? '30px' : '0' }}>
-                    <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{product.product_name}</h3>
-                    <span className="product-category" style={{ marginBottom: '1rem' }}>{product.category}</span>
-                    <p className="product-company" style={{ fontWeight: 'bold' }}>🏢 Vendor: {product.company_name}</p>
-                    
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                      {product.brand && <p>Brand: {product.brand}</p>}
-                      {product.part_number && <p>Part #: {product.part_number}</p>}
-                      {product.location && <p>Location: {product.location}</p>}
-                    </div>
+            <div>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.9rem' }}>
+                Found <strong style={{ color: 'var(--teal-accent)' }}>{products.length}</strong> result{products.length !== 1 ? 's' : ''} ranked by relevance
+              </p>
+              <div className="products-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+                {products.map((product) => (
+                  <div key={product.id} className="product-list-card" style={{ position: 'relative' }}>
+                     {selectionType === 'manual' && (
+                      <div style={{ position: 'absolute', top: '15px', right: '15px', zIndex: 10 }}>
+                        <input 
+                          type="checkbox" 
+                          style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                          checked={selectedProducts.has(product.id)}
+                          onChange={() => handleCheckbox(product.id)}
+                        />
+                      </div>
+                    )}
+                    <div style={{ paddingRight: selectionType === 'manual' ? '30px' : '0' }}>
+                      <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{product.product_name}</h3>
+                      <span className="product-category" style={{ marginBottom: '1rem' }}>{product.category}</span>
+                      <p className="product-company" style={{ fontWeight: 'bold' }}>🏢 Vendor: {product.company_name}</p>
+                      
+                      <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                        {product.brand && <p>Brand: {product.brand}</p>}
+                        {product.part_number && <p>Part #: {product.part_number}</p>}
+                        {product.location && <p>Location: {product.location}</p>}
+                      </div>
 
-                    <div className="product-price" style={{ marginTop: '1rem' }}>₹{Number(product.price).toLocaleString()}</div>
+                      <div className="product-price" style={{ marginTop: '1rem' }}>₹{Number(product.price).toLocaleString()}</div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
             {/* Right Col: Inquiry Box */}
@@ -208,7 +209,7 @@ export default function BuyerDashboard() {
                       checked={selectionType === 'all'} onChange={() => setSelectionType('all')}
                       style={{ marginRight: '0.5rem' }}
                     />
-                     Send to All {filteredProducts.length} Vendor(s)
+                     Send to All {products.length} Vendor(s)
                   </label>
                   <label style={{ display: 'block', cursor: 'pointer' }}>
                     <input 
@@ -255,3 +256,4 @@ export default function BuyerDashboard() {
     </>
   );
 }
+
