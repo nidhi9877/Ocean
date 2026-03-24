@@ -92,6 +92,16 @@ export async function initDatabase() {
       console.log('Columns likely already exist or minor error:', e.message);
     }
 
+    // Enable pg_trgm extension for fuzzy search
+    try {
+      await sql`CREATE EXTENSION IF NOT EXISTS pg_trgm`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_products_name_trgm ON products USING GIN (product_name gin_trgm_ops)`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_products_partnum_trgm ON products USING GIN (part_number gin_trgm_ops)`;
+      console.log('✅ pg_trgm extension and fuzzy search indexes ready');
+    } catch (e) {
+      console.log('pg_trgm setup note:', e.message);
+    }
+
     console.log('✅ Database tables initialized successfully');
   } catch (error) {
     console.error('❌ Database initialization error:', error.message);

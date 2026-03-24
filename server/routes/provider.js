@@ -146,6 +146,70 @@ router.get('/profile', authenticateToken, async (req, res) => {
   }
 });
 
+// Fuzzy search products (typo-tolerant, like Elasticsearch)
+router.get('/products/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.trim().length === 0) {
+      return res.json({ products: [], suggestions: [] });
+    }
+
+    const searchTerm = q.trim().toLowerCase();
+    const similarityThreshold = 0.15; // Lower = more lenient fuzzy matching
+
+    // Set the similarity threshold for this session
+    await sql`SELECT set_limit(${similarityThreshold})`;
+
+    // Fuzzy search using pg_trgm similarity across multiple fields
+    // Results are ranked by the best similarity score across all searched fields
+    const products = await sql`
+      SELECT p.*, pr.company_name, pr.contact_person, pr.email as provider_email,
+             GREATEST(
+               COALESCE(similarity(LOWER(p.product_name), ${searchTerm}), 0),
+               COALESCE(similarity(LOWER(COALESCE(p.part_number, '')), ${searchTerm}), 0),
+               COALESCE(similarity(LOWER(COALESCE(p.brand, '')), ${searchTerm}), 0),
+               COALESCE(similarity(LOWER(COALESCE(p.category, '')), ${searchTerm}), 0)
+             ) AS relevance_score
+      FROM products p
+      JOIN providers pr ON p.provider_id = pr.id
+      WHERE 
+        LOWER(p.product_name) % ${searchTerm}
+        OR LOWER(COALESCE(p.part_number, '')) % ${searchTerm}
+        OR LOWER(COALESCE(p.brand, '')) % ${searchTerm}
+        OR LOWER(COALESCE(p.category, '')) % ${searchTerm}
+        OR LOWER(p.product_name) ILIKE ${'%' + searchTerm + '%'}
+        OR LOWER(COALESCE(p.part_number, '')) ILIKE ${'%' + searchTerm + '%'}
+      ORDER BY relevance_score DESC, p.product_name ASC
+      LIMIT 100
+    `;
+
+    // Build unique autocomplete suggestions from matched product names
+    const suggestionSet = new Set();
+    for (const p of products) {
+      if (suggestionSet.size >= 8) break;
+      suggestionSet.add(p.product_name);
+    }
+    const suggestions = [...suggestionSet];
+
+    // Determine "did you mean" — find the best matching product name if input is fuzzy
+    let didYouMean = null;
+    if (products.length > 0) {
+      const topProduct = products[0];
+      const topName = topProduct.product_name.toLowerCase();
+      // Only show "did you mean" if the search term is clearly different from the match
+      if (!topName.includes(searchTerm) && !searchTerm.includes(topName) && topProduct.relevance_score < 0.8) {
+        didYouMean = topProduct.product_name;
+      }
+    }
+
+    res.json({ products, suggestions, didYouMean });
+  } catch (error) {
+    console.error('Fuzzy search error:', error);
+    res.status(500).json({ error: 'Internal server error during search' });
+  }
+});
+
 // Get all products (for buyers)
 router.get('/products', async (req, res) => {
   try {
