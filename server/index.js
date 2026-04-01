@@ -27,6 +27,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Marine Marketplace API is running' });
 });
 
+// Default Root Route
+app.get('/', (req, res) => {
+  res.send('Welcome to the Marine Marketplace API! The server is successfully running. Please use /api/* for API endpoints.');
+});
+
 // Initialize database and start server
 async function start() {
   try {
