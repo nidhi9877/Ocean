@@ -64,6 +64,7 @@ export async function initDatabase() {
         price DECIMAL(10,2) NOT NULL,
         quantity INTEGER DEFAULT 0,
         description TEXT,
+        additional_info TEXT,
         created_at TIMESTAMP DEFAULT NOW()
       )
     `;
@@ -87,6 +88,7 @@ export async function initDatabase() {
       await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS model_number VARCHAR(100)`;
       await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS manufactured_at VARCHAR(255)`;
       await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS location VARCHAR(255)`;
+      await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS additional_info TEXT`;
       await sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`;
     } catch (e) {
       console.log('Columns likely already exist or minor error:', e.message);

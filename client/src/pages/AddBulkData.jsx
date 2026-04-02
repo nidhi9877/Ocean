@@ -57,6 +57,7 @@ export default function AddBulkData() {
     quantity: '',
     price: '',
     email: p ? p.email : user?.email || '',
+    additionalInfo: '',
   });
 
   const handleRowChange = (index, field, value) => {
@@ -110,7 +111,7 @@ export default function AddBulkData() {
     padding: '0.4rem',
     background: 'rgba(255, 255, 255, 0.1)',
     border: '1px solid rgba(255, 255, 255, 0.2)',
-    color: 'white',
+    color: 'var(--text-primary)',
     borderRadius: '4px',
     outline: 'none',
   };
@@ -127,7 +128,7 @@ export default function AddBulkData() {
 
       <div className="page-container" style={{ padding: '6rem 2rem 2rem' }}>
         <div className="glass-card" style={{ maxWidth: '100%', overflowX: 'auto', padding: '2rem' }}>
-          <h2 style={{ marginBottom: '1rem', color: 'white' }}>Excel Data Entry</h2>
+          <h2 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Excel Data Entry</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
             Fill out the details below as you would in an Excel sheet. Name, Category, and Price are required for valid products.
           </p>
@@ -140,23 +141,24 @@ export default function AddBulkData() {
           ) : (
             <form onSubmit={handleSubmit}>
               <div style={{ overflowX: 'auto', marginBottom: '2rem' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', color: 'white', textAlign: 'left' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--text-primary)', textAlign: 'left' }}>
                   <thead>
-                    <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
+                    <tr style={{ background: 'rgba(255,255,255,0.2)' }}>
                       <th style={tdStyle}>Sr. No</th>
                       <th style={tdStyle}>Company Name</th>
                       <th style={tdStyle}>Product ID</th>
-                      <th style={tdStyle}>Product Name</th>
+                      <th style={tdStyle}>Product Name *</th>
                       <th style={tdStyle}>Description</th>
-                      <th style={tdStyle}>Category</th>
+                      <th style={tdStyle}>Category *</th>
                       <th style={tdStyle}>Brand</th>
                       <th style={tdStyle}>Model Number</th>
                       <th style={tdStyle}>Part Number</th>
                       <th style={tdStyle}>Manufactured At</th>
-                      <th style={tdStyle}>Location</th>
+                      <th style={tdStyle}>To which location you can supply the product</th>
                       <th style={tdStyle}>Quantity</th>
-                      <th style={tdStyle}>Price (₹)</th>
+                      <th style={tdStyle}>Price *</th>
                       <th style={tdStyle}>Email</th>
+                      <th style={tdStyle}>Additional Information</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -202,6 +204,9 @@ export default function AddBulkData() {
                         <td style={tdStyle}>
                           <input style={inputStyle} type="email" value={row.email} onChange={e => handleRowChange(index, 'email', e.target.value)} />
                         </td>
+                        <td style={tdStyle}>
+                          <input style={inputStyle} value={row.additionalInfo} onChange={e => handleRowChange(index, 'additionalInfo', e.target.value)} />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -209,7 +214,7 @@ export default function AddBulkData() {
               </div>
               
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'space-between' }}>
-                <button type="button" className="btn" style={{ background: 'rgba(255,255,255,0.1)', color: 'white' }} onClick={addMoreRows}>
+                <button type="button" className="btn" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-primary)' }} onClick={addMoreRows}>
                   + Add More Rows
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>

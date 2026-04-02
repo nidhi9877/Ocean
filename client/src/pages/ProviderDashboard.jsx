@@ -56,7 +56,7 @@ export default function ProviderDashboard() {
           <div style={{ display: 'flex', gap: '1rem' }}>
             <button 
               className="btn btn-primary"
-              onClick={() => navigate('/provider/add-data')}
+              onClick={() => navigate('/provider/add-options')}
               style={{ fontWeight: 'bold' }}
             >
               + Add New Parts
@@ -145,7 +145,17 @@ export default function ProviderDashboard() {
                       {product.description && (
                         <p className="product-info">{product.description}</p>
                       )}
-                      <div className="product-price">₹{Number(product.price).toLocaleString()}</div>
+                      {product.location && (
+                        <p className="product-info" style={{ color: 'var(--teal-accent)', marginTop: '0.2rem' }}>
+                          📍 Ships to: {product.location}
+                        </p>
+                      )}
+                      {product.additional_info && (
+                        <p className="product-info" style={{ fontSize: '0.8rem', fontStyle: 'italic', opacity: 0.8 }}>
+                          ℹ️ {product.additional_info}
+                        </p>
+                      )}
+                      <div className="product-price">{Number(product.price).toLocaleString()}</div>
                     </div>
                   ))}
                 </div>

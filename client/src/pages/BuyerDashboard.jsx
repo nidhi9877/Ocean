@@ -155,6 +155,7 @@ export default function BuyerDashboard() {
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '2rem', alignItems: 'start' }}>
             
             {/* Left Col: Results Grid */}
+<<<<<<< Updated upstream
             <div>
               <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.9rem' }}>
                 Found <strong style={{ color: 'var(--teal-accent)' }}>{products.length}</strong> result{products.length !== 1 ? 's' : ''} ranked by relevance
@@ -185,6 +186,34 @@ export default function BuyerDashboard() {
 
                       <div className="product-price" style={{ marginTop: '1rem' }}>₹{Number(product.price).toLocaleString()}</div>
                     </div>
+=======
+            <div className="products-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+              {filteredProducts.map((product) => (
+                <div key={product.id} className="product-list-card" style={{ position: 'relative' }}>
+                   {selectionType === 'manual' && (
+                    <div style={{ position: 'absolute', top: '15px', right: '15px', zIndex: 10 }}>
+                      <input 
+                        type="checkbox" 
+                        style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                        checked={selectedProducts.has(product.id)}
+                        onChange={() => handleCheckbox(product.id)}
+                      />
+                    </div>
+                  )}
+                  <div style={{ paddingRight: selectionType === 'manual' ? '30px' : '0' }}>
+                    <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{product.product_name}</h3>
+                    <span className="product-category" style={{ marginBottom: '1rem' }}>{product.category}</span>
+                    <p className="product-company" style={{ fontWeight: 'bold' }}>🏢 Vendor: {product.company_name}</p>
+                    
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                      {product.brand && <p>Brand: {product.brand}</p>}
+                      {product.part_number && <p>Part #: {product.part_number}</p>}
+                      {product.location && <p style={{ color: 'var(--teal-accent)' }}>📍 Ships To: {product.location}</p>}
+                      {product.additional_info && <p style={{ fontStyle: 'italic', opacity: 0.8 }}>ℹ️ Info: {product.additional_info}</p>}
+                    </div>
+
+                    <div className="product-price" style={{ marginTop: '1rem' }}>{Number(product.price).toLocaleString()}</div>
+>>>>>>> Stashed changes
                   </div>
                 ))}
               </div>
