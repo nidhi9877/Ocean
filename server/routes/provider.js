@@ -46,8 +46,23 @@ router.post('/register', authenticateToken, async (req, res) => {
       for (const product of products) {
         if (product.productName && product.category && product.price) {
           await sql`
-            INSERT INTO products (provider_id, product_name, category, part_number, price, quantity, description)
-            VALUES (${providerId}, ${product.productName}, ${product.category}, ${product.partNumber || null}, ${product.price}, ${product.quantity || 0}, ${product.description || null})
+            INSERT INTO products (
+              provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info
+            )
+            VALUES (
+              ${providerId}, 
+              ${product.productName}, 
+              ${product.category}, 
+              ${product.brand || null}, 
+              ${product.modelNumber || null}, 
+              ${product.partNumber || null}, 
+              ${product.manufacturedAt || null}, 
+              ${product.location || null}, 
+              ${product.price}, 
+              ${product.quantity || 0}, 
+              ${product.description || null},
+              ${product.additionalInfo || null}
+            )
           `;
         }
       }
@@ -91,7 +106,7 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
       if (p.productName && p.category && p.price) {
         await sql`
           INSERT INTO products (
-            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description
+            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info
           )
           VALUES (
             ${providerId}, 
@@ -104,7 +119,8 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
             ${p.location || null}, 
             ${p.price}, 
             ${p.quantity || 0}, 
-            ${p.description || null}
+            ${p.description || null},
+            ${p.additionalInfo || null}
           )
         `;
         insertedCount++;

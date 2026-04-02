@@ -5,12 +5,15 @@ import ProviderForm from './pages/ProviderForm';
 import VendorRegister from './pages/VendorRegister';
 import BuyerRegister from './pages/BuyerRegister';
 import AddBulkData from './pages/AddBulkData';
+import AddDataOptions from './pages/AddDataOptions';
+import AddCsvData from './pages/AddCsvData';
 import BuyerDashboard from './pages/BuyerDashboard';
 import ProviderDashboard from './pages/ProviderDashboard';
 import ProviderInquiries from './pages/ProviderInquiries';
 import BuyerInquiries from './pages/BuyerInquiries';
 import WelcomePage from './pages/WelcomePage';
 import AdminDashboard from './pages/AdminDashboard';
+import InstallPrompt from './components/InstallPrompt';
 import './index.css';
 
 function ProtectedRoute({ children, allowedRole }) {
@@ -91,6 +94,22 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/provider/add-options"
+        element={
+          <ProtectedRoute>
+            <AddDataOptions />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/provider/add-csv"
+        element={
+          <ProtectedRoute>
+            <AddCsvData />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/provider/add-data"
         element={
           <ProtectedRoute>
@@ -131,6 +150,7 @@ export default function App() {
   return (
     <Router>
       <AuthProvider>
+        <InstallPrompt />
         <AppRoutes />
       </AuthProvider>
     </Router>
