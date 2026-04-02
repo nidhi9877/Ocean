@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import { Link } from 'react-router-dom';
 
-const API = 'http://localhost:5000/api';
+const API = '/api';
 
 export default function ProviderInquiries() {
   const { token } = useAuth();
