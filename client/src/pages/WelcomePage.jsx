@@ -18,18 +18,26 @@ export default function WelcomePage() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'var(--ocean-bg, linear-gradient(135deg, #0f52ba 0%, #0077be 100%))',
-      color: 'white',
-      fontFamily: "'Outfit', sans-serif",
-      textAlign: 'center',
-      padding: '2rem'
-    }}>
+    <>
+      <div className="ocean-bg">
+        <div className="particles">
+          <div className="particle"></div><div className="particle"></div><div className="particle"></div>
+          <div className="particle"></div><div className="particle"></div><div className="particle"></div>
+        </div>
+      </div>
+      <div style={{
+        position: 'relative',
+        zIndex: 1,
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white',
+        fontFamily: "'Outfit', sans-serif",
+        textAlign: 'center',
+        padding: '2rem'
+      }}>
       <div style={{ fontSize: '5rem', marginBottom: '1.5rem', animation: 'float 4s ease-in-out infinite' }}>⚓</div>
       <h1 style={{ 
         fontSize: '4.5rem', 
@@ -62,5 +70,6 @@ export default function WelcomePage() {
         </Link>
       </div>
     </div>
+    </>
   );
 }
