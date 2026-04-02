@@ -1172,3 +1172,14 @@ body {
     color: var(--teal-glow);
     text-decoration-thickness: 2px;
   }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }

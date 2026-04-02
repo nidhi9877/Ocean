@@ -13,7 +13,7 @@ import ProviderInquiries from './pages/ProviderInquiries';
 import BuyerInquiries from './pages/BuyerInquiries';
 import WelcomePage from './pages/WelcomePage';
 import AdminDashboard from './pages/AdminDashboard';
-import InstallPrompt from './components/InstallPrompt';
+
 import './index.css';
 
 function ProtectedRoute({ children, allowedRole }) {
@@ -150,7 +150,7 @@ export default function App() {
   return (
     <Router>
       <AuthProvider>
-        <InstallPrompt />
+
         <AppRoutes />
       </AuthProvider>
     </Router>
