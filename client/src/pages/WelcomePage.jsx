@@ -1,5 +1,6 @@
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import InstallPrompt from '../components/InstallPrompt';
 
 export default function WelcomePage() {
   const { user, loading } = useAuth();
@@ -69,6 +70,7 @@ export default function WelcomePage() {
           Enter Marketplace
         </Link>
       </div>
+      <InstallPrompt />
     </div>
     </>
   );
