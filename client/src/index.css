@@ -82,9 +82,9 @@ body {
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
+}
 
-
-  .ocean-bg::before {
+.ocean-bg::before {
     content: '';
     position: absolute;
     top: 0;

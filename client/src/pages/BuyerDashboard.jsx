@@ -12,7 +12,7 @@ export default function BuyerDashboard() {
   const [allProducts, setAllProducts] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
-  
+
   // Inquiry State
   const [selectionType, setSelectionType] = useState('all'); // 'all' or 'manual'
   const [selectedProducts, setSelectedProducts] = useState(new Set());
@@ -54,7 +54,7 @@ export default function BuyerDashboard() {
   const handleSendInquiry = async (e) => {
     e.preventDefault();
     setInquiryStatus({ type: '', msg: '' });
-    
+
     let selections = [];
     if (selectionType === 'all') {
       selections = products.map(p => ({ provider_id: p.provider_id, product_id: p.id }));
@@ -119,8 +119,8 @@ export default function BuyerDashboard() {
         <div className="glass-card" style={{ padding: '2rem', marginBottom: '2rem' }}>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
             <div style={{ flex: 1, minWidth: '300px' }}>
-              <SmartSearchBar 
-                onSearchResults={handleSearchResults} 
+              <SmartSearchBar
+                onSearchResults={handleSearchResults}
                 selectedCategory={selectedCategory}
               />
             </div>
@@ -147,141 +147,114 @@ export default function BuyerDashboard() {
             </p>
           </div>
         ) : products.length === 0 ? (
-           <div style={{ textAlign: 'center', padding: '3rem' }}>
+          <div style={{ textAlign: 'center', padding: '3rem' }}>
             <p style={{ fontSize: '3rem', marginBottom: '1rem' }}>🌊</p>
             <p style={{ color: 'var(--text-secondary)' }}>No vendors found selling matching this product.</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '2rem', alignItems: 'start' }}>
-            
+
             {/* Left Col: Results Grid */}
-<<<<<<< Updated upstream
-            <div>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.9rem' }}>
-                Found <strong style={{ color: 'var(--teal-accent)' }}>{products.length}</strong> result{products.length !== 1 ? 's' : ''} ranked by relevance
-              </p>
-              <div className="products-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
-                {products.map((product) => (
-                  <div key={product.id} className="product-list-card" style={{ position: 'relative' }}>
-                     {selectionType === 'manual' && (
-                      <div style={{ position: 'absolute', top: '15px', right: '15px', zIndex: 10 }}>
-                        <input 
-                          type="checkbox" 
-                          style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                          checked={selectedProducts.has(product.id)}
-                          onChange={() => handleCheckbox(product.id)}
-                        />
-                      </div>
-                    )}
-                    <div style={{ paddingRight: selectionType === 'manual' ? '30px' : '0' }}>
-                      <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{product.product_name}</h3>
-                      <span className="product-category" style={{ marginBottom: '1rem' }}>{product.category}</span>
-                      <p className="product-company" style={{ fontWeight: 'bold' }}>🏢 Vendor: {product.company_name}</p>
-                      
-                      <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                        {product.brand && <p>Brand: {product.brand}</p>}
-                        {product.part_number && <p>Part #: {product.part_number}</p>}
-                        {product.location && <p>Location: {product.location}</p>}
-                      </div>
 
-                      <div className="product-price" style={{ marginTop: '1rem' }}>₹{Number(product.price).toLocaleString()}</div>
-                    </div>
-=======
-            <div className="products-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
-              {filteredProducts.map((product) => (
-                <div key={product.id} className="product-list-card" style={{ position: 'relative' }}>
-                   {selectionType === 'manual' && (
-                    <div style={{ position: 'absolute', top: '15px', right: '15px', zIndex: 10 }}>
-                      <input 
-                        type="checkbox" 
-                        style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                        checked={selectedProducts.has(product.id)}
-                        onChange={() => handleCheckbox(product.id)}
-                      />
-                    </div>
-                  )}
-                  <div style={{ paddingRight: selectionType === 'manual' ? '30px' : '0' }}>
-                    <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{product.product_name}</h3>
-                    <span className="product-category" style={{ marginBottom: '1rem' }}>{product.category}</span>
-                    <p className="product-company" style={{ fontWeight: 'bold' }}>🏢 Vendor: {product.company_name}</p>
-                    
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                      {product.brand && <p>Brand: {product.brand}</p>}
-                      {product.part_number && <p>Part #: {product.part_number}</p>}
-                      {product.location && <p style={{ color: 'var(--teal-accent)' }}>📍 Ships To: {product.location}</p>}
-                      {product.additional_info && <p style={{ fontStyle: 'italic', opacity: 0.8 }}>ℹ️ Info: {product.additional_info}</p>}
-                    </div>
+  <div>
+    <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.9rem' }}>
+      Found <strong style={{ color: 'var(--teal-accent)' }}>{products.length}</strong> result{products.length !== 1 ? 's' : ''} ranked by relevance
+    </p>
+    <div className="products-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+      {products.map((product) => (
+        <div key={product.id} className="product-list-card" style={{ position: 'relative' }}>
+          {selectionType === 'manual' && (
+            <div style={{ position: 'absolute', top: '15px', right: '15px', zIndex: 10 }}>
+              <input
+                type="checkbox"
+                style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                checked={selectedProducts.has(product.id)}
+                onChange={() => handleCheckbox(product.id)}
+              />
+            </div>
+          )}
+          <div style={{ paddingRight: selectionType === 'manual' ? '30px' : '0' }}>
+            <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>{product.product_name}</h3>
+            <span className="product-category" style={{ marginBottom: '1rem' }}>{product.category}</span>
+            <p className="product-company" style={{ fontWeight: 'bold' }}>🏢 Vendor: {product.company_name}</p>
 
-                    <div className="product-price" style={{ marginTop: '1rem' }}>{Number(product.price).toLocaleString()}</div>
->>>>>>> Stashed changes
-                  </div>
-                ))}
-              </div>
+            <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+              {product.brand && <p>Brand: {product.brand}</p>}
+              {product.part_number && <p>Part #: {product.part_number}</p>}
+              {product.location && <p>Location: {product.location}</p>}
             </div>
 
-            {/* Right Col: Inquiry Box */}
-            <div className="glass-card" style={{ padding: '2rem', position: 'sticky', top: '2rem' }}>
-              <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.5rem', marginBottom: '1rem' }}>
-                📨 Send Inquiry
-              </h2>
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-                Contact the vendors of the products listed in your search results.
-              </p>
-
-              <form onSubmit={handleSendInquiry}>
-                
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: 'bold' }}>Select Vendors:</label>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', cursor: 'pointer' }}>
-                    <input 
-                      type="radio" name="selectionType" value="all" 
-                      checked={selectionType === 'all'} onChange={() => setSelectionType('all')}
-                      style={{ marginRight: '0.5rem' }}
-                    />
-                     Send to All {products.length} Vendor(s)
-                  </label>
-                  <label style={{ display: 'block', cursor: 'pointer' }}>
-                    <input 
-                      type="radio" name="selectionType" value="manual" 
-                      checked={selectionType === 'manual'} onChange={() => setSelectionType('manual')}
-                      style={{ marginRight: '0.5rem' }}
-                    />
-                     Select Manually
-                  </label>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 'bold' }}>Destination Location *</label>
-                  <input
-                    className="form-input"
-                    type="text"
-                    placeholder="e.g. Port of Singapore"
-                    value={destinationLocation}
-                    onChange={(e) => setDestinationLocation(e.target.value)}
-                  />
-                </div>
-
-                {inquiryStatus.msg && (
-                  <div className={`alert ${inquiryStatus.type === 'error' ? 'alert-error' : 'alert-success'}`} style={{ marginBottom: '1rem', padding: '0.8rem' }}>
-                    {inquiryStatus.msg}
-                  </div>
-                )}
-
-                <button 
-                  type="submit" 
-                  className="btn btn-primary btn-block" 
-                  style={{ fontWeight: 'bold' }}
-                  disabled={sendingInquiry}
-                >
-                  {sendingInquiry ? <span className="spinner"></span> : `Submit Inquiry`}
-                </button>
-
-              </form>
-            </div>
-            
+            <div className="product-price" style={{ marginTop: '1rem' }}>₹{Number(product.price).toLocaleString()}</div>
           </div>
-        )}
+        </div>
+      ))}
+    </div>
+  </div>
+
+  {/* Right Col: Inquiry Box */ }
+  <div className="glass-card" style={{ padding: '2rem', position: 'sticky', top: '2rem' }}>
+    <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.5rem', marginBottom: '1rem' }}>
+      📨 Send Inquiry
+    </h2>
+    <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+      Contact the vendors of the products listed in your search results.
+    </p>
+
+    <form onSubmit={handleSendInquiry}>
+
+      <div style={{ marginBottom: '1.5rem' }}>
+        <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: 'bold' }}>Select Vendors:</label>
+        <label style={{ display: 'block', marginBottom: '0.5rem', cursor: 'pointer' }}>
+          <input
+            type="radio" name="selectionType" value="all"
+            checked={selectionType === 'all'} onChange={() => setSelectionType('all')}
+            style={{ marginRight: '0.5rem' }}
+          />
+          Send to All {products.length} Vendor(s)
+        </label>
+        <label style={{ display: 'block', cursor: 'pointer' }}>
+          <input
+            type="radio" name="selectionType" value="manual"
+            checked={selectionType === 'manual'} onChange={() => setSelectionType('manual')}
+            style={{ marginRight: '0.5rem' }}
+          />
+          Select Manually
+        </label>
       </div>
+
+      <div className="form-group">
+        <label className="form-label" style={{ fontWeight: 'bold' }}>Destination Location *</label>
+        <input
+          className="form-input"
+          type="text"
+          placeholder="e.g. Port of Singapore"
+          value={destinationLocation}
+          onChange={(e) => setDestinationLocation(e.target.value)}
+        />
+      </div>
+
+      {inquiryStatus.msg && (
+        <div className={`alert ${inquiryStatus.type === 'error' ? 'alert-error' : 'alert-success'}`} style={{ marginBottom: '1rem', padding: '0.8rem' }}>
+          {inquiryStatus.msg}
+        </div>
+      )}
+
+      <button
+        type="submit"
+        className="btn btn-primary btn-block"
+        style={{ fontWeight: 'bold' }}
+        disabled={sendingInquiry}
+      >
+        {sendingInquiry ? <span className="spinner"></span> : `Submit Inquiry`}
+      </button>
+
+    </form>
+  </div>
+            
+          </div >
+        )
+}
+      </div >
     </>
   );
 }
