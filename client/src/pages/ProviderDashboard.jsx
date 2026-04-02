@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 
-const API = 'http://localhost:5000/api';
+const API = '/api';
 
 export default function ProviderDashboard() {
   const { user, token } = useAuth();

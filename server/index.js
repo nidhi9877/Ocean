@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { initDatabase } from './db.js';
 import authRoutes from './routes/auth.js';
 import providerRoutes from './routes/provider.js';
@@ -9,6 +11,9 @@ import buyerRoutes from './routes/buyer.js';
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -16,7 +21,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/provider', providerRoutes);
 app.use('/api/admin', adminRoutes);
@@ -27,9 +32,13 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Marine Marketplace API is running' });
 });
 
-// Default Root Route
-app.get('/', (req, res) => {
-  res.send('Welcome to the Marine Marketplace API! The server is successfully running. Please use /api/* for API endpoints.');
+// Serve React client build in production
+const clientBuildPath = path.join(__dirname, '..', 'client', 'dist');
+app.use(express.static(clientBuildPath));
+
+// Catch-all: serve React app for any non-API route (supports React Router)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(clientBuildPath, 'index.html'));
 });
 
 // Initialize database and start server

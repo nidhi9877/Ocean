@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API = 'http://localhost:5000/api';
+const API = '/api';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ totalUsers: 0, totalProviders: 0, totalProducts: 0 });

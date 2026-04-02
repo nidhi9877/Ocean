@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import SmartSearchBar from '../components/SmartSearchBar';
 
-const API = 'http://localhost:5000/api';
+const API = '/api';
 
 export default function BuyerDashboard() {
   const { user, token } = useAuth();
