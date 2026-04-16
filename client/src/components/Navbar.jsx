@@ -14,7 +14,7 @@ export default function Navbar() {
     <nav className="navbar">
       <Link to="/" className="navbar-brand">
         <span className="navbar-logo">⚓</span>
-        <span className="navbar-title">Marine Marketplace</span>
+        <span className="navbar-title">Vortex</span>
       </Link>
 
       <div className="navbar-links">
