@@ -5,7 +5,7 @@ import Papa from 'papaparse';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 
-const API = 'http://localhost:5000/api';
+const API = '/api';
 
 export default function AddCsvData() {
   const { token, user } = useAuth();
@@ -15,7 +15,7 @@ export default function AddCsvData() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const EXPECTED_MANDATORY_COLS = ["Product Name", "Category", "Price"];
+  // EXPECTED_MANDATORY_COLS is replaced by smart detection below
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -39,10 +39,37 @@ export default function AddCsvData() {
       complete: async (results) => {
         const { data, meta } = results;
 
-        // Check for mandatory headers
-        const missingMandatory = EXPECTED_MANDATORY_COLS.filter(col => !meta.fields.includes(col));
+        // Smart column detection
+        const findCol = (possibleNames) => {
+          return meta.fields.find(f => {
+            const norm = f.toLowerCase().replace(/[^a-z0-9]/g, '');
+            return possibleNames.includes(norm);
+          });
+        };
+
+        const colProductName = findCol(['productname', 'name', 'itemname', 'title', 'producttitle']);
+        const colCategory = findCol(['category', 'type', 'department', 'productcategory']);
+        const colPrice = findCol(['price', 'cost', 'amount', 'rate', 'mrp', 'unitprice']);
+        
+        const colCompanyName = findCol(['companyname', 'company', 'vendor', 'business']);
+        const colProductId = findCol(['productid', 'id', 'itemid', 'sku']);
+        const colDescription = findCol(['description', 'details', 'about', 'desc']);
+        const colBrand = findCol(['brand', 'manufacturer', 'make']);
+        const colModelNumber = findCol(['modelnumber', 'model', 'modelno']);
+        const colPartNumber = findCol(['partnumber', 'part', 'partno']);
+        const colManufacturedAt = findCol(['manufacturedat', 'manufacturingdate', 'mfgdate', 'date']);
+        const colLocation = findCol(['location', 'supplylocation', 'towhichlocationyoucansupplytheproduct', 'city', 'state', 'supply']);
+        const colQuantity = findCol(['quantity', 'qty', 'stock', 'count']);
+        const colEmail = findCol(['email', 'emailaddress', 'contactemail', 'contact']);
+        const colAdditionalInfo = findCol(['additionalinformation', 'additionalinfo', 'info', 'notes', 'remarks']);
+
+        const missingMandatory = [];
+        if (!colProductName) missingMandatory.push("Product Name");
+        if (!colCategory) missingMandatory.push("Category");
+        if (!colPrice) missingMandatory.push("Price");
+
         if (missingMandatory.length > 0) {
-          setError(`Missing mandatory columns: ${missingMandatory.join(', ')}`);
+          setError(`Could not detect mandatory columns: ${missingMandatory.join(', ')}. Please check your CSV headers.`);
           setLoading(false);
           return;
         }
@@ -52,27 +79,27 @@ export default function AddCsvData() {
         let missingDataErrors = 0;
 
         for (const row of data) {
-          if (!row["Product Name"] || !row["Category"] || !row["Price"]) {
+          if (!row[colProductName] || !row[colCategory] || !row[colPrice]) {
             missingDataErrors++;
             continue;
           }
 
           // Map CSV columns to the API expected keys (same as getEmptyRow in AddBulkData)
           validProducts.push({
-            companyName: row["Company Name"] || '',
-            productId: row["Product ID"] || '',
-            productName: row["Product Name"] || '',
-            description: row["Description"] || '',
-            category: row["Category"] || '',
-            brand: row["Brand"] || '',
-            modelNumber: row["Model Number"] || '',
-            partNumber: row["Part Number"] || '',
-            manufacturedAt: row["Manufactured At"] || '',
-            location: row["To which location you can supply the product"] || '',
-            quantity: row["Quantity"] || '',
-            price: row["Price"] || '',
-            email: row["Email"] || user?.email || '',
-            additionalInfo: row["Additional Information"] || ''
+            companyName: colCompanyName ? (row[colCompanyName] || '') : '',
+            productId: colProductId ? (row[colProductId] || '') : '',
+            productName: row[colProductName] || '',
+            description: colDescription ? (row[colDescription] || '') : '',
+            category: row[colCategory] || '',
+            brand: colBrand ? (row[colBrand] || '') : '',
+            modelNumber: colModelNumber ? (row[colModelNumber] || '') : '',
+            partNumber: colPartNumber ? (row[colPartNumber] || '') : '',
+            manufacturedAt: colManufacturedAt ? (row[colManufacturedAt] || '') : '',
+            location: colLocation ? (row[colLocation] || '') : '',
+            quantity: colQuantity ? (row[colQuantity] || '') : '',
+            price: row[colPrice] || '',
+            email: (colEmail && row[colEmail]) ? row[colEmail] : (user?.email || ''),
+            additionalInfo: colAdditionalInfo ? (row[colAdditionalInfo] || '') : ''
           });
         }
 
@@ -127,7 +154,7 @@ export default function AddCsvData() {
             Upload CSV File
           </h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '1.2rem' }}>
-            Select your CSV spreadsheet with spare products data. The following columns must be strictly named as shown below.
+            Select your CSV spreadsheet with spare products data. Our smart detection will automatically find your columns, even if named slightly differently (e.g. "Item Price", "Cost", "qty").
           </p>
 
           <div style={{ background: 'rgba(255,255,255,0.2)', padding: '1rem', borderRadius: '8px', marginBottom: '2rem', textAlign: 'left' }}>
