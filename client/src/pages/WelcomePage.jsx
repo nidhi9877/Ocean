@@ -46,7 +46,7 @@ export default function WelcomePage() {
         marginBottom: '1rem',
         textShadow: '0 4px 20px rgba(0,0,0,0.2)',
         letterSpacing: '-1px'
-      }}>Welcome To MarinTech</h1>
+      }}>Welcome To Vortex</h1>
       
       <p style={{
         fontSize: '1.5rem',
@@ -67,7 +67,7 @@ export default function WelcomePage() {
           boxShadow: '0 8px 25px rgba(0,0,0,0.2)',
           borderRadius: '50px'
         }}>
-          Enter Marketplace
+          Enter Vortex
         </Link>
       </div>
       <InstallPrompt />

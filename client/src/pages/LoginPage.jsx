@@ -77,7 +77,7 @@ export default function LoginPage() {
             {/* Header */}
             <div className="login-header">
               <span className="login-icon">🚢</span>
-              <h1 className="login-title">Marine Marketplace</h1>
+              <h1 className="login-title">Vortex</h1>
               <p className="login-subtitle">Your trusted platform for marine spare parts</p>
             </div>
 
