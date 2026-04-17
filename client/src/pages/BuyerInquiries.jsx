@@ -10,6 +10,12 @@ export default function BuyerInquiries() {
   const { token } = useAuth();
   const [inquiries, setInquiries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     fetchInquiries();
@@ -86,33 +92,60 @@ export default function BuyerInquiries() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '300px' }}>
-                  {inquiry.status === 'accepted' ? (
-                    <div style={{ padding: '1rem', background: 'rgba(0, 212, 170, 0.1)', border: '1px solid rgba(0, 212, 170, 0.3)', borderRadius: '8px' }}>
-                      <p style={{ color: '#00d4aa', fontWeight: 'bold', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span>✅</span> Inquiry Accepted!
-                      </p>
-                      <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', margin: '0 0 1rem 0' }}>
-                        The vendor is ready to proceed. Please contact them at their official email:
-                      </p>
-                      <a 
-                        href={`mailto:${inquiry.provider_email}?subject=Inquiry for ${inquiry.product_name} - Destination ${inquiry.destination_location}`}
-                        className="btn btn-primary btn-block"
-                        style={{ display: 'block', textAlign: 'center', textDecoration: 'none', background: 'var(--teal-accent)', color: '#091524' }}
-                      >
-                        ✉️ {inquiry.provider_email}
-                      </a>
-                    </div>
-                  ) : inquiry.status === 'rejected' ? (
-                     <div style={{ padding: '1rem', background: 'rgba(255, 107, 107, 0.1)', border: '1px solid rgba(255, 107, 107, 0.3)', borderRadius: '8px' }}>
-                      <p style={{ color: '#ff6b6b', fontWeight: 'bold', margin: 0, textAlign: 'center' }}>
-                        ❌ Inquiry Rejected
-                      </p>
-                    </div>
-                  ) : (
-                    <div style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                       ⌛ Waiting for vendor to review...
-                    </div>
-                  )}
+                  {(() => {
+                    const maxTime = 24 * 60 * 60 * 1000;
+                    const timePassed = now - new Date(inquiry.created_at).getTime();
+                    const timeLeft = maxTime - timePassed;
+                    const isExpired = timeLeft <= 0;
+                    
+                    const h = Math.max(0, Math.floor(timeLeft / (1000 * 60 * 60)));
+                    const m = Math.max(0, Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60)));
+                    const s = Math.max(0, Math.floor((timeLeft % (1000 * 60)) / 1000));
+
+                    if (inquiry.status === 'accepted') {
+                      return (
+                        <div style={{ padding: '1rem', background: 'rgba(0, 212, 170, 0.1)', border: '1px solid rgba(0, 212, 170, 0.3)', borderRadius: '8px' }}>
+                          <p style={{ color: '#00d4aa', fontWeight: 'bold', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span>✅</span> Inquiry Accepted!
+                          </p>
+                          <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)', margin: '0 0 1rem 0' }}>
+                            The vendor is ready to proceed. Please contact them at their official email:
+                          </p>
+                          <a 
+                            href={`https://mail.google.com/mail/?view=cm&fs=1&to=${inquiry.provider_email}&su=${encodeURIComponent('Follow-up on Inquiry for ' + inquiry.product_name)}&body=${encodeURIComponent(`Hello ${inquiry.company_name} Team,\n\nI am writing to follow up on my accepted inquiry.\n\n--- REQUEST DETAILS ---\nProduct: ${inquiry.product_name}\nPart Number: ${inquiry.part_number || 'N/A'}\nRequired Destination: ${inquiry.destination_location}\n\nPlease let me know what further information or documentation is required from my side to finalize this booking.\n\nBest regards,\nMarine Market Buyer`)}`}
+                            target="_blank" rel="noreferrer"
+                            className="btn btn-primary btn-block"
+                            style={{ display: 'block', textAlign: 'center', textDecoration: 'none', background: 'var(--teal-accent)', color: '#091524', padding: '0.8em', lineHeight: '1.4' }}
+                          >
+                            ✉️ Email Vendor<br/><span style={{ fontSize: '0.85em', opacity: 0.9 }}>{inquiry.provider_email}</span>
+                          </a>
+                        </div>
+                      );
+                    } else if (inquiry.status === 'rejected') {
+                      return (
+                         <div style={{ padding: '1rem', background: 'rgba(255, 107, 107, 0.1)', border: '1px solid rgba(255, 107, 107, 0.3)', borderRadius: '8px' }}>
+                          <p style={{ color: '#ff6b6b', fontWeight: 'bold', margin: 0, textAlign: 'center' }}>
+                            ❌ Inquiry Rejected
+                          </p>
+                        </div>
+                      );
+                    } else {
+                      return isExpired ? (
+                        <div style={{ padding: '1rem', background: 'rgba(255, 107, 107, 0.1)', border: '1px solid rgba(255, 107, 107, 0.3)', borderRadius: '8px', textAlign: 'center' }}>
+                          <p style={{ color: '#ff6b6b', fontWeight: 'bold', margin: 0 }}>
+                            ❌ No response
+                          </p>
+                        </div>
+                      ) : (
+                        <div style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                           ⌛ Waiting for vendor to review...<br/><br/>
+                           <span style={{ color: '#ffb142', fontWeight: 'bold', background: 'rgba(255, 177, 66, 0.1)', padding: '0.4rem 0.8rem', borderRadius: '4px' }}>
+                             ⏳ Time left: {h}h {m}m {s}s
+                           </span>
+                        </div>
+                      );
+                    }
+                  })()}
                 </div>
               </div>
             ))}

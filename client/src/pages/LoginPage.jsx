@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 const API = '/api';
 
@@ -16,7 +17,7 @@ export default function LoginPage() {
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!username || !password) {
-      setError('Please enter both username and password');
+      toast.error('Please enter both username and password');
       return;
     }
     setError('');
@@ -25,12 +26,14 @@ export default function LoginPage() {
       const res = await axios.post(`${API}/auth/login`, { username, password });
       login(res.data.user, res.data.token);
       if (res.data.user.role === 'provider') {
+        toast.success(`Welcome back, ${res.data.user.username}!`);
         navigate('/provider/dashboard');
       } else {
+        toast.success(`Welcome back, ${res.data.user.username}!`);
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed. Please try again.');
+      toast.error(err.response?.data?.error || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -38,7 +41,7 @@ export default function LoginPage() {
 
   const handleRegister = async (role) => {
     if (!username || !password) {
-      setError('Please enter username and password first to register');
+      toast.error('Please enter username and password first to register');
       return;
     }
     setError('');
@@ -47,12 +50,14 @@ export default function LoginPage() {
       const res = await axios.post(`${API}/auth/register`, { username, password, role });
       login(res.data.user, res.data.token);
       if (role === 'provider') {
+        toast.success('Registration successful!');
         navigate('/provider/register');
       } else {
+        toast.success('Registration successful!');
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed. Please try again.');
+      toast.error(err.response?.data?.error || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -80,9 +85,6 @@ export default function LoginPage() {
               <h1 className="login-title">Vortex</h1>
               <p className="login-subtitle">Your trusted platform for marine spare parts</p>
             </div>
-
-            {/* Error Alert */}
-            {error && <div className="alert alert-error">{error}</div>}
 
             {/* Login Form */}
             <form onSubmit={handleLogin}>

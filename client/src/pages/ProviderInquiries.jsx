@@ -10,6 +10,12 @@ export default function ProviderInquiries() {
   const { token } = useAuth();
   const [inquiries, setInquiries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     fetchInquiries();
@@ -101,42 +107,78 @@ export default function ProviderInquiries() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem', width: '100%', maxWidth: '250px' }}>
-                  {inquiry.status === 'pending' ? (
-                    <>
-                      <button 
-                        className="btn btn-secondary" 
-                        style={{ flex: 1, background: 'rgba(255, 107, 107, 0.2)', color: '#ff6b6b' }}
-                        onClick={() => updateStatus(inquiry.id, 'rejected')}
-                      >
-                        Reject
-                      </button>
-                      <button 
-                        className="btn btn-primary" 
-                        style={{ flex: 1, background: '#00d4aa', color: '#091524' }} 
-                        onClick={() => updateStatus(inquiry.id, 'accepted')}
-                      >
-                        Accept
-                      </button>
-                    </>
-                  ) : inquiry.status === 'accepted' ? (
-                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', maxWidth: '250px' }}>
-                      <div style={{ textAlign: 'center', padding: '0.5rem', background: 'rgba(0,212,170,0.1)', color: '#00d4aa', borderRadius: '8px', fontWeight: 'bold' }}>
-                        Accepted ✅
+                  {(() => {
+                    const maxTime = 24 * 60 * 60 * 1000;
+                    const timePassed = now - new Date(inquiry.created_at).getTime();
+                    const timeLeft = maxTime - timePassed;
+                    const isExpired = timeLeft <= 0;
+                    
+                    const h = Math.max(0, Math.floor(timeLeft / (1000 * 60 * 60)));
+                    const m = Math.max(0, Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60)));
+                    const s = Math.max(0, Math.floor((timeLeft % (1000 * 60)) / 1000));
+
+                    if (inquiry.status === 'pending') {
+                      return isExpired ? (
+                        <div style={{ flex: 1, textAlign: 'center', padding: '0.8rem', background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', color: '#ff6b6b', borderRadius: '8px' }}>
+                          <span style={{fontSize: '0.8rem', display: 'block'}}>You haven't accepted the order ❌</span>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '0.5rem' }}>
+                          <div style={{ textAlign: 'center', fontWeight: 'bold', color: '#ffb142', background: 'rgba(255, 177, 66, 0.1)', padding: '0.3rem', borderRadius: '4px' }}>
+                            ⏳ {h}h {m}m {s}s
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button 
+                              className="btn btn-secondary" 
+                              style={{ flex: 1, background: 'rgba(255, 107, 107, 0.2)', color: '#ff6b6b', padding: '0.5rem' }}
+                              onClick={() => updateStatus(inquiry.id, 'rejected')}
+                            >
+                              Reject
+                            </button>
+                            <button 
+                              className="btn btn-primary" 
+                              style={{ flex: 1, background: '#00d4aa', color: '#091524', padding: '0.5rem' }} 
+                              onClick={() => updateStatus(inquiry.id, 'accepted')}
+                            >
+                              Accept
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    } else if (inquiry.status === 'accepted') {
+                      return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', maxWidth: '250px' }}>
+                        <div style={{ textAlign: 'center', padding: '0.5rem', background: 'rgba(0,212,170,0.1)', color: '#00d4aa', borderRadius: '8px', fontWeight: 'bold' }}>
+                          Accepted ✅
+                        </div>
+                        <a 
+                          href={`https://mail.google.com/mail/?view=cm&fs=1&to=${inquiry.buyer_email}&su=${encodeURIComponent('Booking Confirmation for ' + inquiry.product_name)}&body=${encodeURIComponent(`Dear ${inquiry.buyer_username},\n\nThis is an official confirmation regarding your inquiry.\n\n--- BOOKING DETAILS ---\nProduct: ${inquiry.product_name}\nPart Number: ${inquiry.part_number || 'N/A'}\nDestination: ${inquiry.destination_location}\n\n--- VESSEL DETAILS ---\nShip Name: ${inquiry.ship_name} (${inquiry.ship_type})\nIMO Number: ${inquiry.imo_number}\n\nWe are prepared to proceed with the fulfillment of this order. Please reply to this email so we can finalize the arrangements.\n\nBest regards,\nVendor Team`)}`}
+                          target="_blank" rel="noreferrer"
+                          className="btn btn-primary"
+                          style={{ background: 'var(--teal-accent)', color: '#091524', border: 'none', textAlign: 'center', textDecoration: 'none', padding: '0.8em', lineHeight: '1.4' }}
+                        >
+                          ✉️ Email Buyer<br/><span style={{ fontSize: '0.85em', opacity: 0.9 }}>{inquiry.buyer_email}</span>
+                        </a>
                       </div>
-                      <a 
-                        href={`https://wa.me/${inquiry.buyer_phone?.replace(/\D/g, '')}?text=${encodeURIComponent('Hello! Your booking has been done for ' + inquiry.product_name + ' (Destination: ' + inquiry.destination_location + ').')}`}
-                        target="_blank" rel="noreferrer"
-                        className="btn btn-primary"
-                        style={{ background: '#25D366', color: '#fff', border: 'none', textAlign: 'center', textDecoration: 'none' }}
-                      >
-                        💬 WhatsApp Message
-                      </a>
-                    </div>
-                  ) : (
-                    <div style={{ flex: 1, textAlign: 'center', padding: '0.8rem', background: 'rgba(255,107,107,0.1)', color: '#ff6b6b', borderRadius: '8px' }}>
-                      Rejected ❌
-                    </div>
-                  )}
+                      );
+                    } else {
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', maxWidth: '250px' }}>
+                          <div style={{ textAlign: 'center', padding: '0.5rem', background: 'rgba(255,107,107,0.1)', color: '#ff6b6b', borderRadius: '8px', fontWeight: 'bold' }}>
+                            Rejected ❌
+                          </div>
+                          <a 
+                            href={`https://mail.google.com/mail/?view=cm&fs=1&to=${inquiry.buyer_email}&su=${encodeURIComponent('Update on your Inquiry for ' + inquiry.product_name)}&body=${encodeURIComponent(`Dear ${inquiry.buyer_username},\n\nThank you for reaching out to us.\n\nRegarding your inquiry for:\nProduct: ${inquiry.product_name}\nPart Number: ${inquiry.part_number || 'N/A'}\n\nUnfortunately, we are unable to fulfill this request at the moment. We hope to assist you with other requirements in the future.\n\nBest regards,\nVendor Team`)}`}
+                            target="_blank" rel="noreferrer"
+                            className="btn btn-secondary"
+                            style={{ background: 'rgba(255,107,107,0.1)', color: '#ff6b6b', border: '1px solid #ff6b6b', textAlign: 'center', textDecoration: 'none', padding: '0.8em', lineHeight: '1.4' }}
+                          >
+                            ✉️ Notify Buyer<br/><span style={{ fontSize: '0.85em', opacity: 0.9 }}>{inquiry.buyer_email}</span>
+                          </a>
+                        </div>
+                      );
+                    }
+                  })()}
                 </div>
               </div>
             ))}

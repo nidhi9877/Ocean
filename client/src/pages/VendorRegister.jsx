@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 const API = '/api';
 
@@ -16,7 +17,6 @@ export default function VendorRegister() {
     password: '',
     confirmPassword: ''
   });
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -27,15 +27,19 @@ export default function VendorRegister() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    setError('');
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
 
     if (!formData.username || !formData.email || !formData.phone || !formData.companyName || !formData.companyType || !formData.address || !formData.password) {
-      setError('Please fill in all required fields');
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    if (!formData.phone.trim().startsWith('+')) {
+      toast.error('Please enter your phone number with the country code (e.g., +91).');
       return;
     }
 
@@ -45,7 +49,7 @@ export default function VendorRegister() {
     const hasSpecial = /[^A-Za-z0-9]/.test(formData.password);
     
     if (!hasText || !hasNumber || !hasSpecial || formData.password.length < 8) {
-      setError('Password must be at least 8 characters and contain texts, numbers, and at least one special character');
+      toast.error('Password must be at least 8 characters and contain texts, numbers, and at least one special character');
       return;
     }
 
@@ -64,11 +68,12 @@ export default function VendorRegister() {
       });
       
       login(res.data.user, res.data.token);
+      toast.success('Registration successful! Welcome to Vortex.');
       
       // Auto redirect to provider dashboard
       navigate('/provider/dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed. Please try again.');
+      toast.error(err.response?.data?.error || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -92,8 +97,6 @@ export default function VendorRegister() {
               <p className="login-subtitle">Join as a vendor to sell marine spare parts</p>
             </div>
 
-            {error && <div className="alert alert-error">{error}</div>}
-
             <form onSubmit={handleRegister}>
               <div className="form-group">
                 <label className="form-label">Username</label>
@@ -104,8 +107,8 @@ export default function VendorRegister() {
                 <input className="form-input" type="email" name="email" value={formData.email} onChange={handleChange} required />
               </div>
               <div className="form-group">
-                <label className="form-label">Phone Number (Ph No.)</label>
-                <input className="form-input" type="tel" name="phone" value={formData.phone} onChange={handleChange} required />
+                <label className="form-label">Phone Number</label>
+                <input className="form-input" type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="e.g. +91 9876543210" required />
               </div>
               <div className="form-group">
                 <label className="form-label">Company Name</label>

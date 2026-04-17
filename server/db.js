@@ -14,7 +14,7 @@ export async function initDatabase() {
         username VARCHAR(100) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
         role VARCHAR(20) NOT NULL DEFAULT 'buyer',
-        created_at TIMESTAMP DEFAULT NOW()
+        created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
 
@@ -31,7 +31,7 @@ export async function initDatabase() {
         city VARCHAR(100),
         country VARCHAR(100),
         description TEXT,
-        created_at TIMESTAMP DEFAULT NOW()
+        created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
 
@@ -45,7 +45,7 @@ export async function initDatabase() {
         imo_number VARCHAR(100) NOT NULL,
         ship_name VARCHAR(255) NOT NULL,
         ship_type VARCHAR(100) NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW()
+        created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
 
@@ -65,7 +65,7 @@ export async function initDatabase() {
         quantity INTEGER DEFAULT 0,
         description TEXT,
         additional_info TEXT,
-        created_at TIMESTAMP DEFAULT NOW()
+        created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
 
@@ -78,7 +78,7 @@ export async function initDatabase() {
         product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
         destination_location VARCHAR(255) NOT NULL,
         status VARCHAR(50) DEFAULT 'pending',
-        created_at TIMESTAMP DEFAULT NOW()
+        created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
 
