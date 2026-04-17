@@ -146,11 +146,13 @@ function AppRoutes() {
   );
 }
 
+import { Toaster } from 'react-hot-toast';
+
 export default function App() {
   return (
     <Router>
       <AuthProvider>
-
+        <Toaster position="top-center" reverseOrder={false} toastOptions={{ duration: 4000, style: { background: '#091524', color: '#fff', border: '1px solid rgba(0, 212, 170, 0.3)' } }} />
         <AppRoutes />
       </AuthProvider>
     </Router>

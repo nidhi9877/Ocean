@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 const API = '/api';
 
@@ -16,7 +17,6 @@ export default function BuyerRegister() {
     password: '',
     confirmPassword: ''
   });
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -30,12 +30,17 @@ export default function BuyerRegister() {
     
     // Basic validation
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
 
     if (!formData.username || !formData.email || !formData.phone || !formData.imo_number || !formData.ship_name || !formData.ship_type || !formData.password) {
-      setError('Please fill in all fields');
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    if (!formData.phone.trim().startsWith('+')) {
+      toast.error('Please enter your phone number with the country code (e.g., +91).');
       return;
     }
 
@@ -45,11 +50,10 @@ export default function BuyerRegister() {
     const hasSpecial = /[^A-Za-z0-9]/.test(formData.password);
     
     if (!hasText || !hasNumber || !hasSpecial || formData.password.length < 8) {
-      setError('Password must be at least 8 characters and contain texts, numbers, and at least one special character');
+      toast.error('Password must be at least 8 characters and contain texts, numbers, and at least one special character');
       return;
     }
 
-    setError('');
     setLoading(true);
 
     try {
@@ -65,9 +69,10 @@ export default function BuyerRegister() {
       });
       
       login(res.data.user, res.data.token);
+      toast.success('Registration successful! Welcome aboard.');
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed. Please try again.');
+      toast.error(err.response?.data?.error || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -92,8 +97,6 @@ export default function BuyerRegister() {
               <h2>Buyer Registration</h2>
               <p>Create your account to start purchasing marine spare parts.</p>
             </div>
-
-            {error && <div className="alert alert-error" style={{ marginBottom: '1.5rem', color: '#ff6b6b', background: 'rgba(255,107,107,0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid #ff6b6b' }}>{error}</div>}
 
             <form onSubmit={handleRegister}>
               <div className="form-section">
@@ -123,7 +126,7 @@ export default function BuyerRegister() {
                     <label className="form-label" htmlFor="phone">Phone Number</label>
                     <input
                       id="phone" name="phone" className="form-input" type="tel"
-                      placeholder="+1 234 567 8900" value={formData.phone} onChange={handleChange} required
+                      placeholder="e.g. +91 9876543210" value={formData.phone} onChange={handleChange} required
                     />
                   </div>
                 </div>
