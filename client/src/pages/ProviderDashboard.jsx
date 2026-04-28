@@ -33,31 +33,18 @@ export default function ProviderDashboard() {
 
   return (
     <>
-      <div className="ocean-bg">
-        <div className="particles">
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
-        </div>
-      </div>
-
       <Navbar />
 
       <div className="dashboard-container">
-        <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h1>Provider Dashboard 🏭</h1>
             <p>Manage your company profile and product listings</p>
           </div>
-          {/* Actions */}
-          <div style={{ display: 'flex', gap: '1rem' }}>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button 
               className="btn btn-primary"
               onClick={() => navigate('/provider/add-options')}
-              style={{ fontWeight: 'bold' }}
             >
               + Add New Parts
             </button>
@@ -65,7 +52,6 @@ export default function ProviderDashboard() {
             <button 
               className="btn btn-secondary"
               onClick={() => navigate('/provider/inquiries')}
-              style={{ background: 'var(--teal-accent)', color: '#091524', fontWeight: 'bold' }}
             >
               📨 View Inquiries
             </button>
@@ -77,16 +63,15 @@ export default function ProviderDashboard() {
             <div className="spinner" style={{ margin: '0 auto', width: '40px', height: '40px' }}></div>
           </div>
         ) : !provider ? (
-          <div style={{ textAlign: 'center', padding: '3rem' }}>
-            <p style={{ fontSize: '3rem', marginBottom: '1rem' }}>📋</p>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>
-              No provider profile found. Please complete your registration.
-            </p>
+          <div className="glass-card empty-state">
+            <span className="empty-state-icon">📋</span>
+            <h3>No provider profile found</h3>
+            <p>Please complete your registration to get started.</p>
           </div>
         ) : (
           <>
             {/* Company Info Card */}
-            <div className="glass-card" style={{ padding: '2rem', marginBottom: '2rem', animation: 'fadeIn 0.6s ease-out' }}>
+            <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem', animation: 'fadeIn 0.6s ease-out' }}>
               <div className="form-section-title">
                 <span className="form-section-icon">🏢</span>
                 {provider.company_name}
@@ -124,7 +109,7 @@ export default function ProviderDashboard() {
             </div>
 
             {/* Products */}
-            <div style={{ marginTop: '1rem' }}>
+            <div style={{ marginTop: '0.5rem' }}>
               <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.3rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>
                 Your Products
               </h2>
@@ -146,7 +131,7 @@ export default function ProviderDashboard() {
                         <p className="product-info">{product.description}</p>
                       )}
                       {product.location && (
-                        <p className="product-info" style={{ color: 'var(--teal-accent)', marginTop: '0.2rem' }}>
+                        <p className="product-info" style={{ color: 'var(--accent-secondary)', marginTop: '0.2rem' }}>
                           📍 Ships to: {product.location}
                         </p>
                       )}

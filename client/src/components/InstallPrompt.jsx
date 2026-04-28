@@ -53,72 +53,39 @@ export default function InstallPrompt() {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      gap: '1.25rem',
+      gap: '1rem',
       marginTop: '3rem',
-      padding: '1.5rem 2rem',
-      background: 'rgba(255, 255, 255, 0.05)',
-      backdropFilter: 'blur(15px)',
-      WebkitBackdropFilter: 'blur(15px)',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      borderRadius: '24px',
-      boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+      padding: '1.25rem 1.75rem',
+      background: 'var(--bg-card)',
+      border: '1px solid var(--border-color)',
+      borderRadius: 'var(--radius-lg)',
+      boxShadow: 'var(--shadow-md)',
       animation: 'fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) both',
       maxWidth: '400px',
       width: '100%',
     }}>
       <p style={{ 
         margin: 0, 
-        fontSize: '1rem', 
+        fontSize: '0.95rem', 
         fontWeight: '500', 
-        color: 'rgba(255, 255, 255, 0.9)',
+        color: 'var(--text-primary)',
         fontFamily: "'Outfit', sans-serif"
       }}>
-        Experience MarinTech on your home screen
+        Install Vortex on your device
       </p>
       
-      <div style={{ display: 'flex', gap: '1rem', width: '100%' }}>
+      <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
         <button
           onClick={handleInstall}
-          style={{
-            flex: 2,
-            padding: '0.8rem 1.5rem',
-            borderRadius: '12px',
-            fontSize: '0.95rem',
-            fontWeight: '700',
-            background: 'linear-gradient(135deg, #9bf8f4 0%, #6f7bf7 100%)',
-            border: 'none',
-            color: '#0f1729',
-            cursor: 'pointer',
-            transition: 'all 0.3s ease',
-            boxShadow: '0 4px 15px rgba(155, 248, 244, 0.3)'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 6px 20px rgba(155, 248, 244, 0.45)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 4px 15px rgba(155, 248, 244, 0.3)';
-          }}
+          className="btn btn-primary"
+          style={{ flex: 2 }}
         >
           Install Now
         </button>
         <button
           onClick={handleDismiss}
-          style={{
-            flex: 1,
-            padding: '0.8rem 1rem',
-            borderRadius: '12px',
-            fontSize: '0.9rem',
-            fontWeight: '600',
-            background: 'rgba(255, 255, 255, 0.1)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            color: 'white',
-            cursor: 'pointer',
-            transition: 'all 0.3s ease'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+          className="btn btn-secondary"
+          style={{ flex: 1 }}
         >
           Not Now
         </button>

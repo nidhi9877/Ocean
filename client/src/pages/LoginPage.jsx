@@ -39,51 +39,46 @@ export default function LoginPage() {
     }
   };
 
-  const handleRegister = async (role) => {
-    if (!username || !password) {
-      toast.error('Please enter username and password first to register');
-      return;
-    }
-    setError('');
-    setLoading(true);
-    try {
-      const res = await axios.post(`${API}/auth/register`, { username, password, role });
-      login(res.data.user, res.data.token);
-      if (role === 'provider') {
-        toast.success('Registration successful!');
-        navigate('/provider/register');
-      } else {
-        toast.success('Registration successful!');
-        navigate('/dashboard');
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Registration failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <>
-      <div className="ocean-bg">
-        <div className="particles">
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
+    <div className="login-layout">
+      {/* Left Brand Panel */}
+      <div className="login-brand-panel">
+        <div className="login-brand-content">
+          <span className="login-brand-icon">⚓</span>
+          <h1 className="login-brand-title">Vortex</h1>
+          <p className="login-brand-subtitle">
+            The premier B2B marketplace connecting marine vessel operators with verified spare parts vendors worldwide.
+          </p>
+          <div className="login-brand-features">
+            <div className="login-brand-feature">
+              <span className="login-brand-feature-icon">🔍</span>
+              <span>Smart fuzzy search with typo tolerance</span>
+            </div>
+            <div className="login-brand-feature">
+              <span className="login-brand-feature-icon">📨</span>
+              <span>Mass inquiry system to multiple vendors</span>
+            </div>
+            <div className="login-brand-feature">
+              <span className="login-brand-feature-icon">⏱️</span>
+              <span>24-hour guaranteed vendor response time</span>
+            </div>
+            <div className="login-brand-feature">
+              <span className="login-brand-feature-icon">🌍</span>
+              <span>Global network of verified suppliers</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="page-container">
-        <div className="content-container">
+      {/* Right Form Panel */}
+      <div className="login-form-panel">
+        <div className="login-form-wrapper">
           <div className="glass-card login-card">
             {/* Header */}
             <div className="login-header">
               <span className="login-icon">🚢</span>
-              <h1 className="login-title">Vortex</h1>
-              <p className="login-subtitle">Your trusted platform for marine spare parts</p>
+              <h1 className="login-title">Sign In</h1>
+              <p className="login-subtitle">Access your Vortex account</p>
             </div>
 
             {/* Login Form */}
@@ -153,6 +148,6 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

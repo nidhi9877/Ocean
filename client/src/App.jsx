@@ -14,6 +14,7 @@ import BuyerInquiries from './pages/BuyerInquiries';
 import WelcomePage from './pages/WelcomePage';
 import AdminDashboard from './pages/AdminDashboard';
 
+import { Toaster } from 'react-hot-toast';
 import './index.css';
 
 function ProtectedRoute({ children, allowedRole }) {
@@ -146,13 +147,26 @@ function AppRoutes() {
   );
 }
 
-import { Toaster } from 'react-hot-toast';
-
 export default function App() {
   return (
     <Router>
       <AuthProvider>
-        <Toaster position="top-center" reverseOrder={false} toastOptions={{ duration: 4000, style: { background: '#091524', color: '#fff', border: '1px solid rgba(0, 212, 170, 0.3)' } }} />
+        {/* Global animated background */}
+        <div className="app-bg" />
+        <Toaster
+          position="top-center"
+          reverseOrder={false}
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#ffffff',
+              color: '#1e293b',
+              border: '1px solid #e2e8f0',
+              borderRadius: '12px',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+            },
+          }}
+        />
         <AppRoutes />
       </AuthProvider>
     </Router>

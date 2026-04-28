@@ -15,8 +15,6 @@ export default function AddCsvData() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // EXPECTED_MANDATORY_COLS is replaced by smart detection below
-
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {
       setFile(e.target.files[0]);
@@ -84,7 +82,6 @@ export default function AddCsvData() {
             continue;
           }
 
-          // Map CSV columns to the API expected keys (same as getEmptyRow in AddBulkData)
           validProducts.push({
             companyName: colCompanyName ? (row[colCompanyName] || '') : '',
             productId: colProductId ? (row[colProductId] || '') : '',
@@ -110,7 +107,6 @@ export default function AddCsvData() {
         }
 
         try {
-          // Upload to backend
           await axios.post(
             `${API}/provider/bulk-products`,
             { products: validProducts },
@@ -139,33 +135,26 @@ export default function AddCsvData() {
 
   return (
     <>
-      <div className="ocean-bg">
-        <div className="particles">
-          <div className="particle"></div><div className="particle"></div><div className="particle"></div>
-          <div className="particle"></div><div className="particle"></div><div className="particle"></div>
-        </div>
-      </div>
-      
       <Navbar />
 
-      <div className="page-container" style={{ padding: '6rem 2rem 2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
-        <div className="glass-card" style={{ maxWidth: '800px', width: '100%', padding: '3rem', textAlign: 'center' }}>
-          <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '2.5rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>
+      <div className="page-container page-with-nav" style={{ alignItems: 'center' }}>
+        <div className="glass-card" style={{ maxWidth: '800px', width: '100%', padding: '2.5rem' }}>
+          <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '2rem', marginBottom: '0.75rem', background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', textAlign: 'center' }}>
             Upload CSV File
           </h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '1.2rem' }}>
-            Select your CSV spreadsheet with spare products data. Our smart detection will automatically find your columns, even if named slightly differently (e.g. "Item Price", "Cost", "qty").
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '1rem', textAlign: 'center' }}>
+            Select your CSV spreadsheet with spare products data. Our smart detection will automatically find your columns.
           </p>
 
-          <div style={{ background: 'rgba(255,255,255,0.2)', padding: '1rem', borderRadius: '8px', marginBottom: '2rem', textAlign: 'left' }}>
-             <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Mandatory Columns (Must include data for every row):</h4>
-             <ul style={{ color: 'var(--text-secondary)', marginBottom: '1rem', marginLeft: '1.5rem' }}>
-               <li><strong style={{ color: '#ff6b6b' }}>Product Name</strong></li>
-               <li><strong style={{ color: '#ff6b6b' }}>Category</strong></li>
-               <li><strong style={{ color: '#ff6b6b' }}>Price</strong></li>
+          <div style={{ background: 'var(--bg-surface)', padding: '1.25rem', borderRadius: 'var(--radius-sm)', marginBottom: '2rem', border: '1px solid var(--border-color)' }}>
+             <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Mandatory Columns:</h4>
+             <ul style={{ color: 'var(--text-secondary)', marginBottom: '1rem', marginLeft: '1.5rem', fontSize: '0.85rem' }}>
+               <li><strong style={{ color: 'var(--danger)' }}>Product Name</strong></li>
+               <li><strong style={{ color: 'var(--danger)' }}>Category</strong></li>
+               <li><strong style={{ color: 'var(--danger)' }}>Price</strong></li>
              </ul>
-             <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Optional Supported Columns:</h4>
-             <ul style={{ color: 'var(--text-muted)', marginLeft: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+             <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Optional Supported Columns:</h4>
+             <ul style={{ color: 'var(--text-muted)', marginLeft: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.3rem', fontSize: '0.8rem' }}>
                <li>Company Name</li>
                <li>Product ID</li>
                <li>Description</li>
@@ -173,34 +162,34 @@ export default function AddCsvData() {
                <li>Model Number</li>
                <li>Part Number</li>
                <li>Manufactured At</li>
-               <li><strong style={{ color: 'var(--teal-accent)' }}>To which location you can supply the product</strong></li>
+               <li style={{ color: 'var(--accent-secondary)' }}>Supply Location</li>
                <li>Quantity</li>
                <li>Email</li>
-               <li><strong style={{ color: 'var(--teal-accent)' }}>Additional Information</strong></li>
+               <li style={{ color: 'var(--accent-secondary)' }}>Additional Information</li>
              </ul>
           </div>
 
-          <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {error && <div className="alert alert-error">{error}</div>}
             {success && <div className="alert alert-success">{success}</div>}
 
-            <div style={{ border: file ? '2px solid var(--teal-accent)' : '2px dashed rgba(255,255,255,0.2)', padding: '3rem 2rem', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', cursor: 'pointer', position: 'relative' }}>
+            <div style={{ border: file ? '2px solid var(--accent-primary)' : '2px dashed var(--border-color)', padding: '2.5rem 2rem', borderRadius: 'var(--radius-md)', background: file ? 'rgba(59, 130, 246, 0.04)' : 'var(--bg-surface)', cursor: 'pointer', position: 'relative', textAlign: 'center', transition: 'all 0.3s ease' }}>
                <input 
                  type="file" 
                  accept=".csv" 
                  onChange={handleFileChange} 
                  style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }}
                />
-               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📁</div>
-               <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+               <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📁</div>
+               <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.35rem', fontSize: '1rem' }}>
                  {file ? file.name : "Click to select a CSV file or drag and drop"}
                </h4>
-               <p style={{ color: 'var(--text-muted)' }}>Only .csv files are supported for bulk upload</p>
+               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Only .csv files are supported for bulk upload</p>
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: '1rem' }}>
               <button type="button" className="btn btn-secondary" onClick={() => navigate('/provider/add-options')} style={{ flex: 1 }}>
-                Back
+                ← Back
               </button>
               <button type="submit" className="btn btn-primary" disabled={!file || loading} style={{ flex: 1 }}>
                 {loading ? 'Uploading...' : 'Upload Data'}

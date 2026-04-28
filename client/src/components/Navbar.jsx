@@ -12,33 +12,23 @@ export default function Navbar() {
 
   return (
     <nav className="navbar">
-      <Link to="/" className="navbar-brand">
+      <Link to={user?.role === 'provider' ? '/provider/dashboard' : '/dashboard'} className="navbar-brand">
         <span className="navbar-logo">⚓</span>
         <span className="navbar-title">Vortex</span>
       </Link>
 
       <div className="navbar-links">
-        {user ? (
-          <>
-            <div className="nav-user">
-              <span>👤 {user.username}</span>
-              <span className={`nav-user-badge ${user.role === 'provider' ? 'badge-provider' : 'badge-buyer'}`}>
-                {user.role}
-              </span>
-            </div>
-            {user.role === 'buyer' && (
-              <Link to="/dashboard" className="nav-link">Dashboard</Link>
-            )}
-            {user.role === 'provider' && (
-              <Link to="/provider/dashboard" className="nav-link">My Products</Link>
-            )}
-            <button onClick={handleLogout} className="btn btn-sm btn-secondary">
-              Logout
-            </button>
-          </>
-        ) : (
-          <Link to="/" className="nav-link">Login</Link>
+        {user && (
+          <span className="nav-user">
+            <span>{user.username}</span>
+            <span className={`nav-user-badge ${user.role === 'provider' ? 'badge-provider' : 'badge-buyer'}`}>
+              {user.role}
+            </span>
+          </span>
         )}
+        <button className="btn btn-sm btn-secondary" onClick={handleLogout}>
+          Logout
+        </button>
       </div>
     </nav>
   );
