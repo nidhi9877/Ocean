@@ -7,7 +7,7 @@ export default function WelcomePage() {
 
   if (loading) {
     return (
-      <div className="page-container" style={{ backgroundColor: '#e0f2fe' }}>
+      <div className="page-container">
         <div className="spinner" style={{ width: '40px', height: '40px' }}></div>
       </div>
     );
@@ -19,59 +19,50 @@ export default function WelcomePage() {
   }
 
   return (
-    <>
-      <div className="ocean-bg">
-        <div className="particles">
-          <div className="particle"></div><div className="particle"></div><div className="particle"></div>
-          <div className="particle"></div><div className="particle"></div><div className="particle"></div>
-        </div>
+    <div className="hero-section">
+      <div className="hero-badge">
+        <span>⚓</span> Marine Spare Parts Marketplace
       </div>
-      <div style={{
-        position: 'relative',
-        zIndex: 1,
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: 'white',
-        fontFamily: "'Outfit', sans-serif",
-        textAlign: 'center',
-        padding: '2rem'
-      }}>
-      <div style={{ fontSize: '5rem', marginBottom: '1.5rem', animation: 'float 4s ease-in-out infinite' }}>⚓</div>
-      <h1 style={{ 
-        fontSize: '4.5rem', 
-        fontWeight: '800', 
-        marginBottom: '1rem',
-        textShadow: '0 4px 20px rgba(0,0,0,0.2)',
-        letterSpacing: '-1px'
-      }}>Welcome To Vortex</h1>
-      
-      <p style={{
-        fontSize: '1.5rem',
-        marginBottom: '3rem',
-        fontWeight: '400',
-        opacity: '0.9',
-        maxWidth: '600px',
-        lineHeight: '1.6'
-      }}>Your trusted marketplace for premium marine spare parts and equipment.</p>
-      
-      <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-        <Link to="/login" className="btn btn-primary btn-lg" style={{ 
-          padding: '1rem 3rem', 
-          fontSize: '1.25rem',
-          background: 'white',
-          color: '#0077be',
-          fontWeight: 'bold',
-          boxShadow: '0 8px 25px rgba(0,0,0,0.2)',
-          borderRadius: '50px'
-        }}>
-          Enter Vortex
+
+      <h1 className="hero-title">
+        Welcome To <span className="hero-title-gradient">Vortex</span>
+      </h1>
+
+      <p className="hero-subtitle">
+        Your trusted marketplace for premium marine spare parts and equipment. Connect with verified global vendors instantly.
+      </p>
+
+      <div className="hero-cta">
+        <Link to="/login" className="btn btn-primary btn-lg" style={{ borderRadius: 'var(--radius-xl)' }}>
+          Enter Vortex →
         </Link>
       </div>
+
+      <div className="hero-features">
+        <div className="hero-feature-card">
+          <div className="hero-feature-icon">🔍</div>
+          <h3 className="hero-feature-title">Smart Search</h3>
+          <p className="hero-feature-desc">
+            Fuzzy search with typo tolerance finds exactly what you need, even with misspellings.
+          </p>
+        </div>
+        <div className="hero-feature-card">
+          <div className="hero-feature-icon">📨</div>
+          <h3 className="hero-feature-title">Mass Inquiries</h3>
+          <p className="hero-feature-desc">
+            Send inquiries to multiple vendors simultaneously, saving time and effort.
+          </p>
+        </div>
+        <div className="hero-feature-card">
+          <div className="hero-feature-icon">⏱️</div>
+          <h3 className="hero-feature-title">24h Responses</h3>
+          <p className="hero-feature-desc">
+            Vendors must respond within 24 hours, ensuring you get timely quotes.
+          </p>
+        </div>
+      </div>
+
       <InstallPrompt />
     </div>
-    </>
   );
 }

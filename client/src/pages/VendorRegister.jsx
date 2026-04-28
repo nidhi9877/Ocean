@@ -80,70 +80,96 @@ export default function VendorRegister() {
   };
 
   return (
-    <>
-      <div className="ocean-bg">
-        <div className="particles">
-          <div className="particle"></div><div className="particle"></div><div className="particle"></div>
-          <div className="particle"></div><div className="particle"></div><div className="particle"></div>
+    <div className="register-layout">
+      {/* Left Brand Panel */}
+      <div className="register-side">
+        <div className="login-brand-content">
+          <span className="login-brand-icon">🏭</span>
+          <h2 className="login-brand-title" style={{ fontSize: '2rem' }}>Become a Vendor</h2>
+          <p className="login-brand-subtitle">
+            Join Vortex to list your marine spare parts and reach buyers worldwide.
+          </p>
+          <div className="login-brand-features" style={{ marginTop: '2rem' }}>
+            <div className="login-brand-feature">
+              <span className="login-brand-feature-icon">📦</span>
+              <span>List unlimited products</span>
+            </div>
+            <div className="login-brand-feature">
+              <span className="login-brand-feature-icon">📨</span>
+              <span>Receive direct buyer inquiries</span>
+            </div>
+            <div className="login-brand-feature">
+              <span className="login-brand-feature-icon">📊</span>
+              <span>Track inventory & analytics</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="page-container">
-        <div className="content-container">
-          <div className="glass-card login-card" style={{ maxWidth: '600px' }}>
+      {/* Right Form Side */}
+      <div className="register-form-side">
+        <div className="content-container-lg" style={{ width: '100%' }}>
+          <div className="glass-card login-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
             <div className="login-header">
-              <span className="login-icon">🏭</span>
               <h1 className="login-title">Vendor Registration</h1>
               <p className="login-subtitle">Join as a vendor to sell marine spare parts</p>
             </div>
 
             <form onSubmit={handleRegister}>
-              <div className="form-group">
-                <label className="form-label">Username</label>
-                <input className="form-input" type="text" name="username" value={formData.username} onChange={handleChange} required />
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Username</label>
+                  <input className="form-input" type="text" name="username" value={formData.username} onChange={handleChange} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email</label>
+                  <input className="form-input" type="email" name="email" value={formData.email} onChange={handleChange} required />
+                </div>
               </div>
-              <div className="form-group">
-                <label className="form-label">Email</label>
-                <input className="form-input" type="email" name="email" value={formData.email} onChange={handleChange} required />
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Phone Number</label>
+                  <input className="form-input" type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="e.g. +91 9876543210" required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Company Name</label>
+                  <input className="form-input" type="text" name="companyName" value={formData.companyName} onChange={handleChange} required />
+                </div>
               </div>
-              <div className="form-group">
-                <label className="form-label">Phone Number</label>
-                <input className="form-input" type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="e.g. +91 9876543210" required />
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Company Type</label>
+                  <input className="form-input" type="text" name="companyType" value={formData.companyType} onChange={handleChange} placeholder="e.g. Manufacturer, Distributor" required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Address</label>
+                  <input className="form-input" type="text" name="address" value={formData.address} onChange={handleChange} required />
+                </div>
               </div>
-              <div className="form-group">
-                <label className="form-label">Company Name</label>
-                <input className="form-input" type="text" name="companyName" value={formData.companyName} onChange={handleChange} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Company Type</label>
-                <input className="form-input" type="text" name="companyType" value={formData.companyType} onChange={handleChange} placeholder="e.g. Manufacturer, Distributor" required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Address</label>
-                <input className="form-input" type="text" name="address" value={formData.address} onChange={handleChange} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Password</label>
-                <input className="form-input" type="password" name="password" value={formData.password} onChange={handleChange} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Confirm Password</label>
-                <input className="form-input" type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required />
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Password</label>
+                  <input className="form-input" type="password" name="password" value={formData.password} onChange={handleChange} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Confirm Password</label>
+                  <input className="form-input" type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required />
+                </div>
               </div>
               
-              <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={loading}>
-                {loading ? <span className="spinner"></span> : 'Submit'}
+              <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={loading} style={{ marginTop: '0.5rem' }}>
+                {loading ? <span className="spinner"></span> : 'Create Vendor Account'}
               </button>
             </form>
             
             <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-              <Link to="/login" style={{ color: 'white', textDecoration: 'none', opacity: 0.9 }}>
-                Already have an account? Login here
+              <Link to="/login" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.9rem' }}>
+                Already have an account? <span style={{ color: 'var(--accent-primary)' }}>Sign in</span>
               </Link>
             </div>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

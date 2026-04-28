@@ -111,17 +111,6 @@ export default function ProviderForm() {
 
   return (
     <>
-      <div className="ocean-bg">
-        <div className="particles">
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
-        </div>
-      </div>
-
       <Navbar />
 
       <div className="page-container page-with-nav">

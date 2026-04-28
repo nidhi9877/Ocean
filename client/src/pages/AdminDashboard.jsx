@@ -41,14 +41,14 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className="dashboard-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <div className="spinner"></div>
+        <div className="spinner" style={{ width: '40px', height: '40px' }}></div>
       </div>
     );
   }
 
   return (
-    <div className="dashboard-container">
-      <div className="dashboard-header">
+    <div className="dashboard-container" style={{ paddingTop: '2rem' }}>
+      <div className="dashboard-header" style={{ textAlign: 'center' }}>
         <h1>Admin Control Panel</h1>
         <p>Platform Analytics & User Management</p>
       </div>
@@ -75,21 +75,21 @@ export default function AdminDashboard() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', justifyContent: 'center' }}>
+      <div className="tab-group">
         <button 
-          className={`btn ${activeTab === 'users' ? 'btn-primary' : 'btn-secondary'}`}
+          className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
           onClick={() => setActiveTab('users')}
         >
-          Basic Users
+          Users
         </button>
         <button 
-          className={`btn ${activeTab === 'providers' ? 'btn-primary' : 'btn-secondary'}`}
+          className={`tab-btn ${activeTab === 'providers' ? 'active' : ''}`}
           onClick={() => setActiveTab('providers')}
         >
-          Vendors (Providers)
+          Vendors
         </button>
         <button 
-          className={`btn ${activeTab === 'buyers' ? 'btn-primary' : 'btn-secondary'}`}
+          className={`tab-btn ${activeTab === 'buyers' ? 'active' : ''}`}
           onClick={() => setActiveTab('buyers')}
         >
           Buyers
@@ -100,106 +100,104 @@ export default function AdminDashboard() {
       <div className="glass-card" style={{ padding: '2rem', overflowX: 'auto' }}>
         {activeTab === 'users' && (
           <div>
-            <h2 style={{ marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif" }}>User Registry</h2>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <h2 style={{ marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif", background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>User Registry</h2>
+            <table className="data-table">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--teal-accent)' }}>
-                  <th style={{ padding: '1rem' }}>ID</th>
-                  <th style={{ padding: '1rem' }}>Username</th>
-                  <th style={{ padding: '1rem' }}>Role</th>
-                  <th style={{ padding: '1rem' }}>Registered On</th>
-                  <th style={{ padding: '1rem' }}>Security</th>
+                <tr>
+                  <th>ID</th>
+                  <th>Username</th>
+                  <th>Role</th>
+                  <th>Registered On</th>
+                  <th>Security</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map(user => (
-                  <tr key={user.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '1rem' }}>#{user.id}</td>
-                    <td style={{ padding: '1rem', fontWeight: 'bold' }}>{user.username}</td>
-                    <td style={{ padding: '1rem' }}>
+                  <tr key={user.id}>
+                    <td>#{user.id}</td>
+                    <td style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{user.username}</td>
+                    <td>
                       <span className={`nav-user-badge ${user.role === 'provider' ? 'badge-provider' : 'badge-buyer'}`}>
                         {user.role}
                       </span>
                     </td>
-                    <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>
-                      {new Date(user.created_at).toLocaleDateString()}
-                    </td>
-                    <td style={{ padding: '1rem' }}>
-                      <span style={{ fontSize: '0.8rem', color: '#00d4aa', background: 'rgba(0,212,170,0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
-                        🔒 Bcrypt Hashed
+                    <td>{new Date(user.created_at).toLocaleDateString()}</td>
+                    <td>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--success)', background: 'var(--success-bg)', padding: '0.15rem 0.5rem', borderRadius: '4px', border: '1px solid var(--success-border)' }}>
+                        🔒 Bcrypt
                       </span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {users.length === 0 && <p style={{ textAlign: 'center', margin: '2rem 0', color: 'var(--text-muted)' }}>No users found.</p>}
+            {users.length === 0 && <div className="empty-state"><p>No users found.</p></div>}
           </div>
         )}
 
         {activeTab === 'providers' && (
           <div>
-            <h2 style={{ marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif" }}>Vendor Profiles</h2>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <h2 style={{ marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif", background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Vendor Profiles</h2>
+            <table className="data-table">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--teal-accent)' }}>
-                  <th style={{ padding: '1rem' }}>Company</th>
-                  <th style={{ padding: '1rem' }}>Type / Desc</th>
-                  <th style={{ padding: '1rem' }}>Email / Phone</th>
-                  <th style={{ padding: '1rem' }}>Address</th>
-                  <th style={{ padding: '1rem' }}>Username</th>
+                <tr>
+                  <th>Company</th>
+                  <th>Type / Desc</th>
+                  <th>Email / Phone</th>
+                  <th>Address</th>
+                  <th>Username</th>
                 </tr>
               </thead>
               <tbody>
                 {providers.map(provider => (
-                  <tr key={provider.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '1rem', fontWeight: 'bold' }}>{provider.company_name}</td>
-                    <td style={{ padding: '1rem' }}>{provider.description || 'N/A'}</td>
-                    <td style={{ padding: '1rem', fontSize: '0.9rem' }}>
+                  <tr key={provider.id}>
+                    <td style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{provider.company_name}</td>
+                    <td>{provider.description || 'N/A'}</td>
+                    <td style={{ fontSize: '0.85rem' }}>
                       <div>✉️ {provider.email}</div>
                       <div>📞 {provider.phone}</div>
                     </td>
-                    <td style={{ padding: '1rem', fontSize: '0.9rem' }}>
+                    <td style={{ fontSize: '0.85rem' }}>
                       {provider.address || 'N/A'} {provider.city ? `, ${provider.city}` : ''} {provider.country ? `, ${provider.country}` : ''}
                     </td>
-                    <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{provider.username}</td>
+                    <td>{provider.username}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {providers.length === 0 && <p style={{ textAlign: 'center', margin: '2rem 0', color: 'var(--text-muted)' }}>No vendors registered yet.</p>}
+            {providers.length === 0 && <div className="empty-state"><p>No vendors registered yet.</p></div>}
           </div>
         )}
 
         {activeTab === 'buyers' && (
           <div>
-            <h2 style={{ marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif" }}>Buyer Profiles</h2>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <h2 style={{ marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif", background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Buyer Profiles</h2>
+            <table className="data-table">
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--teal-accent)' }}>
-                  <th style={{ padding: '1rem' }}>Ship Name</th>
-                  <th style={{ padding: '1rem' }}>IMO Number</th>
-                  <th style={{ padding: '1rem' }}>Ship Type</th>
-                  <th style={{ padding: '1rem' }}>Email / Phone</th>
-                  <th style={{ padding: '1rem' }}>Username</th>
+                <tr>
+                  <th>Ship Name</th>
+                  <th>IMO Number</th>
+                  <th>Ship Type</th>
+                  <th>Email / Phone</th>
+                  <th>Username</th>
                 </tr>
               </thead>
               <tbody>
                 {buyers.map(buyer => (
-                  <tr key={buyer.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '1rem', fontWeight: 'bold' }}>{buyer.ship_name}</td>
-                    <td style={{ padding: '1rem' }}>{buyer.imo_number}</td>
-                    <td style={{ padding: '1rem' }}>{buyer.ship_type}</td>
-                    <td style={{ padding: '1rem', fontSize: '0.9rem' }}>
+                  <tr key={buyer.id}>
+                    <td style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{buyer.ship_name}</td>
+                    <td>{buyer.imo_number}</td>
+                    <td>{buyer.ship_type}</td>
+                    <td style={{ fontSize: '0.85rem' }}>
                       <div>✉️ {buyer.email}</div>
                       <div>📞 {buyer.phone}</div>
                     </td>
-                    <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{buyer.username}</td>
+                    <td>{buyer.username}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {buyers.length === 0 && <p style={{ textAlign: 'center', margin: '2rem 0', color: 'var(--text-muted)' }}>No buyers registered yet.</p>}
+            {buyers.length === 0 && <div className="empty-state"><p>No buyers registered yet.</p></div>}
           </div>
         )}
       </div>

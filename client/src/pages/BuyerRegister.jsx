@@ -79,21 +79,38 @@ export default function BuyerRegister() {
   };
 
   return (
-    <>
-      <div className="ocean-bg">
-        <div className="particles">
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
+    <div className="register-layout">
+      {/* Left Brand Panel */}
+      <div className="register-side">
+        <div className="login-brand-content">
+          <span className="login-brand-icon">🚢</span>
+          <h2 className="login-brand-title" style={{ fontSize: '2rem' }}>Welcome Aboard</h2>
+          <p className="login-brand-subtitle">
+            Register as a buyer to discover and procure marine spare parts from verified vendors.
+          </p>
+          <div className="login-brand-features" style={{ marginTop: '2rem' }}>
+            <div className="login-brand-feature">
+              <span className="login-brand-feature-icon">🔍</span>
+              <span>Search thousands of spare parts</span>
+            </div>
+            <div className="login-brand-feature">
+              <span className="login-brand-feature-icon">📨</span>
+              <span>Send mass inquiries to vendors</span>
+            </div>
+            <div className="login-brand-feature">
+              <span className="login-brand-feature-icon">⏱️</span>
+              <span>Get responses within 24 hours</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="page-container">
-        <div className="content-container content-container-lg">
-          <div className="glass-card provider-form-card">
+      {/* Right Form Side */}
+      <div className="register-form-side">
+        <div className="content-container-lg" style={{ width: '100%' }}>
+          <div className="glass-card provider-form-card" style={{ maxWidth: '640px', margin: '0 auto' }}>
             
-            <div className="form-header text-center" style={{ textAlign: 'center' }}>
+            <div className="form-header" style={{ textAlign: 'center' }}>
               <h2>Buyer Registration</h2>
               <p>Create your account to start purchasing marine spare parts.</p>
             </div>
@@ -121,14 +138,12 @@ export default function BuyerRegister() {
                   </div>
                 </div>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="phone">Phone Number</label>
-                    <input
-                      id="phone" name="phone" className="form-input" type="tel"
-                      placeholder="e.g. +91 9876543210" value={formData.phone} onChange={handleChange} required
-                    />
-                  </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="phone">Phone Number</label>
+                  <input
+                    id="phone" name="phone" className="form-input" type="tel"
+                    placeholder="e.g. +91 9876543210" value={formData.phone} onChange={handleChange} required
+                  />
                 </div>
 
                 <div className="form-row">
@@ -191,7 +206,7 @@ export default function BuyerRegister() {
                 </div>
               </div>
 
-              <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
+              <div style={{ display: 'flex', gap: '1rem' }}>
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -199,7 +214,7 @@ export default function BuyerRegister() {
                   style={{ flex: 1 }}
                   disabled={loading}
                 >
-                  Back to Login
+                  ← Back to Login
                 </button>
                 <button
                   type="submit"
@@ -215,6 +230,6 @@ export default function BuyerRegister() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

@@ -101,35 +101,31 @@ export default function AddBulkData() {
   };
 
   const tdStyle = {
-    padding: '0.5rem',
-    border: '1px solid rgba(255,255,255,0.2)',
+    padding: '0.4rem 0.5rem',
+    borderBottom: '1px solid var(--border-color)',
   };
 
   const inputStyle = {
     width: '100%',
-    minWidth: '120px',
-    padding: '0.4rem',
-    background: 'rgba(255, 255, 255, 0.1)',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
+    minWidth: '110px',
+    padding: '0.4rem 0.5rem',
+    background: 'var(--bg-surface)',
+    border: '1px solid var(--border-color)',
     color: 'var(--text-primary)',
     borderRadius: '4px',
     outline: 'none',
+    fontSize: '0.85rem',
+    transition: 'border-color 0.15s ease',
   };
 
   return (
     <>
-      <div className="ocean-bg">
-        <div className="particles">
-          <div className="particle"></div><div className="particle"></div><div className="particle"></div>
-          <div className="particle"></div><div className="particle"></div><div className="particle"></div>
-        </div>
-      </div>
       <Navbar />
 
-      <div className="page-container" style={{ padding: '6rem 2rem 2rem' }}>
-        <div className="glass-card" style={{ maxWidth: '100%', overflowX: 'auto', padding: '2rem' }}>
-          <h2 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Excel Data Entry</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+      <div className="dashboard-container" style={{ paddingTop: '88px' }}>
+        <div className="glass-card" style={{ overflowX: 'auto', padding: '2rem' }}>
+          <h2 style={{ marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif", background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Excel Data Entry</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
             Fill out the details below as you would in an Excel sheet. Name, Category, and Price are required for valid products.
           </p>
 
@@ -137,34 +133,34 @@ export default function AddBulkData() {
           {success && <div className="alert alert-success">{success}</div>}
 
           {loading ? (
-            <div className="spinner" style={{ margin: '0 auto' }}></div>
+            <div className="spinner" style={{ margin: '2rem auto', width: '40px', height: '40px' }}></div>
           ) : (
             <form onSubmit={handleSubmit}>
-              <div style={{ overflowX: 'auto', marginBottom: '2rem' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--text-primary)', textAlign: 'left' }}>
+              <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
+                <table className="data-table" style={{ minWidth: '1400px' }}>
                   <thead>
-                    <tr style={{ background: 'rgba(255,255,255,0.2)' }}>
-                      <th style={tdStyle}>Sr. No</th>
+                    <tr>
+                      <th style={tdStyle}>Sr.</th>
                       <th style={tdStyle}>Company Name</th>
                       <th style={tdStyle}>Product ID</th>
                       <th style={tdStyle}>Product Name *</th>
                       <th style={tdStyle}>Description</th>
                       <th style={tdStyle}>Category *</th>
                       <th style={tdStyle}>Brand</th>
-                      <th style={tdStyle}>Model Number</th>
-                      <th style={tdStyle}>Part Number</th>
+                      <th style={tdStyle}>Model No.</th>
+                      <th style={tdStyle}>Part No.</th>
                       <th style={tdStyle}>Manufactured At</th>
-                      <th style={tdStyle}>To which location you can supply the product</th>
-                      <th style={tdStyle}>Quantity</th>
+                      <th style={tdStyle}>Supply Location</th>
+                      <th style={tdStyle}>Qty</th>
                       <th style={tdStyle}>Price *</th>
                       <th style={tdStyle}>Email</th>
-                      <th style={tdStyle}>Additional Information</th>
+                      <th style={tdStyle}>Additional Info</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((row, index) => (
                       <tr key={index}>
-                        <td style={tdStyle}>{row.srNo}</td>
+                        <td style={{ ...tdStyle, color: 'var(--text-muted)', fontSize: '0.8rem', textAlign: 'center' }}>{row.srNo}</td>
                         <td style={tdStyle}>
                           <input style={inputStyle} value={row.companyName} onChange={e => handleRowChange(index, 'companyName', e.target.value)} />
                         </td>
@@ -214,7 +210,7 @@ export default function AddBulkData() {
               </div>
               
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'space-between' }}>
-                <button type="button" className="btn" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-primary)' }} onClick={addMoreRows}>
+                <button type="button" className="btn btn-secondary" onClick={addMoreRows}>
                   + Add More Rows
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
