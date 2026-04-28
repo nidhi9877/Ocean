@@ -32,8 +32,8 @@ router.post('/register', async (req, res) => {
 
     // Additional validation for buyer
     if (role === 'buyer') {
-      if (!email || !phone || !imo_number || !ship_name || !ship_type) {
-        return res.status(400).json({ error: 'All buyer details (email, phone, IMO, ship name, ship type) are required' });
+      if (!email || !phone) {
+        return res.status(400).json({ error: 'All buyer details (email, phone) are required' });
       }
     }
 
@@ -69,8 +69,8 @@ router.post('/register', async (req, res) => {
     // If buyer, insert buyer details
     if (role === 'buyer') {
       await sql`
-        INSERT INTO buyers (user_id, email, phone, imo_number, ship_name, ship_type)
-        VALUES (${user.id}, ${email}, ${phone}, ${imo_number}, ${ship_name}, ${ship_type})
+        INSERT INTO buyers (user_id, email, phone)
+        VALUES (${user.id}, ${email}, ${phone})
       `;
     }
 

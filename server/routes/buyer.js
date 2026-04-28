@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { sql } from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { sendProviderNotification } from '../utils/email.js';
 
 const router = Router();
 
@@ -30,6 +31,19 @@ router.post('/inquiries', authenticateToken, async (req, res) => {
         INSERT INTO inquiries (buyer_id, provider_id, product_id, destination_location)
         VALUES (${buyer_id}, ${sel.provider_id}, ${sel.product_id}, ${destination_location})
       `;
+
+      // Fetch details for email notification
+      const providerData = await sql`SELECT email FROM providers WHERE id = ${sel.provider_id}`;
+      const productData = await sql`SELECT product_name FROM products WHERE id = ${sel.product_id}`;
+      const userData = await sql`SELECT username FROM users WHERE id = ${req.user.id}`;
+      
+      if (providerData.length > 0 && productData.length > 0 && userData.length > 0) {
+        await sendProviderNotification(
+          providerData[0].email, 
+          userData[0].username, 
+          productData[0].product_name
+        );
+      }
     }
 
     res.status(201).json({ message: 'Inquiries sent successfully' });
