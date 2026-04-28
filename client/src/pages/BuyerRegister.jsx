@@ -11,9 +11,6 @@ export default function BuyerRegister() {
     username: '',
     email: '',
     phone: '',
-    imo_number: '',
-    ship_name: '',
-    ship_type: '',
     password: '',
     confirmPassword: ''
   });
@@ -34,7 +31,7 @@ export default function BuyerRegister() {
       return;
     }
 
-    if (!formData.username || !formData.email || !formData.phone || !formData.imo_number || !formData.ship_name || !formData.ship_type || !formData.password) {
+    if (!formData.username || !formData.email || !formData.phone || !formData.password) {
       toast.error('Please fill in all fields');
       return;
     }
@@ -62,10 +59,7 @@ export default function BuyerRegister() {
         password: formData.password, 
         role: 'buyer',
         email: formData.email,
-        phone: formData.phone,
-        imo_number: formData.imo_number,
-        ship_name: formData.ship_name,
-        ship_type: formData.ship_type
+        phone: formData.phone
       });
       
       login(res.data.user, res.data.token);
@@ -164,47 +158,7 @@ export default function BuyerRegister() {
                 </div>
               </div>
 
-              <div className="form-section">
-                <div className="form-section-title">
-                  <span className="form-section-icon">🚢</span> Ship Details
-                </div>
-                
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="ship_name">Ship Name</label>
-                    <input
-                      id="ship_name" name="ship_name" className="form-input" type="text"
-                      placeholder="e.g. Sea Voyager" value={formData.ship_name} onChange={handleChange} required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="imo_number">IMO Number</label>
-                    <input
-                      id="imo_number" name="imo_number" className="form-input" type="text"
-                      placeholder="e.g. 1234567" value={formData.imo_number} onChange={handleChange} required
-                    />
-                  </div>
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label" htmlFor="ship_type">Ship Type</label>
-                  <select
-                    id="ship_type" name="ship_type" className="form-select"
-                    value={formData.ship_type} onChange={handleChange} required
-                  >
-                    <option value="" disabled>Select Ship Type</option>
-                    <option value="Bulk Carrier">Bulk Carrier</option>
-                    <option value="Container Ship">Container Ship</option>
-                    <option value="Oil Tanker">Oil Tanker</option>
-                    <option value="Chemical Tanker">Chemical Tanker</option>
-                    <option value="Gas Carrier">Gas Carrier</option>
-                    <option value="Ro-Ro Ship">Ro-Ro Ship</option>
-                    <option value="Passenger Ship">Passenger/Cruise Ship</option>
-                    <option value="Offshore Vessel">Offshore Vessel</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-              </div>
+
 
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <button

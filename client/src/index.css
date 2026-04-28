@@ -1068,6 +1068,125 @@ body {
   background: rgba(37, 99, 235, 0.03);
 }
 
+/* Provider Products Table — compact spreadsheet style */
+.provider-products-table-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-primary) var(--bg-surface);
+  border-radius: var(--radius-lg);
+}
+
+.provider-products-table-wrap::-webkit-scrollbar {
+  height: 8px;
+}
+
+.provider-products-table-wrap::-webkit-scrollbar-track {
+  background: var(--bg-surface);
+}
+
+.provider-products-table-wrap::-webkit-scrollbar-thumb {
+  background: var(--accent-primary);
+  border-radius: 4px;
+  opacity: 0.6;
+}
+
+.provider-products-table {
+  min-width: 1050px;
+  width: 100%;
+}
+
+.provider-products-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-surface);
+}
+
+.provider-products-table th {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  border-bottom: 2px solid var(--border-color);
+  background: var(--bg-surface);
+}
+
+.provider-products-table td {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.provider-products-table tbody tr:nth-child(even) {
+  background: rgba(37, 99, 235, 0.015);
+}
+
+.provider-products-table tbody tr:hover {
+  background: rgba(37, 99, 235, 0.05);
+}
+
+/* Location column — truncate to one line with tooltip */
+.location-cell {
+  display: inline-block;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+  cursor: default;
+}
+
+/* Inline edit input inside table */
+.inline-edit-input {
+  width: 100%;
+  min-width: 60px;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.8rem;
+  font-family: 'Inter', sans-serif;
+  border: 1.5px solid var(--accent-primary);
+  border-radius: 4px;
+  background: white;
+  color: var(--text-primary);
+  outline: none;
+  transition: box-shadow var(--transition-fast);
+}
+
+.inline-edit-input:focus {
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+/* Editing row highlight */
+.editing-row {
+  background: rgba(37, 99, 235, 0.04) !important;
+  box-shadow: inset 3px 0 0 var(--accent-primary);
+}
+
+/* Table action buttons */
+.table-action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  opacity: 0.5;
+}
+
+.table-action-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+.table-action-btn.edit-btn:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.provider-products-table tbody tr:hover .table-action-btn {
+  opacity: 0.85;
+}
+
 /* ===== Tabs ===== */
 .tab-group {
   display: flex;
@@ -1575,4 +1694,94 @@ body {
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(30px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== Sidebar Styles ===== */
+.menu-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.menu-btn:hover {
+  background: var(--bg-card-hover);
+}
+
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 998;
+  animation: fadeIn 0.3s ease;
+}
+
+.info-sidebar {
+  position: fixed;
+  top: 0;
+  left: -350px;
+  width: 350px;
+  height: 100vh;
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-lg);
+  z-index: 999;
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.info-sidebar.open {
+  left: 0;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-header h2 {
+  font-size: 1.25rem;
+  font-family: 'Outfit', sans-serif;
+  color: var(--text-primary);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: color var(--transition-fast);
+}
+
+.close-btn:hover {
+  color: var(--danger);
+}
+
+.sidebar-content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.stats-sidebar-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
