@@ -316,4 +316,54 @@ router.put('/inquiries/:id/status', authenticateToken, async (req, res) => {
   }
 });
 
+// Update a single product
+router.put('/products/:id', authenticateToken, async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const {
+      product_name, category, brand, model_number,
+      part_number, manufactured_at, location, price,
+      quantity, description, additional_info
+    } = req.body;
+
+    // Get provider for this user
+    const existingProvider = await sql`
+      SELECT id FROM providers WHERE user_id = ${req.user.id}
+    `;
+    if (existingProvider.length === 0) {
+      return res.status(404).json({ error: 'Provider profile not found' });
+    }
+    const providerId = existingProvider[0].id;
+
+    // Verify product belongs to this provider
+    const productQuery = await sql`
+      SELECT id FROM products WHERE id = ${productId} AND provider_id = ${providerId}
+    `;
+    if (productQuery.length === 0) {
+      return res.status(403).json({ error: 'Not authorized to edit this product' });
+    }
+
+    await sql`
+      UPDATE products SET
+        product_name = ${product_name},
+        category = ${category},
+        brand = ${brand || null},
+        model_number = ${model_number || null},
+        part_number = ${part_number || null},
+        manufactured_at = ${manufactured_at || null},
+        location = ${location || null},
+        price = ${price},
+        quantity = ${quantity || 0},
+        description = ${description || null},
+        additional_info = ${additional_info || null}
+      WHERE id = ${productId}
+    `;
+
+    res.json({ message: 'Product updated successfully' });
+  } catch (error) {
+    console.error('Product update error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

@@ -146,27 +146,17 @@ export default function AddCsvData() {
             Select your CSV spreadsheet with spare products data. Our smart detection will automatically find your columns.
           </p>
 
-          <div style={{ background: 'var(--bg-surface)', padding: '1.25rem', borderRadius: 'var(--radius-sm)', marginBottom: '2rem', border: '1px solid var(--border-color)' }}>
-             <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Mandatory Columns:</h4>
-             <ul style={{ color: 'var(--text-secondary)', marginBottom: '1rem', marginLeft: '1.5rem', fontSize: '0.85rem' }}>
-               <li><strong style={{ color: 'var(--danger)' }}>Product Name</strong></li>
-               <li><strong style={{ color: 'var(--danger)' }}>Category</strong></li>
-               <li><strong style={{ color: 'var(--danger)' }}>Price</strong></li>
-             </ul>
-             <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Optional Supported Columns:</h4>
-             <ul style={{ color: 'var(--text-muted)', marginLeft: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.3rem', fontSize: '0.8rem' }}>
-               <li>Company Name</li>
-               <li>Product ID</li>
-               <li>Description</li>
-               <li>Brand</li>
-               <li>Model Number</li>
-               <li>Part Number</li>
-               <li>Manufactured At</li>
-               <li style={{ color: 'var(--accent-secondary)' }}>Supply Location</li>
-               <li>Quantity</li>
-               <li>Email</li>
-               <li style={{ color: 'var(--accent-secondary)' }}>Additional Information</li>
-             </ul>
+          <div style={{ background: 'var(--bg-surface)', padding: '1.25rem', borderRadius: 'var(--radius-sm)', marginBottom: '2rem', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+             <h4 style={{ color: 'var(--text-primary)', fontSize: '0.95rem' }}>Need a template?</h4>
+             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'center' }}>Download our reference Excel sheet to see the exact format required for bulk upload.</p>
+             <a 
+               href="/vortex_inventory.xlsx" 
+               download="vortex_inventory.xlsx"
+               className="btn btn-secondary" 
+               style={{ marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}
+             >
+               ⬇️ Download Reference Sheet
+             </a>
           </div>
 
           <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
