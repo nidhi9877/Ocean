@@ -76,11 +76,15 @@ export default function AddBulkData() {
     setError('');
     setSuccess('');
 
-    // Filter out completely empty rows
-    const validRows = rows.filter(r => r.productName && r.category && r.price);
+    // Filter out completely empty rows, and skip rows with zero/missing quantity
+    const validRows = rows.filter(r => {
+      const hasAnyData = r.productName || r.category || r.price || r.brand || r.partNumber;
+      const qty = Number(r.quantity);
+      return hasAnyData && qty > 0;
+    });
     
     if (validRows.length === 0) {
-      setError('Please fill in at least one product with name, category, and price.');
+      setError('Please fill in at least one product with a quantity/stock greater than 0.');
       return;
     }
 
@@ -126,7 +130,7 @@ export default function AddBulkData() {
         <div className="glass-card" style={{ overflowX: 'auto', padding: '2rem' }}>
           <h2 style={{ marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif", background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Excel Data Entry</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-            Fill out the details below as you would in an Excel sheet. Name, Category, and Price are required for valid products.
+            Fill out the details below as you would in an Excel sheet. Products with zero or empty stock/quantity will be skipped.
           </p>
 
           {error && <div className="alert alert-error">{error}</div>}
@@ -143,16 +147,16 @@ export default function AddBulkData() {
                       <th style={tdStyle}>Sr.</th>
                       <th style={tdStyle}>Company Name</th>
                       <th style={tdStyle}>Product ID</th>
-                      <th style={tdStyle}>Product Name *</th>
+                      <th style={tdStyle}>Product Name</th>
                       <th style={tdStyle}>Description</th>
-                      <th style={tdStyle}>Category *</th>
+                      <th style={tdStyle}>Category</th>
                       <th style={tdStyle}>Brand</th>
                       <th style={tdStyle}>Model No.</th>
                       <th style={tdStyle}>Part No.</th>
                       <th style={tdStyle}>Manufactured At</th>
                       <th style={tdStyle}>Supply Location</th>
-                      <th style={tdStyle}>Qty</th>
-                      <th style={tdStyle}>Price *</th>
+                      <th style={tdStyle}>Qty *</th>
+                      <th style={tdStyle}>Price</th>
                       <th style={tdStyle}>Email</th>
                       <th style={tdStyle}>Additional Info</th>
                     </tr>

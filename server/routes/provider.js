@@ -44,22 +44,23 @@ router.post('/register', authenticateToken, async (req, res) => {
     // Insert products if provided
     if (products && Array.isArray(products) && products.length > 0) {
       for (const product of products) {
-        if (product.productName && product.category && product.price) {
+        const qty = Number(product.quantity) || 0;
+        if (qty > 0) {
           await sql`
             INSERT INTO products (
               provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info
             )
             VALUES (
               ${providerId}, 
-              ${product.productName}, 
-              ${product.category}, 
+              ${product.productName || ''}, 
+              ${product.category || ''}, 
               ${product.brand || null}, 
               ${product.modelNumber || null}, 
               ${product.partNumber || null}, 
               ${product.manufacturedAt || null}, 
               ${product.location || null}, 
-              ${product.price}, 
-              ${product.quantity || 0}, 
+              ${product.price || 0}, 
+              ${qty}, 
               ${product.description || null},
               ${product.additionalInfo || null}
             )
@@ -102,34 +103,39 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
     const providerId = existingProvider[0].id;
 
     let insertedCount = 0;
+    let skippedCount = 0;
     for (const p of products) {
-      if (p.productName && p.category && p.price) {
+      const qty = Number(p.quantity) || 0;
+      if (qty > 0) {
         await sql`
           INSERT INTO products (
             provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info
           )
           VALUES (
             ${providerId}, 
-            ${p.productName}, 
-            ${p.category}, 
+            ${p.productName || ''}, 
+            ${p.category || ''}, 
             ${p.brand || null}, 
             ${p.modelNumber || null}, 
             ${p.partNumber || null}, 
             ${p.manufacturedAt || null}, 
             ${p.location || null}, 
-            ${p.price}, 
-            ${p.quantity || 0}, 
+            ${p.price || 0}, 
+            ${qty}, 
             ${p.description || null},
             ${p.additionalInfo || null}
           )
         `;
         insertedCount++;
+      } else {
+        skippedCount++;
       }
     }
 
     res.status(201).json({
-      message: `Successfully added ${insertedCount} products.`,
-      insertedCount
+      message: `Successfully added ${insertedCount} products.${skippedCount > 0 ? ` Skipped ${skippedCount} with zero/missing stock.` : ''}`,
+      insertedCount,
+      skippedCount
     });
   } catch (error) {
     console.error('Bulk insert error:', error);
@@ -362,6 +368,60 @@ router.put('/products/:id', authenticateToken, async (req, res) => {
     res.json({ message: 'Product updated successfully' });
   } catch (error) {
     console.error('Product update error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete a single product
+router.delete('/products/:id', authenticateToken, async (req, res) => {
+  try {
+    const productId = req.params.id;
+    // Get provider for this user
+    const existingProvider = await sql`SELECT id FROM providers WHERE user_id = ${req.user.id}`;
+    if (existingProvider.length === 0) return res.status(404).json({ error: 'Provider profile not found' });
+    const providerId = existingProvider[0].id;
+
+    // Verify product belongs to this provider
+    const productQuery = await sql`SELECT id FROM products WHERE id = ${productId} AND provider_id = ${providerId}`;
+    if (productQuery.length === 0) return res.status(403).json({ error: 'Not authorized to delete this product' });
+
+    await sql`DELETE FROM products WHERE id = ${productId}`;
+    res.json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    console.error('Product delete error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete bulk products
+router.post('/products/bulk-delete', authenticateToken, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'No product IDs provided' });
+
+    const existingProvider = await sql`SELECT id FROM providers WHERE user_id = ${req.user.id}`;
+    if (existingProvider.length === 0) return res.status(404).json({ error: 'Provider profile not found' });
+    const providerId = existingProvider[0].id;
+
+    await sql`DELETE FROM products WHERE id = ANY(${ids}) AND provider_id = ${providerId}`;
+    res.json({ message: 'Products deleted successfully' });
+  } catch (error) {
+    console.error('Bulk delete error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete all products
+router.delete('/products', authenticateToken, async (req, res) => {
+  try {
+    const existingProvider = await sql`SELECT id FROM providers WHERE user_id = ${req.user.id}`;
+    if (existingProvider.length === 0) return res.status(404).json({ error: 'Provider profile not found' });
+    const providerId = existingProvider[0].id;
+
+    await sql`DELETE FROM products WHERE provider_id = ${providerId}`;
+    res.json({ message: 'All products deleted successfully' });
+  } catch (error) {
+    console.error('Delete all error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

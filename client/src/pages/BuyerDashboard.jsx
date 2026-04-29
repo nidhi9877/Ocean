@@ -37,6 +37,9 @@ export default function BuyerDashboard() {
     setHasSearched(searched);
   }, []);
 
+  const displayedProducts = hasSearched 
+    ? products 
+    : (selectedCategory ? allProducts.filter(p => p.category === selectedCategory) : allProducts);
 
   return (
     <>
@@ -89,24 +92,15 @@ export default function BuyerDashboard() {
         </div>
 
         {/* Search Results */}
-        {!hasSearched ? (
-          <div className="glass-card empty-state">
-            <span className="empty-state-icon">🚢</span>
-            <h3>Start by searching for a product</h3>
-            <p>Discover verified vendors for the equipment you need.</p>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.5rem' }}>
-              💡 Tip: Typos are OK! Search "scroo" and we'll find "screw" for you.
-            </p>
-          </div>
-        ) : products.length === 0 ? (
+        {displayedProducts.length === 0 ? (
           <div className="glass-card empty-state">
             <span className="empty-state-icon">🌊</span>
-            <p style={{ color: 'var(--text-secondary)' }}>No vendors found matching this product.</p>
+            <p style={{ color: 'var(--text-secondary)' }}>No vendors found matching this criteria.</p>
           </div>
         ) : (
           <div className="glass-card" style={{ padding: '1rem', overflowX: 'auto' }}>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.95rem' }}>
-              Found <strong style={{ color: 'var(--accent-primary)' }}>{products.length}</strong> result{products.length !== 1 ? 's' : ''}
+              Found <strong style={{ color: 'var(--accent-primary)' }}>{displayedProducts.length}</strong> result{displayedProducts.length !== 1 ? 's' : ''}
             </p>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem', minWidth: '800px' }}>
               <thead>
@@ -122,7 +116,7 @@ export default function BuyerDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {products.map(product => (
+                {displayedProducts.map(product => (
                   <tr key={product.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s' }}>
                     <td style={{ padding: '0.75rem', fontWeight: '500', color: 'var(--text-primary)' }}>{product.product_name}</td>
                     <td style={{ padding: '0.75rem' }}>{product.category}</td>

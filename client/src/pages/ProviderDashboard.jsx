@@ -15,6 +15,8 @@ export default function ProviderDashboard() {
   const [editData, setEditData] = useState({});
   const [saving, setSaving] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -78,6 +80,73 @@ export default function ProviderDashboard() {
       alert(err.response?.data?.error || 'Failed to save changes');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(products.map(p => p.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelect = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const deleteProduct = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this product?')) return;
+    setDeleting(true);
+    try {
+      await axios.delete(`${API}/provider/products/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProducts(prev => prev.filter(p => p.id !== id));
+      setSelectedIds(prev => prev.filter(i => i !== id));
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete product');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const bulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} selected products?`)) return;
+    setDeleting(true);
+    try {
+      await axios.post(`${API}/provider/products/bulk-delete`, { ids: selectedIds }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProducts(prev => prev.filter(p => !selectedIds.includes(p.id)));
+      setSelectedIds([]);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete products');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const deleteAll = async () => {
+    if (products.length === 0) return;
+    if (!window.confirm('WARNING: Are you sure you want to delete ALL your products? This action cannot be undone.')) return;
+    setDeleting(true);
+    try {
+      await axios.delete(`${API}/provider/products`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProducts([]);
+      setSelectedIds([]);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete all products');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -197,9 +266,23 @@ export default function ProviderDashboard() {
 
             {/* Products Table */}
             <div style={{ marginTop: '0.5rem' }}>
-              <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.3rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>
-                Your Products
-              </h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.3rem', color: 'var(--text-primary)', margin: 0 }}>
+                  Your Products
+                </h2>
+                {products.length > 0 && (
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    {selectedIds.length > 0 && (
+                      <button className="btn btn-primary" onClick={bulkDelete} disabled={deleting} style={{ background: '#e74c3c', borderColor: '#e74c3c' }}>
+                        🗑️ Delete Selected ({selectedIds.length})
+                      </button>
+                    )}
+                    <button className="btn btn-secondary" onClick={deleteAll} disabled={deleting} style={{ color: '#e74c3c', borderColor: '#e74c3c' }}>
+                      ⚠️ Delete Entire Sheet
+                    </button>
+                  </div>
+                )}
+              </div>
               {products.length === 0 ? (
                 <p style={{ color: 'var(--text-muted)' }}>No products listed yet.</p>
               ) : (
@@ -207,6 +290,14 @@ export default function ProviderDashboard() {
                   <table className="data-table provider-products-table">
                     <thead>
                       <tr>
+                        <th style={{ width: '40px', textAlign: 'center' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={products.length > 0 && selectedIds.length === products.length}
+                            onChange={handleSelectAll}
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </th>
                         <th>#</th>
                         <th>Product Name</th>
                         <th>Category</th>
@@ -222,6 +313,14 @@ export default function ProviderDashboard() {
                     <tbody>
                       {products.map((product, idx) => (
                         <tr key={product.id} className={editingId === product.id ? 'editing-row' : ''}>
+                          <td style={{ textAlign: 'center' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={selectedIds.includes(product.id)}
+                              onChange={() => handleSelect(product.id)}
+                              style={{ cursor: 'pointer' }}
+                            />
+                          </td>
                           <td style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{idx + 1}</td>
 
                           {editingId === product.id ? (
@@ -264,13 +363,22 @@ export default function ProviderDashboard() {
                               <td style={{ textAlign: 'right', fontFamily: "'Outfit', sans-serif", fontWeight: 700, color: 'var(--accent-primary)' }}>
                                 ₹{Number(product.price).toLocaleString()}
                               </td>
-                              <td style={{ textAlign: 'center' }}>
+                              <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                                 <button
                                   className="table-action-btn edit-btn"
                                   onClick={() => startEditing(product)}
                                   title="Edit product"
                                 >
                                   ✏️
+                                </button>
+                                <button
+                                  className="table-action-btn delete-btn"
+                                  onClick={() => deleteProduct(product.id)}
+                                  disabled={deleting}
+                                  title="Delete product"
+                                  style={{ color: '#e74c3c', marginLeft: '0.25rem' }}
+                                >
+                                  🗑️
                                 </button>
                               </td>
                             </>
