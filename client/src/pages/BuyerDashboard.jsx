@@ -13,6 +13,7 @@ export default function BuyerDashboard() {
   const [allProducts, setAllProducts] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [destination, setDestination] = useState('');
 
 
   // Fetch all products once for categories
@@ -72,6 +73,19 @@ export default function BuyerDashboard() {
               ))}
             </select>
           </div>
+          
+          <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <label style={{ fontWeight: '500', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>📍 Required Delivery Destination:</label>
+            <input 
+              type="text" 
+              className="form-input" 
+              placeholder="Enter destination (e.g., Port of Singapore)" 
+              value={destination}
+              onChange={(e) => setDestination(e.target.value)}
+              style={{ flex: 1, minWidth: '250px', maxWidth: '400px' }}
+            />
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>This will be automatically included in your email inquiries.</span>
+          </div>
         </div>
 
         {/* Search Results */}
@@ -119,16 +133,17 @@ export default function BuyerDashboard() {
                     <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{product.contact_person || '-'}</td>
                     <td style={{ padding: '0.75rem' }}>
                       {product.provider_email ? (
-                        <a 
-                          href={`mailto:${product.provider_email}?subject=${encodeURIComponent("Inquiry for " + product.product_name)}&body=${encodeURIComponent("Hello,\n\nI am interested in your product: " + product.product_name + "\nPart Number: " + (product.part_number || "N/A") + "\nBrand: " + (product.brand || "N/A") + "\n\nPlease provide more details.")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="to communicate send the mail"
-                          onClick={() => toast('Check the message before sending it once', { icon: '⚠️', duration: 4000 })}
-                          style={{ color: 'var(--accent-primary)', textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-                        >
-                          📧 Email <span style={{ textDecoration: 'underline' }}>{product.provider_email}</span>
-                        </a>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                          <a 
+                            href={`https://mail.google.com/mail/?view=cm&fs=1&to=${product.provider_email}&su=${encodeURIComponent("Inquiry for " + product.product_name)}&body=${encodeURIComponent(`Hello ${product.company_name} Team,\n\nI am interested in your product and would like more details.\n\n--- PRODUCT DETAILS ---\nProduct Name: ${product.product_name}\nCategory: ${product.category}\nBrand: ${product.brand || "N/A"}\nPart Number: ${product.part_number || "N/A"}\nPrice Listed: ₹${Number(product.price).toLocaleString()}\n\n--- MY REQUIREMENTS ---\nDelivery Destination: ${destination ? destination : "[Please specify destination]"}\n\nPlease provide availability, shipping costs, and any additional details required.\n\nBest regards,\nMarine Market Buyer`)}`}
+                            target="_blank" rel="noreferrer"
+                            className="btn btn-primary"
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', textDecoration: 'none' }}
+                          >
+                            ✉️ Send via Gmail
+                          </a>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{product.provider_email}</span>
+                        </div>
                       ) : '-'}
                     </td>
                   </tr>
