@@ -61,47 +61,45 @@ export default function AddCsvData() {
         const colEmail = findCol(['email', 'emailaddress', 'contactemail', 'contact']);
         const colAdditionalInfo = findCol(['additionalinformation', 'additionalinfo', 'info', 'notes', 'remarks']);
 
-        const missingMandatory = [];
-        if (!colProductName) missingMandatory.push("Product Name");
-        if (!colCategory) missingMandatory.push("Category");
-        if (!colPrice) missingMandatory.push("Price");
-
-        if (missingMandatory.length > 0) {
-          setError(`Could not detect mandatory columns: ${missingMandatory.join(', ')}. Please check your CSV headers.`);
-          setLoading(false);
-          return;
-        }
-
-        // Validate data logic
+        // Build products from CSV rows — no mandatory column requirement
         const validProducts = [];
-        let missingDataErrors = 0;
+        let skippedRows = 0;
 
         for (const row of data) {
-          if (!row[colProductName] || !row[colCategory] || !row[colPrice]) {
-            missingDataErrors++;
+          // Skip completely empty rows
+          const hasAnyData = Object.values(row).some(v => v && v.toString().trim());
+          if (!hasAnyData) {
+            skippedRows++;
+            continue;
+          }
+
+          // Skip rows with zero or missing quantity/stock
+          const qty = colQuantity ? Number(row[colQuantity]) : 0;
+          if (!qty || qty <= 0) {
+            skippedRows++;
             continue;
           }
 
           validProducts.push({
             companyName: colCompanyName ? (row[colCompanyName] || '') : '',
             productId: colProductId ? (row[colProductId] || '') : '',
-            productName: row[colProductName] || '',
+            productName: colProductName ? (row[colProductName] || '') : '',
             description: colDescription ? (row[colDescription] || '') : '',
-            category: row[colCategory] || '',
+            category: colCategory ? (row[colCategory] || '') : '',
             brand: colBrand ? (row[colBrand] || '') : '',
             modelNumber: colModelNumber ? (row[colModelNumber] || '') : '',
             partNumber: colPartNumber ? (row[colPartNumber] || '') : '',
             manufacturedAt: colManufacturedAt ? (row[colManufacturedAt] || '') : '',
             location: colLocation ? (row[colLocation] || '') : '',
-            quantity: colQuantity ? (row[colQuantity] || '') : '',
-            price: row[colPrice] || '',
+            quantity: qty,
+            price: colPrice ? (row[colPrice] || '0') : '0',
             email: (colEmail && row[colEmail]) ? row[colEmail] : (user?.email || ''),
             additionalInfo: colAdditionalInfo ? (row[colAdditionalInfo] || '') : ''
           });
         }
 
         if (validProducts.length === 0) {
-          setError('No valid products found! Make sure the mandatory columns have data in every row.');
+          setError('No valid products found! Make sure at least some rows have a quantity/stock greater than 0.');
           setLoading(false);
           return;
         }
@@ -113,8 +111,8 @@ export default function AddCsvData() {
             { headers: { Authorization: `Bearer ${token}` } }
           );
 
-          if (missingDataErrors > 0) {
-            setSuccess(`Success! Uploaded ${validProducts.length} products. Skipped ${missingDataErrors} rows missing mandatory details.`);
+          if (skippedRows > 0) {
+            setSuccess(`Success! Uploaded ${validProducts.length} products. Skipped ${skippedRows} rows (empty or zero stock).`);
           } else {
             setSuccess(`Success! Uploaded ${validProducts.length} products successfully.`);
           }
