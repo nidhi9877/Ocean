@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
-import SmartSearchBar from '../components/SmartSearchBar';
 
 const API = '/api';
 
@@ -12,8 +11,21 @@ export default function BuyerDashboard() {
   const [products, setProducts] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [destination, setDestination] = useState('');
+  
+  const [formData, setFormData] = useState({
+    equipment: '',
+    manufacturer: '',
+    modelNumber: '',
+    yearOfManufacturer: '',
+    partName: '',
+    partNumer: '',
+    stockLocation: '',
+    qunatity: '',
+    eta: '',
+    etd: '',
+    destination: '',
+    vesselName: ''
+  });
 
   // Track which product IDs are currently sending (for per-row loading state)
   const [sendingIds, setSendingIds] = useState(new Set());
@@ -31,17 +43,53 @@ export default function BuyerDashboard() {
     fetchAllProducts();
   }, []);
 
-  const categories = [...new Set(allProducts.map((p) => p.category))];
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
-  // Handle search results from SmartSearchBar
-  const handleSearchResults = useCallback((results, searched) => {
+  const handleSearch = (e) => {
+    e.preventDefault();
+    
+    // Check mandatory fields
+    const required = ['equipment', 'manufacturer', 'modelNumber', 'yearOfManufacturer', 'partName', 'partNumer', 'stockLocation', 'qunatity', 'eta', 'etd', 'destination'];
+    for (let field of required) {
+      if (!formData[field]) {
+        toast.error(`Please fill out the mandatory field: ${field}`);
+        return;
+      }
+    }
+
+    const searchQty = Number(formData.qunatity);
+
+    const matches = (dbValue, formValue) => {
+      if (!dbValue) return false;
+      return String(dbValue).toLowerCase().includes(String(formValue).trim().toLowerCase());
+    };
+
+    const results = allProducts.filter(p => {
+      const matchEquipment = matches(p.category, formData.equipment);
+      const matchManufacturer = matches(p.brand, formData.manufacturer);
+      const matchModel = matches(p.model_number, formData.modelNumber);
+      const matchYear = matches(p.manufactured_at, formData.yearOfManufacturer);
+      const matchPartName = matches(p.product_name, formData.partName);
+      const matchPartNumer = matches(p.part_number, formData.partNumer);
+      const matchLocation = matches(p.location, formData.stockLocation);
+      const matchQty = Number(p.quantity) >= searchQty;
+
+      return matchEquipment && matchManufacturer && matchModel && matchYear && matchPartName && matchPartNumer && matchLocation && matchQty;
+    });
+
     setProducts(results);
-    setHasSearched(searched);
-  }, []);
+    setHasSearched(true);
+    
+    if (results.length === 0) {
+      toast.error('No products found matching exactly with these details.');
+    } else {
+      toast.success(`Found ${results.length} matching products.`);
+    }
+  };
 
-  const displayedProducts = hasSearched 
-    ? products 
-    : (selectedCategory ? allProducts.filter(p => p.category === selectedCategory) : allProducts);
+  const displayedProducts = hasSearched ? products : [];
 
   // ─── Send Inquiry via Backend API ────────────────────────────────────────────
   // Replaces the old Gmail mailto link. Posts to the backend which:
@@ -50,7 +98,7 @@ export default function BuyerDashboard() {
   //   3. Sets Reply-To to the buyer's email so vendors reply directly
   const handleSendInquiry = async (product) => {
     // Validate destination
-    if (!destination.trim()) {
+    if (!formData.destination.trim()) {
       toast.error('Please enter a delivery destination before sending an inquiry.');
       return;
     }
@@ -64,7 +112,7 @@ export default function BuyerDashboard() {
     try {
       const res = await axios.post(`${API}/buyer/inquiries`, {
         selections: [{ provider_id: product.provider_id, product_id: product.id }],
-        destination_location: destination.trim(),
+        destination_location: formData.destination.trim(),
       }, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -103,42 +151,73 @@ export default function BuyerDashboard() {
           </a>
         </div>
 
-        {/* Smart Search & Filter */}
-        <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-            <div style={{ flex: 1, minWidth: '300px' }}>
-              <SmartSearchBar
-                onSearchResults={handleSearchResults}
-                selectedCategory={selectedCategory}
-              />
+        {/* Search & Filter Form */}
+        <div className="glass-card" style={{ padding: '2rem', marginBottom: '1.5rem' }}>
+          <h2 style={{ marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif", fontSize: '1.4rem' }}>Find Parts & Request Details</h2>
+          <form onSubmit={handleSearch}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+              <div>
+                <label className="form-label">Equipment *</label>
+                <input type="text" className="form-input" name="equipment" value={formData.equipment} onChange={handleChange} required />
+              </div>
+              <div>
+                <label className="form-label">Manufacturer *</label>
+                <input type="text" className="form-input" name="manufacturer" value={formData.manufacturer} onChange={handleChange} required />
+              </div>
+              <div>
+                <label className="form-label">Model number *</label>
+                <input type="text" className="form-input" name="modelNumber" value={formData.modelNumber} onChange={handleChange} required />
+              </div>
+              <div>
+                <label className="form-label">Year of manufacturer *</label>
+                <input type="text" className="form-input" name="yearOfManufacturer" value={formData.yearOfManufacturer} onChange={handleChange} required />
+              </div>
+              <div>
+                <label className="form-label">Part Name *</label>
+                <input type="text" className="form-input" name="partName" value={formData.partName} onChange={handleChange} required />
+              </div>
+              <div>
+                <label className="form-label">Part Numer *</label>
+                <input type="text" className="form-input" name="partNumer" value={formData.partNumer} onChange={handleChange} required />
+              </div>
+              <div>
+                <label className="form-label">Stock location *</label>
+                <input type="text" className="form-input" name="stockLocation" value={formData.stockLocation} onChange={handleChange} required />
+              </div>
+              <div>
+                <label className="form-label">Qunatity *</label>
+                <input type="number" className="form-input" name="qunatity" value={formData.qunatity} onChange={handleChange} required />
+              </div>
+              <div>
+                <label className="form-label">ETA *</label>
+                <input type="date" className="form-input" name="eta" value={formData.eta} onChange={handleChange} required />
+              </div>
+              <div>
+                <label className="form-label">ETD *</label>
+                <input type="date" className="form-input" name="etd" value={formData.etd} onChange={handleChange} required />
+              </div>
+              <div>
+                <label className="form-label">Destination *</label>
+                <input type="text" className="form-input" name="destination" value={formData.destination} onChange={handleChange} required />
+              </div>
+              <div>
+                <label className="form-label">Vessel Name (Optional)</label>
+                <input type="text" className="form-input" name="vesselName" value={formData.vesselName} onChange={handleChange} />
+              </div>
             </div>
-            <select
-              className="form-select" style={{ minWidth: '200px', alignSelf: 'flex-start', marginTop: '2px' }}
-              value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              <option value="">All Categories</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-            <label style={{ fontWeight: '500', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>📍 Required Delivery Destination:</label>
-            <input 
-              type="text" 
-              className="form-input" 
-              placeholder="Enter destination (e.g., Port of Singapore)" 
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-              style={{ flex: 1, minWidth: '250px', maxWidth: '400px' }}
-            />
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>This will be included in your inquiry email to the vendor.</span>
-          </div>
+            <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+              <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 2rem' }}>🔍 Search Database</button>
+            </div>
+          </form>
         </div>
 
         {/* Search Results */}
-        {displayedProducts.length === 0 ? (
+        {!hasSearched ? (
+          <div className="glass-card empty-state">
+            <span className="empty-state-icon">🔍</span>
+            <p style={{ color: 'var(--text-secondary)' }}>Fill out the required details above to search for a match.</p>
+          </div>
+        ) : displayedProducts.length === 0 ? (
           <div className="glass-card empty-state">
             <span className="empty-state-icon">🌊</span>
             <p style={{ color: 'var(--text-secondary)' }}>No vendors found matching this criteria.</p>
@@ -151,13 +230,14 @@ export default function BuyerDashboard() {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem', minWidth: '800px' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-muted)' }}>
-                  <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Product Name</th>
-                  <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Category</th>
-                  <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Brand</th>
-                  <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Part #</th>
-                  <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Price (₹)</th>
-                  <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Vendor</th>
-                  <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Contact</th>
+                  <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Equipment</th>
+                  <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Manufacturer</th>
+                  <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Model number</th>
+                  <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Year of manufacturer</th>
+                  <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Part Name</th>
+                  <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Part Numer</th>
+                  <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Stock location</th>
+                  <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Quantity</th>
                   <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Action</th>
                 </tr>
               </thead>
@@ -165,15 +245,16 @@ export default function BuyerDashboard() {
                 {displayedProducts.map(product => {
                   const isSending = sendingIds.has(product.id);
                   return (
-                    <tr key={product.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s' }}>
-                      <td style={{ padding: '0.75rem', fontWeight: '500', color: 'var(--text-primary)' }}>{product.product_name}</td>
-                      <td style={{ padding: '0.75rem' }}>{product.category}</td>
-                      <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{product.brand || '-'}</td>
-                      <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{product.part_number || '-'}</td>
-                      <td style={{ padding: '0.75rem', color: 'var(--accent-primary)', fontWeight: 'bold' }}>{Number(product.price).toLocaleString()}</td>
-                      <td style={{ padding: '0.75rem' }}>{product.company_name}</td>
-                      <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{product.contact_person || '-'}</td>
-                      <td style={{ padding: '0.75rem' }}>
+                  <tr key={product.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s' }}>
+                    <td style={{ padding: '0.75rem' }}>{product.category || '-'}</td>
+                    <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{product.brand || '-'}</td>
+                    <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{product.model_number || '-'}</td>
+                    <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{product.manufactured_at || '-'}</td>
+                    <td style={{ padding: '0.75rem', fontWeight: '500', color: 'var(--text-primary)' }}>{product.product_name || '-'}</td>
+                    <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{product.part_number || '-'}</td>
+                    <td style={{ padding: '0.75rem' }}>{product.location || '-'}</td>
+                    <td style={{ padding: '0.75rem', color: 'var(--accent-primary)', fontWeight: 'bold' }}>{product.quantity || '-'}</td>
+                    <td style={{ padding: '0.75rem' }}>
                         <button
                           className="btn btn-primary"
                           style={{ 
@@ -199,8 +280,8 @@ export default function BuyerDashboard() {
                             <>✉️ Send Inquiry</>
                           )}
                         </button>
-                      </td>
-                    </tr>
+                    </td>
+                  </tr>
                   );
                 })}
               </tbody>

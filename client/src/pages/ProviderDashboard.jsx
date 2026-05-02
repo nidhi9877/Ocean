@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const API = '/api';
 
@@ -51,6 +54,7 @@ export default function ProviderDashboard() {
       description: product.description || '',
       manufactured_at: product.manufactured_at || '',
       additional_info: product.additional_info || '',
+      email: product.email || '',
     });
   };
 
@@ -150,6 +154,89 @@ export default function ProviderDashboard() {
     }
   };
 
+  const downloadCSV = () => {
+    if (products.length === 0) return;
+    
+    // Headers: Equipment, Manufacturer, Model number, year of manufacturer, Part Name, Part Numer, Stock location, Qunatity, Mail
+    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Mail'];
+    
+    const rows = products.map(p => [
+      p.category || '',
+      p.brand || '',
+      p.model_number || '',
+      p.manufactured_at || '',
+      p.product_name || '',
+      p.part_number || '',
+      p.location || '',
+      p.quantity || 0,
+      p.email || provider?.email || ''
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'provider_products.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadExcel = () => {
+    if (products.length === 0) return;
+    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Mail'];
+    const rows = products.map(p => [
+      p.category || '',
+      p.brand || '',
+      p.model_number || '',
+      p.manufactured_at || '',
+      p.product_name || '',
+      p.part_number || '',
+      p.location || '',
+      p.quantity || 0,
+      p.email || provider?.email || ''
+    ]);
+    
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Products");
+    XLSX.writeFile(wb, "provider_products.xlsx");
+  };
+
+  const downloadPDF = () => {
+    if (products.length === 0) return;
+    const doc = new jsPDF();
+    const headers = [['Equipment', 'Manufacturer', 'Model', 'Year', 'Part Name', 'Part No.', 'Location', 'Qty', 'Mail']];
+    const rows = products.map(p => [
+      p.category || '',
+      p.brand || '',
+      p.model_number || '',
+      p.manufactured_at || '',
+      p.product_name || '',
+      p.part_number || '',
+      p.location || '',
+      p.quantity || 0,
+      p.email || provider?.email || ''
+    ]);
+    
+    doc.autoTable({
+      head: headers,
+      body: rows,
+      theme: 'grid',
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] }
+    });
+    
+    doc.save('provider_products.pdf');
+  };
+
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+
   const editInput = (field, style = {}) => (
     <input
       className="inline-edit-input"
@@ -179,7 +266,36 @@ export default function ProviderDashboard() {
               <p>Manage your company profile and product listings</p>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', position: 'relative' }}>
+            <button 
+              className="btn btn-secondary"
+              onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+              disabled={products.length === 0}
+            >
+              ⬇️ Download Data
+            </button>
+            
+            {showDownloadMenu && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                marginTop: '0.5rem',
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-sm)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                display: 'flex',
+                flexDirection: 'column',
+                zIndex: 10,
+                overflow: 'hidden'
+              }}>
+                <button className="menu-item-btn" onClick={() => { downloadCSV(); setShowDownloadMenu(false); }} style={{ padding: '0.75rem 1rem', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-color)', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>📄 Download CSV</button>
+                <button className="menu-item-btn" onClick={() => { downloadExcel(); setShowDownloadMenu(false); }} style={{ padding: '0.75rem 1rem', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-color)', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>📊 Download Excel</button>
+                <button className="menu-item-btn" onClick={() => { downloadPDF(); setShowDownloadMenu(false); }} style={{ padding: '0.75rem 1rem', background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>📑 Download PDF</button>
+              </div>
+            )}
+
             <button 
               className="btn btn-primary"
               onClick={() => navigate('/provider/add-options')}
@@ -299,14 +415,15 @@ export default function ProviderDashboard() {
                           />
                         </th>
                         <th>#</th>
-                        <th>Product Name</th>
-                        <th>Category</th>
-                        <th>Part #</th>
-                        <th>Brand</th>
-                        <th>Model</th>
-                        <th>Location</th>
-                        <th>Stock</th>
-                        <th style={{ textAlign: 'right' }}>Price (₹)</th>
+                        <th>Equipment</th>
+                        <th>Manufacturer</th>
+                        <th>Model number</th>
+                        <th>year of manufacturer</th>
+                        <th>Part Name</th>
+                        <th>Part Numer</th>
+                        <th>Stock location</th>
+                        <th>Qunatity</th>
+                        <th>Mail</th>
                         <th style={{ textAlign: 'center' }}>Actions</th>
                       </tr>
                     </thead>
@@ -325,14 +442,15 @@ export default function ProviderDashboard() {
 
                           {editingId === product.id ? (
                             <>
-                              <td>{editInput('product_name')}</td>
                               <td>{editInput('category')}</td>
-                              <td>{editInput('part_number')}</td>
                               <td>{editInput('brand')}</td>
                               <td>{editInput('model_number')}</td>
+                              <td>{editInput('manufactured_at')}</td>
+                              <td>{editInput('product_name')}</td>
+                              <td>{editInput('part_number')}</td>
                               <td>{editInput('location')}</td>
                               <td>{editInput('quantity', { width: '60px', textAlign: 'center' })}</td>
-                              <td>{editInput('price', { width: '90px', textAlign: 'right' })}</td>
+                              <td>{editInput('email')}</td>
                               <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                                 <button
                                   className="btn btn-primary btn-sm"
@@ -353,16 +471,15 @@ export default function ProviderDashboard() {
                             </>
                           ) : (
                             <>
-                              <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{product.product_name}</td>
-                              <td><span className="product-category">{product.category}</span></td>
-                              <td>{product.part_number || '—'}</td>
+                              <td><span className="product-category">{product.category || '—'}</span></td>
                               <td>{product.brand || '—'}</td>
                               <td>{product.model_number || '—'}</td>
+                              <td>{product.manufactured_at || '—'}</td>
+                              <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{product.product_name || '—'}</td>
+                              <td>{product.part_number || '—'}</td>
                               <td><span className="location-cell" title={product.location || ''}>{product.location || '—'}</span></td>
                               <td style={{ textAlign: 'center' }}>{product.quantity || 0}</td>
-                              <td style={{ textAlign: 'right', fontFamily: "'Outfit', sans-serif", fontWeight: 700, color: 'var(--accent-primary)' }}>
-                                ₹{Number(product.price).toLocaleString()}
-                              </td>
+                              <td>{product.email || '—'}</td>
                               <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                                 <button
                                   className="table-action-btn edit-btn"
