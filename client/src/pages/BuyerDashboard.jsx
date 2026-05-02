@@ -15,6 +15,8 @@ export default function BuyerDashboard() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [destination, setDestination] = useState('');
 
+  // Track which product IDs are currently sending (for per-row loading state)
+  const [sendingIds, setSendingIds] = useState(new Set());
 
   // Fetch all products once for categories
   useEffect(() => {
@@ -40,6 +42,50 @@ export default function BuyerDashboard() {
   const displayedProducts = hasSearched 
     ? products 
     : (selectedCategory ? allProducts.filter(p => p.category === selectedCategory) : allProducts);
+
+  // ─── Send Inquiry via Backend API ────────────────────────────────────────────
+  // Replaces the old Gmail mailto link. Posts to the backend which:
+  //   1. Inserts an inquiry record into the DB (for tracking)
+  //   2. Sends a professional HTML email to the vendor via Resend
+  //   3. Sets Reply-To to the buyer's email so vendors reply directly
+  const handleSendInquiry = async (product) => {
+    // Validate destination
+    if (!destination.trim()) {
+      toast.error('Please enter a delivery destination before sending an inquiry.');
+      return;
+    }
+
+    // Prevent duplicate sends
+    if (sendingIds.has(product.id)) return;
+
+    // Mark this product as "sending"
+    setSendingIds(prev => new Set(prev).add(product.id));
+
+    try {
+      const res = await axios.post(`${API}/buyer/inquiries`, {
+        selections: [{ provider_id: product.provider_id, product_id: product.id }],
+        destination_location: destination.trim(),
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      toast.success(
+        `✅ Inquiry sent to ${product.company_name}! They'll receive a professional email with your details.`,
+        { duration: 4000 }
+      );
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || 'Failed to send inquiry. Please try again.';
+      toast.error(errorMsg);
+      console.error('Inquiry send error:', err);
+    } finally {
+      // Remove from sending state
+      setSendingIds(prev => {
+        const next = new Set(prev);
+        next.delete(product.id);
+        return next;
+      });
+    }
+  };
 
   return (
     <>
@@ -87,7 +133,7 @@ export default function BuyerDashboard() {
               onChange={(e) => setDestination(e.target.value)}
               style={{ flex: 1, minWidth: '250px', maxWidth: '400px' }}
             />
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>This will be automatically included in your email inquiries.</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>This will be included in your inquiry email to the vendor.</span>
           </div>
         </div>
 
@@ -112,36 +158,51 @@ export default function BuyerDashboard() {
                   <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Price (₹)</th>
                   <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Vendor</th>
                   <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Contact</th>
-                  <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Email</th>
+                  <th style={{ padding: '0.75rem', fontWeight: 'bold' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {displayedProducts.map(product => (
-                  <tr key={product.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s' }}>
-                    <td style={{ padding: '0.75rem', fontWeight: '500', color: 'var(--text-primary)' }}>{product.product_name}</td>
-                    <td style={{ padding: '0.75rem' }}>{product.category}</td>
-                    <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{product.brand || '-'}</td>
-                    <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{product.part_number || '-'}</td>
-                    <td style={{ padding: '0.75rem', color: 'var(--accent-primary)', fontWeight: 'bold' }}>{Number(product.price).toLocaleString()}</td>
-                    <td style={{ padding: '0.75rem' }}>{product.company_name}</td>
-                    <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{product.contact_person || '-'}</td>
-                    <td style={{ padding: '0.75rem' }}>
-                      {product.provider_email ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                          <a 
-                            href={`https://mail.google.com/mail/?view=cm&fs=1&to=${product.provider_email}&su=${encodeURIComponent("Inquiry for " + product.product_name)}&body=${encodeURIComponent(`Hello ${product.company_name} Team,\n\nI am interested in your product and would like more details.\n\n--- PRODUCT DETAILS ---\nProduct Name: ${product.product_name}\nCategory: ${product.category}\nBrand: ${product.brand || "N/A"}\nPart Number: ${product.part_number || "N/A"}\nPrice Listed: ₹${Number(product.price).toLocaleString()}\n\n--- MY REQUIREMENTS ---\nDelivery Destination: ${destination ? destination : "[Please specify destination]"}\n\nPlease provide availability, shipping costs, and any additional details required.\n\nBest regards,\nMarine Market Buyer`)}`}
-                            target="_blank" rel="noreferrer"
-                            className="btn btn-primary"
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', textDecoration: 'none' }}
-                          >
-                            ✉️ Send via Gmail
-                          </a>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{product.provider_email}</span>
-                        </div>
-                      ) : '-'}
-                    </td>
-                  </tr>
-                ))}
+                {displayedProducts.map(product => {
+                  const isSending = sendingIds.has(product.id);
+                  return (
+                    <tr key={product.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.2s' }}>
+                      <td style={{ padding: '0.75rem', fontWeight: '500', color: 'var(--text-primary)' }}>{product.product_name}</td>
+                      <td style={{ padding: '0.75rem' }}>{product.category}</td>
+                      <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{product.brand || '-'}</td>
+                      <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{product.part_number || '-'}</td>
+                      <td style={{ padding: '0.75rem', color: 'var(--accent-primary)', fontWeight: 'bold' }}>{Number(product.price).toLocaleString()}</td>
+                      <td style={{ padding: '0.75rem' }}>{product.company_name}</td>
+                      <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{product.contact_person || '-'}</td>
+                      <td style={{ padding: '0.75rem' }}>
+                        <button
+                          className="btn btn-primary"
+                          style={{ 
+                            padding: '0.4rem 0.8rem', 
+                            fontSize: '0.85rem', 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            gap: '0.4rem',
+                            minWidth: '140px',
+                            opacity: isSending ? 0.7 : 1,
+                            cursor: isSending ? 'not-allowed' : 'pointer',
+                          }}
+                          onClick={() => handleSendInquiry(product)}
+                          disabled={isSending}
+                        >
+                          {isSending ? (
+                            <>
+                              <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }}></span>
+                              Sending...
+                            </>
+                          ) : (
+                            <>✉️ Send Inquiry</>
+                          )}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

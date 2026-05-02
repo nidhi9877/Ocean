@@ -89,7 +89,7 @@ function AppRoutes() {
       <Route
         path="/provider/dashboard"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRole="provider">
             <ProviderDashboard />
           </ProtectedRoute>
         }
@@ -97,7 +97,7 @@ function AppRoutes() {
       <Route
         path="/provider/add-options"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRole="provider">
             <AddDataOptions />
           </ProtectedRoute>
         }
@@ -105,7 +105,7 @@ function AppRoutes() {
       <Route
         path="/provider/add-csv"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRole="provider">
             <AddCsvData />
           </ProtectedRoute>
         }
@@ -113,7 +113,7 @@ function AppRoutes() {
       <Route
         path="/provider/add-data"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRole="provider">
             <AddBulkData />
           </ProtectedRoute>
         }
@@ -121,7 +121,7 @@ function AppRoutes() {
       <Route
         path="/provider/inquiries"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRole="provider">
             <ProviderInquiries />
           </ProtectedRoute>
         }
@@ -129,7 +129,7 @@ function AppRoutes() {
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRole="buyer">
             <BuyerDashboard />
           </ProtectedRoute>
         }
@@ -137,7 +137,7 @@ function AppRoutes() {
       <Route
         path="/buyer/inquiries"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRole="buyer">
             <BuyerInquiries />
           </ProtectedRoute>
         }
