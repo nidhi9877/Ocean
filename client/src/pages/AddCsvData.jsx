@@ -45,21 +45,15 @@ export default function AddCsvData() {
           });
         };
 
-        const colProductName = findCol(['productname', 'name', 'itemname', 'title', 'producttitle']);
-        const colCategory = findCol(['category', 'type', 'department', 'productcategory']);
-        const colPrice = findCol(['price', 'cost', 'amount', 'rate', 'mrp', 'unitprice']);
-        
-        const colCompanyName = findCol(['companyname', 'company', 'vendor', 'business']);
-        const colProductId = findCol(['productid', 'id', 'itemid', 'sku']);
-        const colDescription = findCol(['description', 'details', 'about', 'desc']);
-        const colBrand = findCol(['brand', 'manufacturer', 'make']);
-        const colModelNumber = findCol(['modelnumber', 'model', 'modelno']);
-        const colPartNumber = findCol(['partnumber', 'part', 'partno']);
-        const colManufacturedAt = findCol(['manufacturedat', 'manufacturingdate', 'mfgdate', 'date']);
-        const colLocation = findCol(['location', 'supplylocation', 'towhichlocationyoucansupplytheproduct', 'city', 'state', 'supply']);
-        const colQuantity = findCol(['quantity', 'qty', 'stock', 'count']);
-        const colEmail = findCol(['email', 'emailaddress', 'contactemail', 'contact']);
-        const colAdditionalInfo = findCol(['additionalinformation', 'additionalinfo', 'info', 'notes', 'remarks']);
+        const colEquipment = findCol(['equipment']);
+        const colManufacturer = findCol(['manufacturer']);
+        const colModelNumber = findCol(['modelnumber']);
+        const colYearOfManufacturer = findCol(['yearofmanufacturer']);
+        const colPartName = findCol(['partname']);
+        const colPartNumer = findCol(['partnumer', 'partnumber']);
+        const colStockLocation = findCol(['stocklocation']);
+        const colQunatity = findCol(['qunatity', 'quantity']);
+        const colMail = findCol(['mail', 'email']);
 
         // Build products from CSV rows — no mandatory column requirement
         const validProducts = [];
@@ -73,28 +67,29 @@ export default function AddCsvData() {
             continue;
           }
 
-          // Skip rows with zero or missing quantity/stock
-          const qty = colQuantity ? Number(row[colQuantity]) : 0;
+          // Skip rows with zero or missing qunatity
+          const qty = colQunatity ? Number(row[colQunatity]) : 0;
           if (!qty || qty <= 0) {
             skippedRows++;
             continue;
           }
 
           validProducts.push({
-            companyName: colCompanyName ? (row[colCompanyName] || '') : '',
-            productId: colProductId ? (row[colProductId] || '') : '',
-            productName: colProductName ? (row[colProductName] || '') : '',
-            description: colDescription ? (row[colDescription] || '') : '',
-            category: colCategory ? (row[colCategory] || '') : '',
-            brand: colBrand ? (row[colBrand] || '') : '',
+            // Mapped to internal model
+            companyName: user?.username || '',
+            productId: '',
+            productName: colPartName ? (row[colPartName] || '') : '',
+            description: '',
+            category: colEquipment ? (row[colEquipment] || '') : '',
+            brand: colManufacturer ? (row[colManufacturer] || '') : '',
             modelNumber: colModelNumber ? (row[colModelNumber] || '') : '',
-            partNumber: colPartNumber ? (row[colPartNumber] || '') : '',
-            manufacturedAt: colManufacturedAt ? (row[colManufacturedAt] || '') : '',
-            location: colLocation ? (row[colLocation] || '') : '',
+            partNumber: colPartNumer ? (row[colPartNumer] || '') : '',
+            manufacturedAt: colYearOfManufacturer ? (row[colYearOfManufacturer] || '') : '',
+            location: colStockLocation ? (row[colStockLocation] || '') : '',
             quantity: qty,
-            price: colPrice ? (row[colPrice] || '0') : '0',
-            email: (colEmail && row[colEmail]) ? row[colEmail] : (user?.email || ''),
-            additionalInfo: colAdditionalInfo ? (row[colAdditionalInfo] || '') : ''
+            price: '0',
+            email: (colMail && row[colMail]) ? row[colMail] : (user?.email || ''),
+            additionalInfo: ''
           });
         }
 
@@ -140,9 +135,18 @@ export default function AddCsvData() {
           <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '2rem', marginBottom: '0.75rem', background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', textAlign: 'center' }}>
             Upload CSV File
           </h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '1rem', textAlign: 'center' }}>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem', fontSize: '1rem', textAlign: 'center' }}>
             Select your CSV spreadsheet with spare products data. Our smart detection will automatically find your columns.
           </p>
+          <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '1rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(59, 130, 246, 0.2)', marginBottom: '1.5rem' }}>
+            <p style={{ color: 'var(--text-primary)', fontWeight: 600, margin: '0 0 0.5rem 0', textAlign: 'center' }}>
+              📌 Mandatory Columns
+            </p>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, textAlign: 'center' }}>
+              Your file must contain the following columns (case-insensitive):<br/>
+              <strong>Equipment, Manufacturer, Model number, year of manufacturer, Part Name, Part Numer, Stock location, Qunatity, Mail</strong>
+            </p>
+          </div>
 
           <div style={{ background: 'var(--bg-surface)', padding: '1.25rem', borderRadius: 'var(--radius-sm)', marginBottom: '2rem', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
              <h4 style={{ color: 'var(--text-primary)', fontSize: '0.95rem' }}>Need a template?</h4>
