@@ -54,6 +54,7 @@ export default function ProviderDashboard() {
       description: product.description || '',
       manufactured_at: product.manufactured_at || '',
       additional_info: product.additional_info || '',
+      service_type: product.service_type || 'Supply',
       email: product.email || '',
     });
   };
@@ -136,6 +137,23 @@ export default function ProviderDashboard() {
     }
   };
 
+  const bulkUpdateServiceType = async (serviceType) => {
+    if (selectedIds.length === 0) return;
+    setSaving(true);
+    try {
+      await axios.post(`${API}/provider/products/bulk-update-service-type`, { ids: selectedIds, serviceType }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProducts(prev => prev.map(p => selectedIds.includes(p.id) ? { ...p, service_type: serviceType } : p));
+      setSelectedIds([]);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update service type');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const deleteAll = async () => {
     if (products.length === 0) return;
     if (!window.confirm('WARNING: Are you sure you want to delete ALL your products? This action cannot be undone.')) return;
@@ -157,8 +175,8 @@ export default function ProviderDashboard() {
   const downloadCSV = () => {
     if (products.length === 0) return;
     
-    // Headers: Equipment, Manufacturer, Model number, year of manufacturer, Part Name, Part Numer, Stock location, Qunatity, Mail
-    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Mail'];
+    // Headers: Equipment, Manufacturer, Model number, year of manufacturer, Part Name, Part Numer, Stock location, Qunatity, Service Type, Mail
+    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type', 'Mail'];
     
     const rows = products.map(p => [
       p.category || '',
@@ -169,6 +187,7 @@ export default function ProviderDashboard() {
       p.part_number || '',
       p.location || '',
       p.quantity || 0,
+      p.service_type || 'Supply',
       p.email || provider?.email || ''
     ]);
     
@@ -189,7 +208,7 @@ export default function ProviderDashboard() {
 
   const downloadExcel = () => {
     if (products.length === 0) return;
-    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Mail'];
+    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type', 'Mail'];
     const rows = products.map(p => [
       p.category || '',
       p.brand || '',
@@ -199,6 +218,7 @@ export default function ProviderDashboard() {
       p.part_number || '',
       p.location || '',
       p.quantity || 0,
+      p.service_type || 'Supply',
       p.email || provider?.email || ''
     ]);
     
@@ -211,7 +231,7 @@ export default function ProviderDashboard() {
   const downloadPDF = () => {
     if (products.length === 0) return;
     const doc = new jsPDF();
-    const headers = [['Equipment', 'Manufacturer', 'Model', 'Year', 'Part Name', 'Part No.', 'Location', 'Qty', 'Mail']];
+    const headers = [['Equipment', 'Manufacturer', 'Model', 'Year', 'Part Name', 'Part No.', 'Location', 'Qty', 'Service', 'Mail']];
     const rows = products.map(p => [
       p.category || '',
       p.brand || '',
@@ -221,6 +241,7 @@ export default function ProviderDashboard() {
       p.part_number || '',
       p.location || '',
       p.quantity || 0,
+      p.service_type || 'Supply',
       p.email || provider?.email || ''
     ]);
     
@@ -387,13 +408,22 @@ export default function ProviderDashboard() {
                   Your Products
                 </h2>
                 {products.length > 0 && (
-                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
                     {selectedIds.length > 0 && (
-                      <button className="btn btn-primary" onClick={bulkDelete} disabled={deleting} style={{ background: '#e74c3c', borderColor: '#e74c3c' }}>
-                        🗑️ Delete Selected ({selectedIds.length})
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-card-hover)', padding: '0.2rem 0.5rem', borderRadius: 'var(--radius-sm)' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Selected ({selectedIds.length}):</span>
+                        <button className="btn btn-secondary" onClick={() => bulkUpdateServiceType('Supply')} disabled={saving} style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}>
+                          Set Supply
+                        </button>
+                        <button className="btn btn-secondary" onClick={() => bulkUpdateServiceType('Supply and Service')} disabled={saving} style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}>
+                          Set Supply & Service
+                        </button>
+                        <button className="btn btn-primary" onClick={bulkDelete} disabled={deleting} style={{ background: '#e74c3c', borderColor: '#e74c3c', fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}>
+                          🗑️ Delete
+                        </button>
+                      </div>
                     )}
-                    <button className="btn btn-secondary" onClick={deleteAll} disabled={deleting} style={{ color: '#e74c3c', borderColor: '#e74c3c' }}>
+                    <button className="btn btn-secondary" onClick={deleteAll} disabled={deleting} style={{ color: '#e74c3c', borderColor: '#e74c3c', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
                       ⚠️ Delete Entire Sheet
                     </button>
                   </div>
@@ -423,6 +453,7 @@ export default function ProviderDashboard() {
                         <th>Part Numer</th>
                         <th>Stock location</th>
                         <th>Qunatity</th>
+                        <th>Service Type</th>
                         <th>Mail</th>
                         <th style={{ textAlign: 'center' }}>Actions</th>
                       </tr>
@@ -450,6 +481,12 @@ export default function ProviderDashboard() {
                               <td>{editInput('part_number')}</td>
                               <td>{editInput('location')}</td>
                               <td>{editInput('quantity', { width: '60px', textAlign: 'center' })}</td>
+                              <td>
+                                <select className="inline-edit-input" value={editData.service_type || 'Supply'} onChange={(e) => handleEditChange('service_type', e.target.value)}>
+                                  <option value="Supply">Supply</option>
+                                  <option value="Supply and Service">Supply and Service</option>
+                                </select>
+                              </td>
                               <td>{editInput('email')}</td>
                               <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                                 <button
@@ -479,6 +516,7 @@ export default function ProviderDashboard() {
                               <td>{product.part_number || '—'}</td>
                               <td><span className="location-cell" title={product.location || ''}>{product.location || '—'}</span></td>
                               <td style={{ textAlign: 'center' }}>{product.quantity || 0}</td>
+                              <td>{product.service_type || 'Supply'}</td>
                               <td>{product.email || '—'}</td>
                               <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                                 <button

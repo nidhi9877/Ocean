@@ -15,14 +15,14 @@ export default function BuyerDashboard() {
   const [activeTab, setActiveTab] = useState('categories');
   const [sendingIds, setSendingIds] = useState(new Set());
   // Inquiry-only fields (not for search)
-  const [inquiryMeta, setInquiryMeta] = useState({ eta: '', etd: '', vesselName: '', destination: '', targetPrice: '' });
+  const [inquiryMeta, setInquiryMeta] = useState({ eta: '', etd: '', vesselName: '', destination: '' });
   const [equipmentSearch, setEquipmentSearch] = useState('');
   const [manufacturerSearch, setManufacturerSearch] = useState('');
   const [locationSearch, setLocationSearch] = useState('');
 
   const [filters, setFilters] = useState({
     equipment: [], manufacturer: [], modelNumber: '',
-    yearMin: '', yearMax: '', stockLocation: [], minQty: 1,
+    yearMin: '', yearMax: '', stockLocation: [], minQty: 1, serviceType: '',
   });
 
   useEffect(() => {
@@ -47,6 +47,7 @@ export default function BuyerDashboard() {
     if (filters.yearMin || filters.yearMax) c++;
     if (filters.stockLocation.length) c++;
     if (filters.minQty > 1) c++;
+    if (filters.serviceType) c++;
     return c;
   }, [filters]);
 
@@ -94,6 +95,8 @@ export default function BuyerDashboard() {
       if (filters.yearMax && p.manufactured_at && Number(p.manufactured_at) > Number(filters.yearMax)) return false;
       if (filters.stockLocation.length && !filters.stockLocation.includes(p.location)) return false;
       if (filters.minQty > 1 && Number(p.quantity) < filters.minQty) return false;
+      const sType = p.service_type || 'Supply';
+      if (filters.serviceType && sType !== filters.serviceType) return false;
       return true;
     });
   }, [hasSearched, searchQuery, filters, allProducts]);
@@ -153,7 +156,7 @@ export default function BuyerDashboard() {
     }));
   };
 
-  const clearAll = () => { setFilters({ equipment:[], manufacturer:[], modelNumber:'', yearMin:'', yearMax:'', stockLocation:[], minQty:1 }); };
+  const clearAll = () => { setFilters({ equipment:[], manufacturer:[], modelNumber:'', yearMin:'', yearMax:'', stockLocation:[], minQty:1, serviceType:'' }); };
 
   const handleSendInquiry = async (product) => {
     if (!inquiryMeta.destination.trim()) { toast.error('Set Destination in the inquiry fields below the table.'); return; }
@@ -163,7 +166,7 @@ export default function BuyerDashboard() {
       await axios.post(`${API}/buyer/inquiries`, {
         selections: [{ provider_id: product.provider_id, product_id: product.id }],
         destination_location: inquiryMeta.destination.trim(),
-        target_price: inquiryMeta.targetPrice.trim() ? Number(inquiryMeta.targetPrice) : undefined,
+        // target_price is no longer used
         delivery_requirements: { eta: inquiryMeta.eta, etd: inquiryMeta.etd, vessel_name: inquiryMeta.vesselName, quantity: String(filters.minQty) }
       }, { headers: { Authorization: `Bearer ${token}` } });
       toast.success(`✅ Inquiry sent to ${product.company_name}!`, { duration: 4000 });
@@ -238,6 +241,7 @@ export default function BuyerDashboard() {
               {(filters.yearMin||filters.yearMax) && <Chip label={`Year: ${filters.yearMin||'*'}–${filters.yearMax||'*'}`} onRemove={() => setFilters(f=>({...f,yearMin:'',yearMax:''}))} />}
               {filters.stockLocation.map(v => <Chip key={`sl-${v}`} label={`Location: ${v}`} onRemove={() => toggleCheckbox('stockLocation',v)} />)}
               {filters.minQty > 1 && <Chip label={`Min Qty: ${filters.minQty}`} onRemove={() => setFilters(f=>({...f,minQty:1}))} />}
+              {filters.serviceType && <Chip label={`Service: ${filters.serviceType}`} onRemove={() => setFilters(f=>({...f,serviceType:''}))} />}
               <button onClick={clearAll} style={{ background:'none', border:'none', color:'var(--danger)', fontSize:'0.8rem', fontWeight:'600', cursor:'pointer', padding:'0.25rem 0.5rem' }}>Clear All</button>
             </div>
           )}
@@ -264,7 +268,7 @@ export default function BuyerDashboard() {
               <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', fontSize:'0.9rem', minWidth:900 }}>
                 <thead>
                   <tr style={{ borderBottom:'2px solid var(--border-color)' }}>
-                    {['Equipment','Manufacturer','Model','Year','Part Name','Part #','Location','Qty','Action'].map(h => (
+                    {['Equipment','Manufacturer','Model','Year','Part Name','Part #','Location','Qty','Service','Action'].map(h => (
                       <th key={h} style={{ padding:'0.75rem', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>{h}</th>
                     ))}
                   </tr>
@@ -284,6 +288,7 @@ export default function BuyerDashboard() {
                         <td style={{ padding:'0.75rem', fontFamily:'monospace', color:'var(--text-secondary)' }}>{p.part_number||'-'}</td>
                         <td style={{ padding:'0.75rem' }}>{p.location||'-'}</td>
                         <td style={{ padding:'0.75rem', color:'var(--accent-primary)', fontWeight:'bold' }}>{p.quantity||'-'}</td>
+                        <td style={{ padding:'0.75rem' }}>{p.service_type || 'Supply'}</td>
                         <td style={{ padding:'0.75rem' }}>
                           <button className="btn btn-primary" disabled={sending}
                             style={{ padding:'0.4rem 0.8rem', fontSize:'0.85rem', display:'inline-flex', alignItems:'center', gap:'0.4rem', minWidth:130, opacity:sending?0.7:1, cursor:sending?'not-allowed':'pointer' }}
@@ -308,13 +313,6 @@ export default function BuyerDashboard() {
                 <div><label className="form-label">ETA</label><input type="date" className="form-input" value={inquiryMeta.eta} onChange={e=>setInquiryMeta(m=>({...m,eta:e.target.value}))}/></div>
                 <div><label className="form-label">ETD</label><input type="date" className="form-input" value={inquiryMeta.etd} onChange={e=>setInquiryMeta(m=>({...m,etd:e.target.value}))}/></div>
                 <div><label className="form-label">Vessel Name</label><input className="form-input" placeholder="e.g., MV Ocean Star" value={inquiryMeta.vesselName} onChange={e=>setInquiryMeta(m=>({...m,vesselName:e.target.value}))}/></div>
-                <div>
-                  <label className="form-label">Target Price (₹) *</label>
-                  <input type="number" className="form-input" placeholder="e.g., 50000" value={inquiryMeta.targetPrice} onChange={e=>setInquiryMeta(m=>({...m,targetPrice:e.target.value}))}/>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.4rem', lineHeight: '1.4' }}>
-                    💡 Pro Tip: Deals for this category are typically accepted between [Target+20%] and [Target+40%]. Low pricing may result in zero responses.
-                  </p>
-                </div>
               </div>
             </div>
           </>
@@ -430,6 +428,16 @@ export default function BuyerDashboard() {
                         style={{ width:'100%', accentColor:'var(--accent-primary)', height:6, cursor:'pointer' }} />
                       <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.75rem', color:'var(--text-muted)', marginTop:'0.25rem' }}>
                         <span>1</span><span>25</span><span>50</span><span>75</span><span>100</span>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: '1.5rem' }}>
+                      <SectionTitle icon="🛠️" label="Service Type" />
+                      <div style={{ marginBottom: '1.5rem' }}>
+                        <select className="form-input" value={filters.serviceType} onChange={e => setFilters(f => ({...f, serviceType: e.target.value}))}>
+                          <option value="">Any</option>
+                          <option value="Supply">Supply</option>
+                          <option value="Supply and Service">Supply and Service</option>
+                        </select>
                       </div>
                     </div>
                   </div>

@@ -65,6 +65,7 @@ export async function initDatabase() {
         quantity INTEGER DEFAULT 0,
         description TEXT,
         additional_info TEXT,
+        service_type VARCHAR(50) DEFAULT 'Supply',
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
@@ -92,6 +93,7 @@ export async function initDatabase() {
       await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS manufactured_at VARCHAR(255)`;
       await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS location VARCHAR(255)`;
       await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS additional_info TEXT`;
+      await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS service_type VARCHAR(50) DEFAULT 'Supply'`;
       await sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`;
       await sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS target_price DECIMAL(10,2)`;
       await sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS surge_email_sent BOOLEAN DEFAULT FALSE`;

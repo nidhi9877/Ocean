@@ -48,7 +48,7 @@ router.post('/register', authenticateToken, async (req, res) => {
         if (qty > 0) {
           await sql`
             INSERT INTO products (
-              provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info
+              provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, service_type
             )
             VALUES (
               ${providerId}, 
@@ -62,7 +62,8 @@ router.post('/register', authenticateToken, async (req, res) => {
               ${product.price || 0}, 
               ${qty}, 
               ${product.description || null},
-              ${product.additionalInfo || null}
+              ${product.additionalInfo || null},
+              ${product.serviceType || 'Supply'}
             )
           `;
         }
@@ -109,7 +110,7 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
       if (qty > 0) {
         await sql`
           INSERT INTO products (
-            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info
+            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, service_type
           )
           VALUES (
             ${providerId}, 
@@ -123,7 +124,8 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
             ${p.price || 0}, 
             ${qty}, 
             ${p.description || null},
-            ${p.additionalInfo || null}
+            ${p.additionalInfo || null},
+            ${p.serviceType || 'Supply'}
           )
         `;
         insertedCount++;
@@ -361,7 +363,8 @@ router.put('/products/:id', authenticateToken, async (req, res) => {
         price = ${price},
         quantity = ${quantity || 0},
         description = ${description || null},
-        additional_info = ${additional_info || null}
+        additional_info = ${additional_info || null},
+        service_type = ${req.body.service_type || 'Supply'}
       WHERE id = ${productId}
     `;
 
@@ -389,6 +392,25 @@ router.delete('/products/:id', authenticateToken, async (req, res) => {
     res.json({ message: 'Product deleted successfully' });
   } catch (error) {
     console.error('Product delete error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Bulk update service type
+router.post('/products/bulk-update-service-type', authenticateToken, async (req, res) => {
+  try {
+    const { ids, serviceType } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'No product IDs provided' });
+    if (!serviceType) return res.status(400).json({ error: 'Service Type is required' });
+
+    const existingProvider = await sql`SELECT id FROM providers WHERE user_id = ${req.user.id}`;
+    if (existingProvider.length === 0) return res.status(404).json({ error: 'Provider profile not found' });
+    const providerId = existingProvider[0].id;
+
+    await sql`UPDATE products SET service_type = ${serviceType} WHERE id = ANY(${ids}) AND provider_id = ${providerId}`;
+    res.json({ message: 'Products updated successfully' });
+  } catch (error) {
+    console.error('Bulk update error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
