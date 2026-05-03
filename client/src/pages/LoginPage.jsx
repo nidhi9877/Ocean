@@ -24,7 +24,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await axios.post(`${API}/auth/login`, { username, password });
+      const res = await axios.post(`${API}/auth/login`, { username: username.trim(), password });
       login(res.data.user, res.data.token);
       if (res.data.user.role === 'provider') {
         toast.success(`Welcome back, ${res.data.user.username}!`);

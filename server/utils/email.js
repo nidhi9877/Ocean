@@ -121,13 +121,7 @@ function buildInquiryEmailHTML({
                   <td style="padding:6px 20px;font-size:15px;color:#e2e8f0;font-family:'Courier New',monospace;">${partNumber || 'N/A'}</td>
                 </tr>
 
-                <!-- Target Price -->
-                <tr>
-                  <td style="padding:14px 20px;font-size:14px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;vertical-align:middle;border-top:1px solid rgba(148,163,184,0.1);background:rgba(239,68,68,0.05);">BUYER TARGET PRICE</td>
-                  <td style="padding:14px 20px;font-size:24px;color:#ef4444;font-weight:800;border-top:1px solid rgba(148,163,184,0.1);background:rgba(239,68,68,0.05);">₹${Number(targetPrice).toLocaleString('en-IN')}</td>
-                </tr>
-
-                <!-- Delivery Port -->
+                <!-- Target Price Removed -->
                 <tr>
                   <td style="padding:6px 20px 14px 20px;font-size:13px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;vertical-align:top;">Delivery Port</td>
                   <td style="padding:6px 20px 14px 20px;font-size:15px;color:#e2e8f0;">📍 ${deliveryPort || 'To be discussed'}</td>
@@ -195,7 +189,7 @@ function buildInquiryEmailHTML({
                 <tr>
                   <td style="border-radius:12px;background:linear-gradient(135deg,#16a34a 0%,#15803d 100%);box-shadow:0 6px 20px rgba(22,163,74,0.5);">
                     <a href="${acceptUrl}" target="_blank" style="display:inline-block;padding:18px 48px;font-size:18px;font-weight:800;color:#ffffff;text-decoration:none;letter-spacing:0.5px;text-transform:uppercase;">
-                      ✅ Accept & Secure Deal at ₹${Number(targetPrice).toLocaleString('en-IN')}
+                      ✅ Accept & Secure Deal
                     </a>
                   </td>
                 </tr>
@@ -223,7 +217,7 @@ function buildInquiryEmailHTML({
                       ⚡ RUTHLESS EXECUTION MODEL
                     </p>
                     <p style="margin:8px 0 0 0;font-size:13px;color:#fca5a5;line-height:1.6;">
-                      Vortex operates on a First-to-Accept basis to maximize speed. <strong>No counter-offers. No negotiations.</strong> If you can fulfill the order at the buyer's Target Price, click Accept immediately before another vendor takes the deal.
+                      Vortex operates on a First-to-Accept basis to maximize speed. <strong>No counter-offers. No negotiations.</strong> If you can fulfill the order, click Accept immediately before another vendor takes the deal.
                     </p>
                   </td>
                 </tr>

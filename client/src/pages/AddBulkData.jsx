@@ -55,6 +55,7 @@ export default function AddBulkData() {
     partNumer: '',
     stockLocation: '',
     qunatity: '',
+    serviceType: '',
     mail: p ? p.email : user?.email || '',
   });
 
@@ -75,28 +76,36 @@ export default function AddBulkData() {
     setSuccess('');
 
     // Filter out completely empty rows, and skip rows with zero/missing qunatity
-    const validRows = rows.filter(r => {
+    const validRows = [];
+    for (const r of rows) {
       const hasAnyData = r.equipment || r.manufacturer || r.modelNumber || r.partName || r.partNumer;
       const qty = Number(r.qunatity);
-      return hasAnyData && qty > 0;
-    }).map(r => ({
-      // Map back to internal model fields for the API
-      category: r.equipment,
-      brand: r.manufacturer,
-      modelNumber: r.modelNumber,
-      manufacturedAt: r.yearOfManufacturer,
-      productName: r.partName,
-      partNumber: r.partNumer,
-      location: r.stockLocation,
-      quantity: r.qunatity,
-      email: r.mail,
-      // Default empty fields for old required ones just in case
-      companyName: provider ? provider.company_name : '',
-      productId: '',
-      description: '',
-      price: '0',
-      additionalInfo: ''
-    }));
+      if (hasAnyData && qty > 0) {
+        if (!r.serviceType) {
+          setError(`Please select a Service Type for Row ${r.srNo}.`);
+          return;
+        }
+        validRows.push({
+          // Map back to internal model fields for the API
+          category: r.equipment,
+          brand: r.manufacturer,
+          modelNumber: r.modelNumber,
+          manufacturedAt: r.yearOfManufacturer,
+          productName: r.partName,
+          partNumber: r.partNumer,
+          location: r.stockLocation,
+          quantity: r.qunatity,
+          email: r.mail,
+          serviceType: r.serviceType,
+          // Default empty fields for old required ones just in case
+          companyName: provider ? provider.company_name : '',
+          productId: '',
+          description: '',
+          price: '0',
+          additionalInfo: ''
+        });
+      }
+    }
     
     if (validRows.length === 0) {
       setError('Please fill in at least one product with a quantity/stock greater than 0.');
@@ -129,6 +138,7 @@ export default function AddBulkData() {
       r.partNumer || '',
       r.stockLocation || '',
       r.qunatity || 0,
+      r.serviceType || 'Supply',
       r.mail || ''
     ]);
   };
@@ -136,7 +146,7 @@ export default function AddBulkData() {
   const downloadCSV = () => {
     const data = getExportData();
     if (data.length === 0) return alert('No data to download');
-    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Mail'];
+    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type', 'Mail'];
     const csvContent = [
       headers.join(','),
       ...data.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
@@ -154,7 +164,7 @@ export default function AddBulkData() {
   const downloadExcel = () => {
     const data = getExportData();
     if (data.length === 0) return alert('No data to download');
-    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Mail'];
+    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type', 'Mail'];
     const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Manual Entry");
@@ -165,7 +175,7 @@ export default function AddBulkData() {
     const data = getExportData();
     if (data.length === 0) return alert('No data to download');
     const doc = new jsPDF();
-    const headers = [['Equipment', 'Manufacturer', 'Model', 'Year', 'Part Name', 'Part No.', 'Location', 'Qty', 'Mail']];
+    const headers = [['Equipment', 'Manufacturer', 'Model', 'Year', 'Part Name', 'Part No.', 'Location', 'Qty', 'Service', 'Mail']];
     doc.autoTable({
       head: headers,
       body: data,
@@ -214,8 +224,13 @@ export default function AddBulkData() {
             <div className="spinner" style={{ margin: '2rem auto', width: '40px', height: '40px' }}></div>
           ) : (
             <form onSubmit={handleSubmit}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', gap: '1rem', flexWrap: 'wrap' }}>
+                <label style={{ fontWeight: '600', color: 'var(--text-primary)' }}>Master Service Type:</label>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setRows(rows.map(r => ({ ...r, serviceType: 'Supply' })))}>Select All: Supply</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setRows(rows.map(r => ({ ...r, serviceType: 'Supply and Service' })))}>Select All: Supply and Service</button>
+              </div>
               <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
-                <table className="data-table" style={{ minWidth: '1400px' }}>
+                <table className="data-table" style={{ minWidth: '1500px' }}>
                   <thead>
                     <tr>
                       <th style={tdStyle}>Sr.</th>
@@ -227,6 +242,7 @@ export default function AddBulkData() {
                       <th style={tdStyle}>Part Numer</th>
                       <th style={tdStyle}>Stock location</th>
                       <th style={tdStyle}>Qunatity *</th>
+                      <th style={tdStyle}>Service Type</th>
                       <th style={tdStyle}>Mail</th>
                     </tr>
                   </thead>
@@ -257,6 +273,13 @@ export default function AddBulkData() {
                         </td>
                         <td style={tdStyle}>
                           <input type="number" style={inputStyle} value={row.qunatity} onChange={e => handleRowChange(index, 'qunatity', e.target.value)} />
+                        </td>
+                        <td style={tdStyle}>
+                          <select style={inputStyle} value={row.serviceType} onChange={e => handleRowChange(index, 'serviceType', e.target.value)}>
+                            <option value="">Select Type</option>
+                            <option value="Supply">Supply</option>
+                            <option value="Supply and Service">Supply and Service</option>
+                          </select>
                         </td>
                         <td style={tdStyle}>
                           <input style={inputStyle} type="email" value={row.mail} onChange={e => handleRowChange(index, 'mail', e.target.value)} />

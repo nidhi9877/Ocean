@@ -32,6 +32,7 @@ function emptyProduct() {
     price: '',
     quantity: '',
     description: '',
+    serviceType: '',
   };
 }
 
@@ -87,8 +88,8 @@ export default function ProviderForm() {
 
     for (let i = 0; i < products.length; i++) {
       const p = products[i];
-      if (!p.productName || !p.category || !p.price) {
-        setError(`Please fill in required fields for Product ${i + 1} (Name, Category, Price)`);
+      if (!p.productName || !p.category || !p.price || !p.serviceType) {
+        setError(`Please fill in required fields for Product ${i + 1} (Name, Category, Price, Service Type)`);
         return;
       }
     }
@@ -331,6 +332,19 @@ export default function ProviderForm() {
                           value={product.quantity}
                           onChange={(e) => handleProductChange(index, e)}
                         />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Service Type *</label>
+                        <select
+                          className="form-select"
+                          name="serviceType"
+                          value={product.serviceType}
+                          onChange={(e) => handleProductChange(index, e)}
+                        >
+                          <option value="">Select Service Type</option>
+                          <option value="Supply">Supply</option>
+                          <option value="Supply and Service">Supply and Service</option>
+                        </select>
                       </div>
                       <div className="form-group">
                         <label className="form-label">Description</label>

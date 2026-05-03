@@ -12,7 +12,7 @@ const router = Router();
 // details. Sets Reply-To to the buyer's email so vendors can reply directly.
 router.post('/inquiries', authenticateToken, async (req, res) => {
   try {
-    const { selections, destination_location, target_price, delivery_requirements } = req.body;
+    const { selections, destination_location, delivery_requirements } = req.body;
     // selections is an array of objects { provider_id, product_id }
     
     if (!selections || !Array.isArray(selections) || selections.length === 0) {
@@ -21,10 +21,6 @@ router.post('/inquiries', authenticateToken, async (req, res) => {
 
     if (!destination_location) {
       return res.status(400).json({ error: 'Destination location is required' });
-    }
-
-    if (!target_price) {
-      return res.status(400).json({ error: 'Target Price is required' });
     }
 
     // Get the buyer profile
@@ -52,7 +48,7 @@ router.post('/inquiries', authenticateToken, async (req, res) => {
       // Insert inquiry into DB
       const insertResult = await sql`
         INSERT INTO inquiries (buyer_id, provider_id, product_id, destination_location, target_price, broadcast_id)
-        VALUES (${buyer_id}, ${sel.provider_id}, ${sel.product_id}, ${destination_location}, ${target_price}, ${broadcast_id})
+        VALUES (${buyer_id}, ${sel.provider_id}, ${sel.product_id}, ${destination_location}, NULL, ${broadcast_id})
         RETURNING id
       `;
 
@@ -76,7 +72,7 @@ router.post('/inquiries', authenticateToken, async (req, res) => {
             productName: productData[0].product_name,
             brand: productData[0].brand,
             partNumber: productData[0].part_number,
-            targetPrice: target_price, // Override with buyer's aggressive target price
+            targetPrice: 'Open to negotiation', // Fallback since target price was removed
             deliveryPort: destination_location,
             deliveryRequirements: delivery_requirements,
             inquiryId,
