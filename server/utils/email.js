@@ -27,6 +27,7 @@ function buildInquiryEmailHTML({
   partNumber,
   targetPrice,
   deliveryPort,
+  deliveryRequirements,
   inquiryId,
 }) {
   const acceptUrl = `${BASE_URL}/api/deal/accept?dealId=${inquiryId}`;
@@ -122,14 +123,43 @@ function buildInquiryEmailHTML({
 
                 <!-- Target Price -->
                 <tr>
-                  <td style="padding:6px 20px;font-size:13px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;vertical-align:top;">Target Price</td>
-                  <td style="padding:6px 20px;font-size:16px;color:#22c55e;font-weight:700;">${targetPrice ? '₹' + Number(targetPrice).toLocaleString('en-IN') : 'Request Quote'}</td>
+                  <td style="padding:14px 20px;font-size:14px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;vertical-align:middle;border-top:1px solid rgba(148,163,184,0.1);background:rgba(239,68,68,0.05);">BUYER TARGET PRICE</td>
+                  <td style="padding:14px 20px;font-size:24px;color:#ef4444;font-weight:800;border-top:1px solid rgba(148,163,184,0.1);background:rgba(239,68,68,0.05);">₹${Number(targetPrice).toLocaleString('en-IN')}</td>
                 </tr>
 
                 <!-- Delivery Port -->
                 <tr>
                   <td style="padding:6px 20px 14px 20px;font-size:13px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;vertical-align:top;">Delivery Port</td>
                   <td style="padding:6px 20px 14px 20px;font-size:15px;color:#e2e8f0;">📍 ${deliveryPort || 'To be discussed'}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Delivery Requirements card -->
+          <tr>
+            <td style="padding:0 40px 24px 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(15,23,42,0.6);border:1px solid rgba(148,163,184,0.15);border-radius:12px;overflow:hidden;">
+                <tr>
+                  <td colspan="2" style="background:rgba(234,179,8,0.1);border-bottom:1px solid rgba(148,163,184,0.1);padding:14px 20px;">
+                    <span style="font-size:13px;font-weight:700;color:#facc15;text-transform:uppercase;letter-spacing:1.5px;">🚚 Delivery Requirements</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 20px 6px 20px;font-size:13px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;width:140px;">Quantity</td>
+                  <td style="padding:14px 20px 6px 20px;font-size:15px;color:#f1f5f9;font-weight:700;">${deliveryRequirements?.quantity || 'N/A'}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 20px 6px 20px;font-size:13px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">ETA</td>
+                  <td style="padding:6px 20px 6px 20px;font-size:15px;color:#e2e8f0;">${deliveryRequirements?.eta || 'N/A'}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 20px 6px 20px;font-size:13px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">ETD</td>
+                  <td style="padding:6px 20px 6px 20px;font-size:15px;color:#e2e8f0;">${deliveryRequirements?.etd || 'N/A'}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 20px 14px 20px;font-size:13px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Vessel Name</td>
+                  <td style="padding:6px 20px 14px 20px;font-size:15px;color:#e2e8f0;">🚢 ${deliveryRequirements?.vessel_name || 'N/A'}</td>
                 </tr>
               </table>
             </td>
@@ -163,15 +193,15 @@ function buildInquiryEmailHTML({
             <td style="padding:8px 40px 32px 40px;text-align:center;">
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
                 <tr>
-                  <td style="border-radius:12px;background:linear-gradient(135deg,#22c55e 0%,#16a34a 100%);box-shadow:0 4px 14px rgba(34,197,94,0.4);">
-                    <a href="${acceptUrl}" target="_blank" style="display:inline-block;padding:16px 48px;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;letter-spacing:0.3px;">
-                      ✅ Accept Inquiry Now
+                  <td style="border-radius:12px;background:linear-gradient(135deg,#16a34a 0%,#15803d 100%);box-shadow:0 6px 20px rgba(22,163,74,0.5);">
+                    <a href="${acceptUrl}" target="_blank" style="display:inline-block;padding:18px 48px;font-size:18px;font-weight:800;color:#ffffff;text-decoration:none;letter-spacing:0.5px;text-transform:uppercase;">
+                      ✅ Accept & Secure Deal at ₹${Number(targetPrice).toLocaleString('en-IN')}
                     </a>
                   </td>
                 </tr>
               </table>
-              <p style="margin:16px 0 0 0;font-size:13px;color:#64748b;">
-                Or log in to your <a href="${BASE_URL}/provider/dashboard" style="color:#38bdf8;text-decoration:none;">Provider Dashboard</a> to respond.
+              <p style="margin:16px 0 0 0;font-size:14px;color:#ef4444;font-weight:700;">
+                ⚠️ This is a broadcast inquiry. The first vendor to accept secures the contract.
               </p>
             </td>
           </tr>
@@ -183,17 +213,17 @@ function buildInquiryEmailHTML({
             </td>
           </tr>
 
-          <!-- Response SLA notice -->
+          <!-- Surge warning notice -->
           <tr>
             <td style="padding:24px 40px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.2);border-radius:10px;padding:16px 20px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:10px;padding:16px 20px;">
                 <tr>
                   <td style="padding:16px 20px;">
-                    <p style="margin:0;font-size:14px;color:#fbbf24;font-weight:600;">
-                      ⏳ 24-Hour Response Window
+                    <p style="margin:0;font-size:14px;color:#ef4444;font-weight:700;text-transform:uppercase;">
+                      ⚡ RUTHLESS EXECUTION MODEL
                     </p>
-                    <p style="margin:8px 0 0 0;font-size:13px;color:#94a3b8;line-height:1.6;">
-                      Vortex buyers expect timely responses. Please respond to this inquiry within 24 hours to maintain your vendor rating and ensure the buyer's trust in your business.
+                    <p style="margin:8px 0 0 0;font-size:13px;color:#fca5a5;line-height:1.6;">
+                      Vortex operates on a First-to-Accept basis to maximize speed. <strong>No counter-offers. No negotiations.</strong> If you can fulfill the order at the buyer's Target Price, click Accept immediately before another vendor takes the deal.
                     </p>
                   </td>
                 </tr>

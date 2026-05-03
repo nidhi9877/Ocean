@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.js';
 import providerRoutes from './routes/provider.js';
 import adminRoutes from './routes/admin.js';
 import buyerRoutes from './routes/buyer.js';
+import { initCronJobs } from './cron.js';
 
 dotenv.config();
 
@@ -39,14 +40,55 @@ app.get('/api/deal/accept', async (req, res) => {
     if (!dealId) return res.status(400).send('Deal ID is required');
 
     const { sql } = await import('./db.js');
+    
+    // 1. Check the inquiry
+    const inquiries = await sql`SELECT status, broadcast_id FROM inquiries WHERE id = ${dealId}`;
+    if (inquiries.length === 0) return res.status(404).send('Deal not found');
+    
+    const { status, broadcast_id } = inquiries[0];
+
+    // If this specific deal is already accepted by this vendor, just show success
+    if (status === 'accepted') {
+       // Proceed to success HTML below
+    } else if (broadcast_id) {
+      // 2. Check if another vendor already won the broadcast
+      const alreadyAccepted = await sql`
+        SELECT id FROM inquiries 
+        WHERE broadcast_id = ${broadcast_id} AND status = 'accepted'
+      `;
+      
+      if (alreadyAccepted.length > 0) {
+        return res.send(`
+          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 50px; text-align: center; background: #0f172a; height: 100vh; color: white;">
+            <div style="background: #1e293b; padding: 40px; border-radius: 12px; max-width: 500px; margin: 0 auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid rgba(239,68,68,0.5);">
+              <h1 style="color: #ef4444; margin-top: 0;">❌ Too Slow!</h1>
+              <p style="color: #cbd5e1; font-size: 16px; line-height: 1.5;">Another vendor has already secured this contract.</p>
+              <p style="color: #94a3b8; font-size: 14px; margin-bottom: 30px;">In Vortex, the first vendor to accept the target price wins the deal. Keep an eye out for the next broadcast.</p>
+              <a href="http://localhost:5174/provider/dashboard" style="display: inline-block; background: #0ea5e9; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold;">Go to Provider Dashboard</a>
+            </div>
+          </div>
+        `);
+      }
+    }
+
+    // 3. Mark this vendor as the winner
     await sql`UPDATE inquiries SET status = 'accepted' WHERE id = ${dealId}`;
+
+    // 4. Mark all other competing inquiries in this broadcast as missed
+    if (broadcast_id) {
+      await sql`
+        UPDATE inquiries 
+        SET status = 'missed' 
+        WHERE broadcast_id = ${broadcast_id} AND id != ${dealId} AND status = 'pending'
+      `;
+    }
 
     res.send(`
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 50px; text-align: center; background: #0f172a; height: 100vh; color: white;">
-        <div style="background: #1e293b; padding: 40px; border-radius: 12px; max-width: 500px; margin: 0 auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-          <h1 style="color: #22c55e; margin-top: 0;">✅ Inquiry Accepted!</h1>
-          <p style="color: #cbd5e1; font-size: 16px; line-height: 1.5;">The inquiry status has been successfully updated in the database.</p>
-          <p style="color: #94a3b8; font-size: 14px; margin-bottom: 30px;">The buyer will see this in their dashboard. You can reply directly to the email to contact the buyer.</p>
+        <div style="background: #1e293b; padding: 40px; border-radius: 12px; max-width: 500px; margin: 0 auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid rgba(34,197,94,0.3);">
+          <h1 style="color: #22c55e; margin-top: 0;">✅ Deal Secured!</h1>
+          <p style="color: #cbd5e1; font-size: 16px; line-height: 1.5;">You were the first to accept. The contract is yours.</p>
+          <p style="color: #94a3b8; font-size: 14px; margin-bottom: 30px;">The buyer has been notified. You can reply directly to the email to contact the buyer.</p>
           <a href="http://localhost:5174/provider/dashboard" style="display: inline-block; background: #0ea5e9; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold;">Go to Provider Dashboard</a>
         </div>
       </div>
@@ -70,6 +112,7 @@ app.get('*', (req, res) => {
 async function start() {
   try {
     await initDatabase();
+    initCronJobs();
     app.listen(PORT, () => {
       console.log(`🚢 Marine Marketplace API running on http://localhost:${PORT}`);
     });
