@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import crypto from 'crypto';
 import { sql } from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { sendInquiryEmail, sendProviderNotification } from '../utils/email.js';
@@ -11,7 +12,7 @@ const router = Router();
 // details. Sets Reply-To to the buyer's email so vendors can reply directly.
 router.post('/inquiries', authenticateToken, async (req, res) => {
   try {
-    const { selections, destination_location } = req.body;
+    const { selections, destination_location, target_price, delivery_requirements } = req.body;
     // selections is an array of objects { provider_id, product_id }
     
     if (!selections || !Array.isArray(selections) || selections.length === 0) {
@@ -20,6 +21,10 @@ router.post('/inquiries', authenticateToken, async (req, res) => {
 
     if (!destination_location) {
       return res.status(400).json({ error: 'Destination location is required' });
+    }
+
+    if (!target_price) {
+      return res.status(400).json({ error: 'Target Price is required' });
     }
 
     // Get the buyer profile
@@ -37,14 +42,17 @@ router.post('/inquiries', authenticateToken, async (req, res) => {
     const buyerEmail = buyerProfile[0].buyer_email;
     const buyerName = buyerProfile[0].buyer_name;
 
+    // Generate a single broadcast ID for this batch of inquiries
+    const broadcast_id = crypto.randomUUID();
+
     let sentCount = 0;
     let failedCount = 0;
 
     for (const sel of selections) {
       // Insert inquiry into DB
       const insertResult = await sql`
-        INSERT INTO inquiries (buyer_id, provider_id, product_id, destination_location)
-        VALUES (${buyer_id}, ${sel.provider_id}, ${sel.product_id}, ${destination_location})
+        INSERT INTO inquiries (buyer_id, provider_id, product_id, destination_location, target_price, broadcast_id)
+        VALUES (${buyer_id}, ${sel.provider_id}, ${sel.product_id}, ${destination_location}, ${target_price}, ${broadcast_id})
         RETURNING id
       `;
 
@@ -68,8 +76,9 @@ router.post('/inquiries', authenticateToken, async (req, res) => {
             productName: productData[0].product_name,
             brand: productData[0].brand,
             partNumber: productData[0].part_number,
-            targetPrice: productData[0].price,
+            targetPrice: target_price, // Override with buyer's aggressive target price
             deliveryPort: destination_location,
+            deliveryRequirements: delivery_requirements,
             inquiryId,
           });
           sentCount++;

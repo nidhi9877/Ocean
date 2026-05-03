@@ -77,6 +77,9 @@ export async function initDatabase() {
         provider_id INTEGER REFERENCES providers(id) ON DELETE CASCADE,
         product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
         destination_location VARCHAR(255) NOT NULL,
+        target_price DECIMAL(10,2),
+        surge_email_sent BOOLEAN DEFAULT FALSE,
+        broadcast_id VARCHAR(100),
         status VARCHAR(50) DEFAULT 'pending',
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
@@ -90,6 +93,9 @@ export async function initDatabase() {
       await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS location VARCHAR(255)`;
       await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS additional_info TEXT`;
       await sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`;
+      await sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS target_price DECIMAL(10,2)`;
+      await sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS surge_email_sent BOOLEAN DEFAULT FALSE`;
+      await sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS broadcast_id VARCHAR(100)`;
     } catch (e) {
       console.log('Columns likely already exist or minor error:', e.message);
     }
