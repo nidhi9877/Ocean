@@ -7,7 +7,10 @@ const sql = neon(process.env.DATABASE_URL);
 
 export async function initDatabase() {
   try {
-    // Create users table
+    const start = Date.now();
+    console.log('⏳ Initializing database tables...');
+
+    // Execute CREATE TABLE sequentially due to foreign key dependencies
     await sql`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -18,7 +21,6 @@ export async function initDatabase() {
       )
     `;
 
-    // Create providers table
     await sql`
       CREATE TABLE IF NOT EXISTS providers (
         id SERIAL PRIMARY KEY,
@@ -35,7 +37,6 @@ export async function initDatabase() {
       )
     `;
 
-    // Create buyers table
     await sql`
       CREATE TABLE IF NOT EXISTS buyers (
         id SERIAL PRIMARY KEY,
@@ -49,7 +50,6 @@ export async function initDatabase() {
       )
     `;
 
-    // Create products table
     await sql`
       CREATE TABLE IF NOT EXISTS products (
         id SERIAL PRIMARY KEY,
@@ -70,7 +70,6 @@ export async function initDatabase() {
       )
     `;
 
-    // Create inquiries table
     await sql`
       CREATE TABLE IF NOT EXISTS inquiries (
         id SERIAL PRIMARY KEY,
@@ -86,33 +85,37 @@ export async function initDatabase() {
       )
     `;
 
-    // Ensure we add the extra columns for an existing DB without wiping data
+    // Execute ALTER TABLE in parallel
     try {
-      await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS brand VARCHAR(100)`;
-      await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS model_number VARCHAR(100)`;
-      await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS manufactured_at VARCHAR(255)`;
-      await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS location VARCHAR(255)`;
-      await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS additional_info TEXT`;
-      await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS service_type VARCHAR(50) DEFAULT 'Supply'`;
-      await sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`;
-      await sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS target_price DECIMAL(10,2)`;
-      await sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS surge_email_sent BOOLEAN DEFAULT FALSE`;
-      await sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS broadcast_id VARCHAR(100)`;
+      await Promise.all([
+        sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS brand VARCHAR(100)`,
+        sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS model_number VARCHAR(100)`,
+        sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS manufactured_at VARCHAR(255)`,
+        sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS location VARCHAR(255)`,
+        sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS additional_info TEXT`,
+        sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS service_type VARCHAR(50) DEFAULT 'Supply'`,
+        sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`,
+        sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS target_price DECIMAL(10,2)`,
+        sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS surge_email_sent BOOLEAN DEFAULT FALSE`,
+        sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS broadcast_id VARCHAR(100)`
+      ]);
     } catch (e) {
       console.log('Columns likely already exist or minor error:', e.message);
     }
 
-    // Enable pg_trgm extension for fuzzy search
+    // Enable pg_trgm extension for fuzzy search in parallel
     try {
       await sql`CREATE EXTENSION IF NOT EXISTS pg_trgm`;
-      await sql`CREATE INDEX IF NOT EXISTS idx_products_name_trgm ON products USING GIN (product_name gin_trgm_ops)`;
-      await sql`CREATE INDEX IF NOT EXISTS idx_products_partnum_trgm ON products USING GIN (part_number gin_trgm_ops)`;
+      await Promise.all([
+        sql`CREATE INDEX IF NOT EXISTS idx_products_name_trgm ON products USING GIN (product_name gin_trgm_ops)`,
+        sql`CREATE INDEX IF NOT EXISTS idx_products_partnum_trgm ON products USING GIN (part_number gin_trgm_ops)`
+      ]);
       console.log('✅ pg_trgm extension and fuzzy search indexes ready');
     } catch (e) {
       console.log('pg_trgm setup note:', e.message);
     }
 
-    console.log('✅ Database tables initialized successfully');
+    console.log('✅ Database tables initialized successfully in', ((Date.now() - start) / 1000).toFixed(2), 'seconds');
   } catch (error) {
     console.error('❌ Database initialization error:', error.message);
     throw error;

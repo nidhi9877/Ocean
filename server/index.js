@@ -111,7 +111,9 @@ app.get('*', (req, res) => {
 // Initialize database and start server
 async function start() {
   try {
-    await initDatabase();
+    initDatabase().catch(err => {
+      console.error('Background DB init error:', err);
+    });
     initCronJobs();
     app.listen(PORT, () => {
       console.log(`🚢 Marine Marketplace API running on http://localhost:${PORT}`);
