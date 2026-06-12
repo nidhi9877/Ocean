@@ -1068,65 +1068,149 @@ body {
   background: rgba(37, 99, 235, 0.03);
 }
 
-/* Provider Products Table — compact spreadsheet style */
+/* ===== Excel-like Spreadsheet Table ===== */
 .provider-products-table-wrap {
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: auto;
+  max-height: 75vh;
   scrollbar-width: thin;
-  scrollbar-color: var(--accent-primary) var(--bg-surface);
-  border-radius: var(--radius-lg);
+  scrollbar-color: #b0b8c8 #f0f2f5;
+  border: 2px solid #8ea0bc;
+  border-radius: 4px;
+  background: #fff;
 }
 
 .provider-products-table-wrap::-webkit-scrollbar {
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 .provider-products-table-wrap::-webkit-scrollbar-track {
-  background: var(--bg-surface);
+  background: #f0f2f5;
 }
 
 .provider-products-table-wrap::-webkit-scrollbar-thumb {
-  background: var(--accent-primary);
-  border-radius: 4px;
-  opacity: 0.6;
+  background: #b0b8c8;
+  border-radius: 5px;
+  border: 2px solid #f0f2f5;
+}
+
+.provider-products-table-wrap::-webkit-scrollbar-thumb:hover {
+  background: #8ea0bc;
 }
 
 .provider-products-table {
   min-width: 1050px;
   width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
 }
 
+/* Sticky header like Excel's frozen top row */
 .provider-products-table thead {
   position: sticky;
   top: 0;
-  z-index: 2;
-  background: var(--bg-surface);
+  z-index: 3;
 }
 
 .provider-products-table th {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.7rem;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
   white-space: nowrap;
-  border-bottom: 2px solid var(--border-color);
-  background: var(--bg-surface);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: #333;
+  background: linear-gradient(180deg, #e8ecf1 0%, #dce1e8 100%);
+  border: 1px solid #b0b8c8;
+  border-top: none;
+  text-align: left;
+  user-select: none;
+  position: relative;
 }
 
+/* Row number column — narrow like Excel */
+.provider-products-table th:first-child,
+.provider-products-table td:first-child {
+  width: 40px;
+  min-width: 40px;
+  max-width: 40px;
+  text-align: center;
+  color: #666;
+  font-weight: 600;
+  background: linear-gradient(180deg, #e8ecf1 0%, #dce1e8 100%);
+  border-right: 2px solid #b0b8c8;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+.provider-products-table td:first-child {
+  background: #eef0f4;
+  font-size: 0.75rem;
+  z-index: 1;
+}
+
+/* Cell styling — the core Excel look */
 .provider-products-table td {
-  padding: 0.4rem 0.75rem;
+  padding: 4px 8px;
   font-size: 0.82rem;
   white-space: nowrap;
-  border-bottom: 1px solid var(--border-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid #d4d8e0;
+  color: #1a1a2e;
+  background: #fff;
+  cursor: default;
+  height: 32px;
+  line-height: 1.4;
+  transition: none;
 }
 
-.provider-products-table tbody tr:nth-child(even) {
-  background: rgba(37, 99, 235, 0.015);
+/* Alternating row stripes — very subtle like Excel */
+.provider-products-table tbody tr:nth-child(even) td {
+  background: #f8f9fb;
+}
+.provider-products-table tbody tr:nth-child(even) td:first-child {
+  background: #e8eaef;
 }
 
-.provider-products-table tbody tr:hover {
-  background: rgba(37, 99, 235, 0.05);
+/* Hover — subtle blue tint */
+.provider-products-table tbody tr:hover td {
+  background: #e8f0fe;
+}
+.provider-products-table tbody tr:hover td:first-child {
+  background: #d6e0f0;
 }
 
-/* Location column — truncate to one line with tooltip */
+/* Selected row — dark blue highlight like Excel */
+.provider-products-table tbody tr.spreadsheet-row-selected td {
+  background: #c5d6f1 !important;
+  color: #0d1b3e;
+  font-weight: 500;
+}
+.provider-products-table tbody tr.spreadsheet-row-selected td:first-child {
+  background: #a8bfe0 !important;
+  color: #0d1b3e;
+  font-weight: 700;
+}
+
+/* Editing row — blue left accent */
+.provider-products-table tbody tr.editing-row td {
+  background: #e3ecfa !important;
+  border-color: #b8cceb;
+}
+.provider-products-table tbody tr.editing-row td:first-child {
+  background: #c9d8f0 !important;
+  border-right: 2px solid #6a9be8;
+}
+
+/* Combined: selected + editing */
+.provider-products-table tbody tr.spreadsheet-row-selected.editing-row td {
+  background: #d0ddf5 !important;
+}
+
+/* Location column — truncate */
 .location-cell {
   display: inline-block;
   max-width: 130px;
@@ -1137,54 +1221,165 @@ body {
   cursor: default;
 }
 
-/* Inline edit input inside table */
+/* Excel-style inline edit input */
 .inline-edit-input {
   width: 100%;
-  min-width: 60px;
-  padding: 0.2rem 0.4rem;
-  font-size: 0.8rem;
+  min-width: 50px;
+  padding: 2px 4px;
+  font-size: 0.82rem;
   font-family: 'Inter', sans-serif;
-  border: 1.5px solid var(--accent-primary);
-  border-radius: 4px;
-  background: white;
-  color: var(--text-primary);
+  border: 2px solid #4285f4;
+  border-radius: 0;
+  background: #fff;
+  color: #1a1a2e;
   outline: none;
-  transition: box-shadow var(--transition-fast);
+  height: 26px;
+  box-sizing: border-box;
+  transition: none;
 }
 
 .inline-edit-input:focus {
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  box-shadow: 0 0 0 1px #4285f4;
+  background: #fff;
 }
 
-/* Editing row highlight */
-.editing-row {
-  background: rgba(37, 99, 235, 0.04) !important;
-  box-shadow: inset 3px 0 0 var(--accent-primary);
+/* Excel-style select dropdown in cells */
+.inline-edit-input[class] select,
+select.inline-edit-input {
+  height: 26px;
+  padding: 2px 4px;
+  border: 2px solid #4285f4;
+  border-radius: 0;
+  font-size: 0.82rem;
 }
 
-/* Table action buttons */
+/* Delete button in cells — minimal */
 .table-action-btn {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 0.9rem;
-  padding: 0.2rem 0.4rem;
-  border-radius: var(--radius-sm);
-  transition: all var(--transition-fast);
-  opacity: 0.5;
+  font-size: 0.85rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+  opacity: 0.35;
 }
 
 .table-action-btn:hover {
   opacity: 1;
-  transform: scale(1.15);
-}
-
-.table-action-btn.edit-btn:hover {
-  background: rgba(37, 99, 235, 0.08);
+  background: #fde8e8;
+  transform: none;
 }
 
 .provider-products-table tbody tr:hover .table-action-btn {
-  opacity: 0.85;
+  opacity: 0.7;
+}
+
+/* Spreadsheet toolbar styles */
+.spreadsheet-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: linear-gradient(180deg, #f5f7fa 0%, #edf0f5 100%);
+  border: 2px solid #8ea0bc;
+  border-bottom: 1px solid #b0b8c8;
+  border-radius: 4px 4px 0 0;
+  flex-wrap: wrap;
+}
+
+.spreadsheet-toolbar .toolbar-btn {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  border: 1px solid #b0b8c8;
+  border-radius: 3px;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.spreadsheet-toolbar .toolbar-btn:hover {
+  background: #e8ecf1;
+  border-color: #8ea0bc;
+}
+
+.spreadsheet-toolbar .toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.spreadsheet-toolbar .toolbar-btn.toolbar-btn-primary {
+  background: #4285f4;
+  color: #fff;
+  border-color: #3367d6;
+}
+.spreadsheet-toolbar .toolbar-btn.toolbar-btn-primary:hover {
+  background: #3367d6;
+}
+
+.spreadsheet-toolbar .toolbar-btn.toolbar-btn-danger {
+  color: #c0392b;
+  border-color: #e6b3ae;
+}
+.spreadsheet-toolbar .toolbar-btn.toolbar-btn-danger:hover {
+  background: #fde8e8;
+  border-color: #c0392b;
+}
+
+.spreadsheet-toolbar .toolbar-btn.toolbar-btn-success {
+  background: #34a853;
+  color: #fff;
+  border-color: #2d8f47;
+}
+.spreadsheet-toolbar .toolbar-btn.toolbar-btn-success:hover {
+  background: #2d8f47;
+}
+
+.spreadsheet-toolbar .toolbar-separator {
+  width: 1px;
+  height: 20px;
+  background: #b0b8c8;
+  margin: 0 4px;
+}
+
+.spreadsheet-toolbar .toolbar-info {
+  font-size: 0.75rem;
+  color: #555;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+/* Status bar at bottom like Excel */
+.spreadsheet-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px;
+  background: #e8ecf1;
+  border: 2px solid #8ea0bc;
+  border-top: 1px solid #b0b8c8;
+  border-radius: 0 0 4px 4px;
+  font-size: 0.72rem;
+  color: #555;
+}
+
+/* Product category pill removed — show as plain text in spreadsheet */
+.provider-products-table .product-category {
+  display: inline;
+  padding: 0;
+  background: none;
+  color: inherit;
+  border-radius: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  margin: 0;
 }
 
 /* ===== Tabs ===== */

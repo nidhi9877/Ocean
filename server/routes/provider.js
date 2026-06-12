@@ -433,6 +433,65 @@ router.post('/products/bulk-delete', authenticateToken, async (req, res) => {
   }
 });
 
+// Bulk update multiple products
+router.post('/products/bulk-update', authenticateToken, async (req, res) => {
+  try {
+    const { products } = req.body;
+    if (!Array.isArray(products) || products.length === 0) return res.status(400).json({ error: 'No products provided' });
+
+    const existingProvider = await sql`SELECT id FROM providers WHERE user_id = ${req.user.id}`;
+    if (existingProvider.length === 0) return res.status(404).json({ error: 'Provider profile not found' });
+    const providerId = existingProvider[0].id;
+
+    for (const p of products) {
+      if (!p.id || String(p.id).startsWith('temp_')) {
+        await sql`
+          INSERT INTO products (
+            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, service_type
+          )
+          VALUES (
+            ${providerId}, 
+            ${p.product_name || ''}, 
+            ${p.category || ''}, 
+            ${p.brand || null}, 
+            ${p.model_number || null}, 
+            ${p.part_number || null}, 
+            ${p.manufactured_at || null}, 
+            ${p.location || null}, 
+            ${p.price || 0}, 
+            ${p.quantity || 0}, 
+            ${p.description || null},
+            ${p.additional_info || null},
+            ${p.service_type || 'Supply'}
+          )
+        `;
+      } else {
+        await sql`
+          UPDATE products SET
+            product_name = ${p.product_name},
+            category = ${p.category},
+            brand = ${p.brand || null},
+            model_number = ${p.model_number || null},
+            part_number = ${p.part_number || null},
+            manufactured_at = ${p.manufactured_at || null},
+            location = ${p.location || null},
+            price = ${p.price || 0},
+            quantity = ${p.quantity || 0},
+            description = ${p.description || null},
+            additional_info = ${p.additional_info || null},
+            service_type = ${p.service_type || 'Supply'}
+          WHERE id = ${p.id} AND provider_id = ${providerId}
+        `;
+      }
+    }
+    
+    res.json({ message: 'Products updated successfully' });
+  } catch (error) {
+    console.error('Bulk update error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Delete all products
 router.delete('/products', authenticateToken, async (req, res) => {
   try {
