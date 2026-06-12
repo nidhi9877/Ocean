@@ -268,6 +268,8 @@ export async function sendInquiryEmail({
   targetPrice,
   deliveryPort,
   inquiryId,
+  cc,
+  bcc,
 }) {
   const html = buildInquiryEmailHTML({
     vendorName,
@@ -281,13 +283,18 @@ export async function sendInquiryEmail({
     inquiryId,
   });
 
-  const { data, error } = await resend.emails.send({
+  const mailOptions = {
     from: SYSTEM_FROM,
     to: vendorEmail,
     replyTo: buyerEmail,  // CRITICAL: vendor replies go directly to the buyer
     subject: `🚢 New Inquiry: ${productName} — Vortex Marketplace`,
     html,
-  });
+  };
+
+  if (cc) mailOptions.cc = cc;
+  if (bcc) mailOptions.bcc = bcc;
+
+  const { data, error } = await resend.emails.send(mailOptions);
 
   if (error) {
     console.error('❌ Resend email error:', error);
@@ -301,9 +308,9 @@ export async function sendInquiryEmail({
 
 // ─── Legacy Notification (kept for backward compatibility) ───────────────────────
 // Lightweight notification used by other parts of the system (e.g., status changes).
-export async function sendProviderNotification(providerEmail, buyerName, productName) {
+export async function sendProviderNotification(providerEmail, buyerName, productName, cc, bcc) {
   try {
-    const { data, error } = await resend.emails.send({
+    const mailOptions = {
       from: SYSTEM_FROM,
       to: providerEmail,
       subject: `New Inquiry Received: ${productName}`,
@@ -320,7 +327,12 @@ export async function sendProviderNotification(providerEmail, buyerName, product
           <p>Best regards,<br/><strong>Vortex Team</strong></p>
         </div>
       `,
-    });
+    };
+
+    if (cc) mailOptions.cc = cc;
+    if (bcc) mailOptions.bcc = bcc;
+
+    const { data, error } = await resend.emails.send(mailOptions);
 
     if (error) {
       console.error('Notification email error:', error);

@@ -12,7 +12,7 @@ const router = Router();
 // details. Sets Reply-To to the buyer's email so vendors can reply directly.
 router.post('/inquiries', authenticateToken, async (req, res) => {
   try {
-    const { selections, destination_location, delivery_requirements } = req.body;
+    const { selections, destination_location, delivery_requirements, cc, bcc } = req.body;
     // selections is an array of objects { provider_id, product_id }
     
     if (!selections || !Array.isArray(selections) || selections.length === 0) {
@@ -41,58 +41,20 @@ router.post('/inquiries', authenticateToken, async (req, res) => {
     // Generate a single broadcast ID for this batch of inquiries
     const broadcast_id = crypto.randomUUID();
 
-    let sentCount = 0;
-    let failedCount = 0;
-
     for (const sel of selections) {
       // Insert inquiry into DB
-      const insertResult = await sql`
-        INSERT INTO inquiries (buyer_id, provider_id, product_id, destination_location, target_price, broadcast_id)
-        VALUES (${buyer_id}, ${sel.provider_id}, ${sel.product_id}, ${destination_location}, NULL, ${broadcast_id})
-        RETURNING id
+      await sql`
+        INSERT INTO inquiries (buyer_id, provider_id, product_id, destination_location, target_price, broadcast_id, cc, bcc)
+        VALUES (${buyer_id}, ${sel.provider_id}, ${sel.product_id}, ${destination_location}, NULL, ${broadcast_id}, ${cc || null}, ${bcc || null})
       `;
-
-      const inquiryId = insertResult[0].id;
-
-      // Fetch vendor + product details for the email
-      const providerData = await sql`
-        SELECT company_name, email, contact_person FROM providers WHERE id = ${sel.provider_id}
-      `;
-      const productData = await sql`
-        SELECT product_name, brand, part_number, price FROM products WHERE id = ${sel.product_id}
-      `;
-
-      if (providerData.length > 0 && productData.length > 0) {
-        try {
-          await sendInquiryEmail({
-            vendorName: providerData[0].company_name,
-            vendorEmail: providerData[0].email,
-            buyerName,
-            buyerEmail,
-            productName: productData[0].product_name,
-            brand: productData[0].brand,
-            partNumber: productData[0].part_number,
-            targetPrice: 'Open to negotiation', // Fallback since target price was removed
-            deliveryPort: destination_location,
-            deliveryRequirements: delivery_requirements,
-            inquiryId,
-          });
-          sentCount++;
-        } catch (emailErr) {
-          console.error(`Failed to send email for inquiry ${inquiryId}:`, emailErr.message);
-          failedCount++;
-        }
-      }
     }
 
     res.status(201).json({ 
-      message: `Inquiries sent successfully. ${sentCount} email(s) delivered.${failedCount > 0 ? ` ${failedCount} failed.` : ''}`,
-      sentCount,
-      failedCount,
+      message: 'Inquiries registered successfully.'
     });
   } catch (error) {
     console.error('Error posting inquiry:', error);
-    res.status(500).json({ error: 'Internal server error while sending inquiry' });
+    res.status(500).json({ error: 'Internal server error while registering inquiry' });
   }
 });
 
