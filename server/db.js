@@ -81,6 +81,8 @@ export async function initDatabase() {
         surge_email_sent BOOLEAN DEFAULT FALSE,
         broadcast_id VARCHAR(100),
         status VARCHAR(50) DEFAULT 'pending',
+        cc VARCHAR(255),
+        bcc VARCHAR(255),
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
@@ -97,7 +99,9 @@ export async function initDatabase() {
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS target_price DECIMAL(10,2)`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS surge_email_sent BOOLEAN DEFAULT FALSE`,
-        sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS broadcast_id VARCHAR(100)`
+        sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS broadcast_id VARCHAR(100)`,
+        sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS cc VARCHAR(255)`,
+        sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS bcc VARCHAR(255)`
       ]);
     } catch (e) {
       console.log('Columns likely already exist or minor error:', e.message);
