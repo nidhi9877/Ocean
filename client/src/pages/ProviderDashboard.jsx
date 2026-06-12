@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
+import UploadModal from '../components/UploadModal';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -14,17 +15,41 @@ export default function ProviderDashboard() {
   const [provider, setProvider] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState(null);
-  const [editData, setEditData] = useState({});
+  const [editingIds, setEditingIds] = useState([]);
+  const [editDataMap, setEditDataMap] = useState({});
+  const [isBulkEditing, setIsBulkEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [deleting, setDeleting] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
+  const spreadsheetRef = useRef(null);
 
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  // Click outside spreadsheet to deselect all — like Excel
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (spreadsheetRef.current && !spreadsheetRef.current.contains(e.target)) {
+        // Deselect single-clicked rows
+        setSelectedIds([]);
+        
+        // If editing individual rows (not bulk "Edit All" mode), discard edits when clicking outside
+        if (!isBulkEditing) {
+          setEditingIds([]);
+          setEditDataMap({});
+          // Remove any newly added unsaved temporary rows
+          setProducts(prev => prev.filter(p => !String(p.id).startsWith('temp_')));
+        }
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isBulkEditing]);
 
   const fetchProfile = async () => {
     try {
@@ -40,48 +65,152 @@ export default function ProviderDashboard() {
     }
   };
 
-  const startEditing = (product) => {
-    setEditingId(product.id);
-    setEditData({
-      product_name: product.product_name || '',
-      category: product.category || '',
-      part_number: product.part_number || '',
-      brand: product.brand || '',
-      model_number: product.model_number || '',
-      location: product.location || '',
-      quantity: product.quantity || 0,
-      price: product.price || 0,
-      description: product.description || '',
-      manufactured_at: product.manufactured_at || '',
-      additional_info: product.additional_info || '',
-      service_type: product.service_type || 'Supply',
-      email: product.email || '',
+  const startBulkEdit = () => {
+    setIsBulkEditing(true);
+    const newEditDataMap = {};
+    products.forEach(p => {
+      newEditDataMap[p.id] = {
+        product_name: p.product_name || '',
+        category: p.category || '',
+        part_number: p.part_number || '',
+        brand: p.brand || '',
+        model_number: p.model_number || '',
+        location: p.location || '',
+        quantity: p.quantity || 0,
+        price: p.price || 0,
+        description: p.description || '',
+        manufactured_at: p.manufactured_at || '',
+        additional_info: p.additional_info || '',
+        service_type: p.service_type || 'Supply',
+        id: p.id
+      };
     });
+    setEditingIds(products.map(p => p.id));
+    setEditDataMap(newEditDataMap);
   };
 
-  const cancelEditing = () => {
-    setEditingId(null);
-    setEditData({});
+  const startEditSelected = () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkEditing(false);
+    const newEditDataMap = {};
+    products.forEach(p => {
+      if (selectedIds.includes(p.id)) {
+        newEditDataMap[p.id] = {
+          product_name: p.product_name || '',
+          category: p.category || '',
+          part_number: p.part_number || '',
+          brand: p.brand || '',
+          model_number: p.model_number || '',
+          location: p.location || '',
+          quantity: p.quantity || 0,
+          price: p.price || 0,
+          description: p.description || '',
+          manufactured_at: p.manufactured_at || '',
+          additional_info: p.additional_info || '',
+          service_type: p.service_type || 'Supply',
+          id: p.id
+        };
+      }
+    });
+    setEditingIds(selectedIds);
+    setEditDataMap(newEditDataMap);
   };
 
-  const handleEditChange = (field, value) => {
-    setEditData(prev => ({ ...prev, [field]: value }));
+
+  const startEditingRow = (product) => {
+    // Don't allow toggling individual rows during bulk edit
+    if (isBulkEditing) return;
+    if (editingIds.includes(product.id)) {
+      // Double-click again on same row → exit edit mode for that row
+      setEditingIds(prev => prev.filter(id => id !== product.id));
+      setEditDataMap(prev => {
+        const copy = { ...prev };
+        delete copy[product.id];
+        return copy;
+      });
+    } else {
+      // Double-click on a new row → clear selection, edit ONLY this row
+      setSelectedIds([]);
+      setEditingIds([product.id]);
+      setEditDataMap({
+        [product.id]: {
+          product_name: product.product_name || '',
+          category: product.category || '',
+          part_number: product.part_number || '',
+          brand: product.brand || '',
+          model_number: product.model_number || '',
+          location: product.location || '',
+          quantity: product.quantity || 0,
+          price: product.price || 0,
+          description: product.description || '',
+          manufactured_at: product.manufactured_at || '',
+          additional_info: product.additional_info || '',
+          service_type: product.service_type || 'Supply',
+          id: product.id
+        }
+      });
+    }
   };
 
-  const saveEdit = async () => {
+  const cancelBulkEdits = () => {
+    setIsBulkEditing(false);
+    setEditingIds([]);
+    setEditDataMap({});
+    // Remove any unsaved temporary rows
+    setProducts(prev => prev.filter(p => !String(p.id).startsWith('temp_')));
+  };
+
+  const addNewRow = () => {
+    const tempId = `temp_${Date.now()}`;
+    const newRow = {
+      id: tempId,
+      product_name: '',
+      category: '',
+      brand: '',
+      model_number: '',
+      part_number: '',
+      manufactured_at: '',
+      location: '',
+      quantity: 1,
+      price: 0,
+      description: '',
+      additional_info: '',
+      service_type: 'Supply'
+    };
+    
+    // Add to products
+    setProducts(prev => [newRow, ...prev]);
+    
+    // Auto-enter edit mode for this row
+    setEditingIds(prev => [...prev, tempId]);
+    setEditDataMap(prev => ({
+      ...prev,
+      [tempId]: { ...newRow }
+    }));
+  };
+
+  const handleBulkEditChange = (id, field, value) => {
+    setEditDataMap(prev => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: value }
+    }));
+  };
+
+  const saveBulkEdits = async () => {
     setSaving(true);
     try {
-      await axios.put(`${API}/provider/products/${editingId}`, editData, {
+      const updatedProducts = editingIds.map(id => editDataMap[id]);
+      await axios.post(`${API}/provider/products/bulk-update`, { products: updatedProducts }, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      // Update local state
-      setProducts(prev =>
-        prev.map(p => p.id === editingId ? { ...p, ...editData } : p)
-      );
-      setEditingId(null);
-      setEditData({});
+      // Refetch profile to get the real database IDs for any newly inserted rows
+      await fetchProfile();
+      
+      setIsBulkEditing(false);
+      setEditingIds([]);
+      setEditDataMap({});
     } catch (err) {
-      console.error('Failed to update product:', err);
+      console.error('Failed to update products:', err);
       alert(err.response?.data?.error || 'Failed to save changes');
     } finally {
       setSaving(false);
@@ -97,6 +226,11 @@ export default function ProviderDashboard() {
   };
 
   const handleSelect = (id) => {
+    // If user starts selecting rows, exit any individual row edits
+    if (editingIds.length > 0 && !isBulkEditing) {
+      setEditingIds([]);
+      setEditDataMap({});
+    }
     setSelectedIds(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
@@ -104,6 +238,14 @@ export default function ProviderDashboard() {
 
   const deleteProduct = async (id) => {
     if (!window.confirm('Are you sure you want to delete this product?')) return;
+    
+    // If it's a temporary unsaved row, just remove it from frontend
+    if (String(id).startsWith('temp_')) {
+      setProducts(prev => prev.filter(p => p.id !== id));
+      setSelectedIds(prev => prev.filter(i => i !== id));
+      return;
+    }
+
     setDeleting(true);
     try {
       await axios.delete(`${API}/provider/products/${id}`, {
@@ -122,11 +264,16 @@ export default function ProviderDashboard() {
   const bulkDelete = async () => {
     if (selectedIds.length === 0) return;
     if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} selected products?`)) return;
+    
+    const realIds = selectedIds.filter(id => !String(id).startsWith('temp_'));
+    
     setDeleting(true);
     try {
-      await axios.post(`${API}/provider/products/bulk-delete`, { ids: selectedIds }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      if (realIds.length > 0) {
+        await axios.post(`${API}/provider/products/bulk-delete`, { ids: realIds }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
       setProducts(prev => prev.filter(p => !selectedIds.includes(p.id)));
       setSelectedIds([]);
     } catch (err) {
@@ -139,11 +286,16 @@ export default function ProviderDashboard() {
 
   const bulkUpdateServiceType = async (serviceType) => {
     if (selectedIds.length === 0) return;
+    
+    const realIds = selectedIds.filter(id => !String(id).startsWith('temp_'));
+    
     setSaving(true);
     try {
-      await axios.post(`${API}/provider/products/bulk-update-service-type`, { ids: selectedIds, serviceType }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      if (realIds.length > 0) {
+        await axios.post(`${API}/provider/products/bulk-update-service-type`, { ids: realIds, serviceType }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
       setProducts(prev => prev.map(p => selectedIds.includes(p.id) ? { ...p, service_type: serviceType } : p));
       setSelectedIds([]);
     } catch (err) {
@@ -175,8 +327,8 @@ export default function ProviderDashboard() {
   const downloadCSV = () => {
     if (products.length === 0) return;
     
-    // Headers: Equipment, Manufacturer, Model number, year of manufacturer, Part Name, Part Numer, Stock location, Qunatity, Service Type, Mail
-    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type', 'Mail'];
+    // Headers: Equipment, Manufacturer, Model number, year of manufacturer, Part Name, Part Numer, Stock location, Qunatity, Service Type
+    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type'];
     
     const rows = products.map(p => [
       p.category || '',
@@ -187,8 +339,7 @@ export default function ProviderDashboard() {
       p.part_number || '',
       p.location || '',
       p.quantity || 0,
-      p.service_type || 'Supply',
-      p.email || provider?.email || ''
+      p.service_type || 'Supply'
     ]);
     
     const csvContent = [
@@ -206,9 +357,31 @@ export default function ProviderDashboard() {
     document.body.removeChild(link);
   };
 
+  const highlightText = (text, query) => {
+    if (!query || text === undefined || text === null || text === '') return text || '—';
+    const strText = String(text);
+    if (!strText) return '—';
+    
+    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedQuery})`, 'gi');
+    const parts = strText.split(regex);
+    
+    if (parts.length === 1) return strText;
+    
+    return parts.map((part, i) => 
+      regex.test(part) ? (
+        <mark key={i} style={{ backgroundColor: '#fef08a', color: '#854d0e', borderRadius: '2px', padding: '0 2px', fontWeight: 600 }}>
+          {part}
+        </mark>
+      ) : (
+        <span key={i}>{part}</span>
+      )
+    );
+  };
+
   const downloadExcel = () => {
     if (products.length === 0) return;
-    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type', 'Mail'];
+    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type'];
     const rows = products.map(p => [
       p.category || '',
       p.brand || '',
@@ -218,8 +391,7 @@ export default function ProviderDashboard() {
       p.part_number || '',
       p.location || '',
       p.quantity || 0,
-      p.service_type || 'Supply',
-      p.email || provider?.email || ''
+      p.service_type || 'Supply'
     ]);
     
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -231,7 +403,7 @@ export default function ProviderDashboard() {
   const downloadPDF = () => {
     if (products.length === 0) return;
     const doc = new jsPDF();
-    const headers = [['Equipment', 'Manufacturer', 'Model', 'Year', 'Part Name', 'Part No.', 'Location', 'Qty', 'Service', 'Mail']];
+    const headers = [['Equipment', 'Manufacturer', 'Model', 'Year', 'Part Name', 'Part No.', 'Location', 'Qty', 'Service']];
     const rows = products.map(p => [
       p.category || '',
       p.brand || '',
@@ -241,8 +413,7 @@ export default function ProviderDashboard() {
       p.part_number || '',
       p.location || '',
       p.quantity || 0,
-      p.service_type || 'Supply',
-      p.email || provider?.email || ''
+      p.service_type || 'Supply'
     ]);
     
     doc.autoTable({
@@ -258,11 +429,11 @@ export default function ProviderDashboard() {
 
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
-  const editInput = (field, style = {}) => (
+  const editInput = (id, field, style = {}) => (
     <input
       className="inline-edit-input"
-      value={editData[field] || ''}
-      onChange={(e) => handleEditChange(field, e.target.value)}
+      value={editDataMap[id]?.[field] || ''}
+      onChange={(e) => handleBulkEditChange(id, field, e.target.value)}
       style={style}
       autoFocus={field === 'product_name'}
     />
@@ -319,9 +490,9 @@ export default function ProviderDashboard() {
 
             <button 
               className="btn btn-primary"
-              onClick={() => navigate('/provider/add-options')}
+              onClick={() => setShowUploadModal(true)}
             >
-              + Add New Parts
+              📤 Master Upload
             </button>
             
             <button 
@@ -401,150 +572,237 @@ export default function ProviderDashboard() {
               </div>
             </div>
 
-            {/* Products Table */}
+            {/* ===== Excel-like Spreadsheet ===== */}
             <div style={{ marginTop: '0.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
-                <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.3rem', color: 'var(--text-primary)', margin: 0 }}>
-                  Your Products
-                </h2>
-                {products.length > 0 && (
-                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                    {selectedIds.length > 0 && (
-                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-card-hover)', padding: '0.2rem 0.5rem', borderRadius: 'var(--radius-sm)' }}>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Selected ({selectedIds.length}):</span>
-                        <button className="btn btn-secondary" onClick={() => bulkUpdateServiceType('Supply')} disabled={saving} style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}>
-                          Set Supply
-                        </button>
-                        <button className="btn btn-secondary" onClick={() => bulkUpdateServiceType('Supply and Service')} disabled={saving} style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}>
-                          Set Supply & Service
-                        </button>
-                        <button className="btn btn-primary" onClick={bulkDelete} disabled={deleting} style={{ background: '#e74c3c', borderColor: '#e74c3c', fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}>
-                          🗑️ Delete
-                        </button>
-                      </div>
-                    )}
-                    <button className="btn btn-secondary" onClick={deleteAll} disabled={deleting} style={{ color: '#e74c3c', borderColor: '#e74c3c', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
-                      ⚠️ Delete Entire Sheet
-                    </button>
-                  </div>
-                )}
-              </div>
+              <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.3rem', color: 'var(--text-primary)', margin: '0 0 0.75rem 0' }}>
+                Your Products
+              </h2>
+
               {products.length === 0 ? (
                 <p style={{ color: 'var(--text-muted)' }}>No products listed yet.</p>
               ) : (
-                <div className="glass-card provider-products-table-wrap" style={{ padding: 0, animation: 'slideUp 0.5s ease-out' }}>
-                  <table className="data-table provider-products-table">
-                    <thead>
-                      <tr>
-                        <th style={{ width: '40px', textAlign: 'center' }}>
-                          <input 
-                            type="checkbox" 
-                            checked={products.length > 0 && selectedIds.length === products.length}
-                            onChange={handleSelectAll}
-                            style={{ cursor: 'pointer' }}
-                          />
-                        </th>
-                        <th>#</th>
-                        <th>Equipment</th>
-                        <th>Manufacturer</th>
-                        <th>Model number</th>
-                        <th>year of manufacturer</th>
-                        <th>Part Name</th>
-                        <th>Part Numer</th>
-                        <th>Stock location</th>
-                        <th>Qunatity</th>
-                        <th>Service Type</th>
-                        <th>Mail</th>
-                        <th style={{ textAlign: 'center' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {products.map((product, idx) => (
-                        <tr key={product.id} className={editingId === product.id ? 'editing-row' : ''}>
-                          <td style={{ textAlign: 'center' }}>
-                            <input 
-                              type="checkbox" 
-                              checked={selectedIds.includes(product.id)}
-                              onChange={() => handleSelect(product.id)}
-                              style={{ cursor: 'pointer' }}
-                            />
-                          </td>
-                          <td style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{idx + 1}</td>
+                <div ref={spreadsheetRef} style={{ animation: 'slideUp 0.5s ease-out' }}>
+                  {/* Search Bar - above toolbar */}
+                  <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+                    <input 
+                      type="text" 
+                      placeholder="🔍 Search parts, categories, brands..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{ 
+                        padding: '6px 12px', 
+                        fontSize: '0.85rem', 
+                        borderRadius: '4px', 
+                        border: '1px solid #b0b8c8', 
+                        width: '250px',
+                        outline: 'none',
+                        fontFamily: "'Inter', sans-serif"
+                      }}
+                    />
+                  </div>
 
-                          {editingId === product.id ? (
-                            <>
-                              <td>{editInput('category')}</td>
-                              <td>{editInput('brand')}</td>
-                              <td>{editInput('model_number')}</td>
-                              <td>{editInput('manufactured_at')}</td>
-                              <td>{editInput('product_name')}</td>
-                              <td>{editInput('part_number')}</td>
-                              <td>{editInput('location')}</td>
-                              <td>{editInput('quantity', { width: '60px', textAlign: 'center' })}</td>
-                              <td>
-                                <select className="inline-edit-input" value={editData.service_type || 'Supply'} onChange={(e) => handleEditChange('service_type', e.target.value)}>
-                                  <option value="Supply">Supply</option>
-                                  <option value="Supply and Service">Supply and Service</option>
-                                </select>
-                              </td>
-                              <td>{editInput('email')}</td>
-                              <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                                <button
-                                  className="btn btn-primary btn-sm"
-                                  onClick={saveEdit}
-                                  disabled={saving}
-                                  style={{ marginRight: '0.35rem' }}
-                                >
-                                  {saving ? '...' : '✓ Save'}
-                                </button>
-                                <button
-                                  className="btn btn-secondary btn-sm"
-                                  onClick={cancelEditing}
-                                  disabled={saving}
-                                >
-                                  ✕
-                                </button>
-                              </td>
-                            </>
-                          ) : (
-                            <>
-                              <td><span className="product-category">{product.category || '—'}</span></td>
-                              <td>{product.brand || '—'}</td>
-                              <td>{product.model_number || '—'}</td>
-                              <td>{product.manufactured_at || '—'}</td>
-                              <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{product.product_name || '—'}</td>
-                              <td>{product.part_number || '—'}</td>
-                              <td><span className="location-cell" title={product.location || ''}>{product.location || '—'}</span></td>
-                              <td style={{ textAlign: 'center' }}>{product.quantity || 0}</td>
-                              <td>{product.service_type || 'Supply'}</td>
-                              <td>{product.email || '—'}</td>
-                              <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                                <button
-                                  className="table-action-btn edit-btn"
-                                  onClick={() => startEditing(product)}
-                                  title="Edit product"
-                                >
-                                  ✏️
-                                </button>
-                                <button
-                                  className="table-action-btn delete-btn"
-                                  onClick={() => deleteProduct(product.id)}
-                                  disabled={deleting}
-                                  title="Delete product"
-                                  style={{ color: '#e74c3c', marginLeft: '0.25rem' }}
-                                >
-                                  🗑️
-                                </button>
-                              </td>
-                            </>
-                          )}
+                  {/* Spreadsheet Toolbar — like Excel's ribbon */}
+                  <div className="spreadsheet-toolbar">
+                    {isBulkEditing || editingIds.length > 0 ? (
+                      <>
+                        <button className="toolbar-btn toolbar-btn-success" onClick={saveBulkEdits} disabled={saving}>
+                          {saving ? '⏳ Saving...' : '💾 Save'}
+                        </button>
+                        <button className="toolbar-btn" onClick={cancelBulkEdits} disabled={saving}>
+                          ✕ Cancel
+                        </button>
+                        <div className="toolbar-separator" />
+                        <button className="toolbar-btn" onClick={addNewRow} disabled={saving}>
+                          ➕ Add Row
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {selectedIds.length === 0 && (
+                          <>
+                            <button className="toolbar-btn toolbar-btn-primary" onClick={startBulkEdit}>
+                              ✏️ Edit All
+                            </button>
+                            <button className="toolbar-btn" onClick={addNewRow}>
+                              ➕ Add Row
+                            </button>
+                          </>
+                        )}
+
+                        {selectedIds.length > 0 && (
+                          <>
+                            <button className="toolbar-btn toolbar-btn-primary" onClick={startEditSelected}>
+                              ✏️ Edit Selected
+                            </button>
+                            <div className="toolbar-separator" />
+                            <button className="toolbar-btn" onClick={() => bulkUpdateServiceType('Supply')} disabled={saving}>
+                              Supply
+                            </button>
+                            <button className="toolbar-btn" onClick={() => bulkUpdateServiceType('Supply and Service')} disabled={saving}>
+                              Supply & Svc
+                            </button>
+                            <button className="toolbar-btn toolbar-btn-danger" onClick={bulkDelete} disabled={deleting}>
+                              🗑️ Delete
+                            </button>
+                          </>
+                        )}
+
+                        <div className="toolbar-separator" />
+
+                        {selectedIds.length < products.length && (
+                          <button className="toolbar-btn" onClick={() => {
+                            setSelectedIds(products.map(p => p.id));
+                          }}>
+                            ☑ Select All
+                          </button>
+                        )}
+                      </>
+                    )}
+
+                    <span className="toolbar-info">
+                      {selectedIds.length > 0 ? `${selectedIds.length} of ${products.length} selected` : `${products.length} rows`}
+                      {editingIds.length > 0 ? ` · ${editingIds.length} editing` : ''}
+                    </span>
+                  </div>
+
+                  {/* The Spreadsheet Grid */}
+                  <div className="provider-products-table-wrap" style={{ borderTop: 'none', borderRadius: '0' }}>
+                    <table className="data-table provider-products-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Equipment</th>
+                          <th>Manufacturer</th>
+                          <th>Model Number</th>
+                          <th>Year of Mfg</th>
+                          <th>Part Name</th>
+                          <th>Part Number</th>
+                          <th>Stock Location</th>
+                          <th>Quantity</th>
+                          <th>Service Type</th>
+                          <th style={{ width: '45px', minWidth: '45px', textAlign: 'center' }}></th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {products.filter(p => {
+                          if (!searchQuery) return true;
+                          const q = searchQuery.toLowerCase();
+                          return (
+                            (p.product_name && p.product_name.toLowerCase().includes(q)) ||
+                            (p.category && p.category.toLowerCase().includes(q)) ||
+                            (p.brand && p.brand.toLowerCase().includes(q)) ||
+                            (p.model_number && p.model_number.toLowerCase().includes(q)) ||
+                            (p.part_number && p.part_number.toLowerCase().includes(q)) ||
+                            (p.location && p.location.toLowerCase().includes(q)) ||
+                            (p.manufactured_at && String(p.manufactured_at).toLowerCase().includes(q)) ||
+                            (p.service_type && p.service_type.toLowerCase().includes(q)) ||
+                            (p.quantity !== undefined && p.quantity !== null && String(p.quantity).includes(q))
+                          );
+                        }).map((product, idx) => {
+                          const isEditingThisRow = isBulkEditing || editingIds.includes(product.id);
+                          const isSelected = selectedIds.includes(product.id);
+                          const rowClasses = [
+                            isEditingThisRow ? 'editing-row' : '',
+                            isSelected ? 'spreadsheet-row-selected' : ''
+                          ].filter(Boolean).join(' ');
+                          return (
+                          <tr
+                            key={product.id}
+                            className={rowClasses}
+                            onClick={(e) => {
+                              if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'BUTTON' && !isEditingThisRow) {
+                                handleSelect(product.id);
+                              }
+                            }}
+                            onDoubleClick={() => startEditingRow(product)}
+                          >
+                            <td>{idx + 1}</td>
+
+                            {isEditingThisRow ? (
+                              <>
+                                <td>{editInput(product.id, 'category')}</td>
+                                <td>{editInput(product.id, 'brand')}</td>
+                                <td>{editInput(product.id, 'model_number')}</td>
+                                <td>{editInput(product.id, 'manufactured_at')}</td>
+                                <td>{editInput(product.id, 'product_name')}</td>
+                                <td>{editInput(product.id, 'part_number')}</td>
+                                <td>{editInput(product.id, 'location')}</td>
+                                <td>{editInput(product.id, 'quantity', { width: '55px', textAlign: 'center' })}</td>
+                                <td>
+                                  <select className="inline-edit-input" value={editDataMap[product.id]?.service_type || 'Supply'} onChange={(e) => handleBulkEditChange(product.id, 'service_type', e.target.value)}>
+                                    <option value="Supply">Supply</option>
+                                    <option value="Supply and Service">Supply and Service</option>
+                                  </select>
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                  <button
+                                    className="table-action-btn delete-btn"
+                                    onClick={(e) => { e.stopPropagation(); deleteProduct(product.id); }}
+                                    disabled={deleting}
+                                    title="Delete row"
+                                  >
+                                    🗑️
+                                  </button>
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td>{highlightText(product.category, searchQuery)}</td>
+                                <td>{highlightText(product.brand, searchQuery)}</td>
+                                <td>{highlightText(product.model_number, searchQuery)}</td>
+                                <td>{highlightText(product.manufactured_at, searchQuery)}</td>
+                                <td style={{ fontWeight: 600 }}>{highlightText(product.product_name, searchQuery)}</td>
+                                <td>{highlightText(product.part_number, searchQuery)}</td>
+                                <td><span className="location-cell" title={product.location || ''}>{highlightText(product.location, searchQuery)}</span></td>
+                                <td style={{ textAlign: 'center' }}>{highlightText(product.quantity, searchQuery)}</td>
+                                <td>{highlightText(product.service_type || 'Supply', searchQuery)}</td>
+                                <td style={{ textAlign: 'center' }}>
+                                  <button
+                                    className="table-action-btn delete-btn"
+                                    onClick={(e) => { e.stopPropagation(); deleteProduct(product.id); }}
+                                    disabled={deleting}
+                                    title="Delete row"
+                                  >
+                                    🗑️
+                                  </button>
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        )})}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Status bar — like Excel's bottom bar */}
+                  <div className="spreadsheet-statusbar">
+                    <span>
+                      {selectedIds.length > 0
+                        ? `${selectedIds.length} row${selectedIds.length > 1 ? 's' : ''} selected`
+                        : 'Click row to select · Double-click to edit'
+                      }
+                    </span>
+                    <span>
+                      Total Qty: {products.reduce((sum, p) => sum + (Number(p.quantity) || 0), 0)}
+                      {' · '}
+                      {new Set(products.map(p => p.category)).size} categories
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
+            {/* Download Menu was here */}
+
+            {showUploadModal && (
+              <UploadModal 
+                onClose={() => setShowUploadModal(false)}
+                onSuccess={(count, skipped) => {
+                  setShowUploadModal(false);
+                  alert(`Successfully uploaded ${count} products!${skipped > 0 ? ` Skipped ${skipped} empty/invalid rows.` : ''}`);
+                  fetchProfile();
+                }}
+              />
+            )}
           </>
         )}
       </div>
