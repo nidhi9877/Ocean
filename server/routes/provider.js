@@ -48,7 +48,7 @@ router.post('/register', authenticateToken, async (req, res) => {
         if (qty > 0) {
           await sql`
             INSERT INTO products (
-              provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, service_type
+              provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, service_type
             )
             VALUES (
               ${providerId}, 
@@ -63,6 +63,7 @@ router.post('/register', authenticateToken, async (req, res) => {
               ${qty}, 
               ${product.description || null},
               ${product.additionalInfo || null},
+              ${product.mediaLink || null},
               ${product.serviceType || 'Supply'}
             )
           `;
@@ -110,7 +111,7 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
       if (qty > 0) {
         await sql`
           INSERT INTO products (
-            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, service_type
+            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, service_type
           )
           VALUES (
             ${providerId}, 
@@ -125,6 +126,7 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
             ${qty}, 
             ${p.description || null},
             ${p.additionalInfo || null},
+            ${p.mediaLink || null},
             ${p.serviceType || 'Supply'}
           )
         `;
@@ -331,7 +333,7 @@ router.put('/products/:id', authenticateToken, async (req, res) => {
     const {
       product_name, category, brand, model_number,
       part_number, manufactured_at, location, price,
-      quantity, description, additional_info
+      quantity, description, additional_info, media_link
     } = req.body;
 
     // Get provider for this user
@@ -364,6 +366,7 @@ router.put('/products/:id', authenticateToken, async (req, res) => {
         quantity = ${quantity || 0},
         description = ${description || null},
         additional_info = ${additional_info || null},
+        media_link = ${media_link || null},
         service_type = ${req.body.service_type || 'Supply'}
       WHERE id = ${productId}
     `;
@@ -447,7 +450,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
       if (!p.id || String(p.id).startsWith('temp_')) {
         await sql`
           INSERT INTO products (
-            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, service_type
+            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, service_type
           )
           VALUES (
             ${providerId}, 
@@ -462,6 +465,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
             ${p.quantity || 0}, 
             ${p.description || null},
             ${p.additional_info || null},
+            ${p.media_link || null},
             ${p.service_type || 'Supply'}
           )
         `;
@@ -479,6 +483,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
             quantity = ${p.quantity || 0},
             description = ${p.description || null},
             additional_info = ${p.additional_info || null},
+            media_link = ${p.media_link || null},
             service_type = ${p.service_type || 'Supply'}
           WHERE id = ${p.id} AND provider_id = ${providerId}
         `;

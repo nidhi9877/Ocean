@@ -6,21 +6,57 @@ import { Link } from 'react-router-dom';
 
 const API = '/api';
 
+const getEmailClientUrl = (clientType, to, subject, body, cc, bcc) => {
+  const encTo = encodeURIComponent(to);
+  const encSubject = encodeURIComponent(subject);
+  const encBody = encodeURIComponent(body);
+  const ccParam = cc ? encodeURIComponent(cc) : '';
+  const bccParam = bcc ? encodeURIComponent(bcc) : '';
+
+  switch (clientType) {
+    case 'gmail': {
+      let url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encTo}&su=${encSubject}&body=${encBody}`;
+      if (ccParam) url += `&cc=${ccParam}`;
+      if (bccParam) url += `&bcc=${bccParam}`;
+      return url;
+    }
+    case 'yahoo': {
+      let url = `https://compose.mail.yahoo.com/?to=${encTo}&subj=${encSubject}&body=${encBody}`;
+      if (ccParam) url += `&cc=${ccParam}`;
+      if (bccParam) url += `&bcc=${bccParam}`;
+      return url;
+    }
+    case 'outlook': {
+      let url = `https://outlook.live.com/mail/0/deeplink/compose?to=${encTo}&subject=${encSubject}&body=${encBody}`;
+      if (ccParam) url += `&cc=${ccParam}`;
+      if (bccParam) url += `&bcc=${bccParam}`;
+      return url;
+    }
+    case 'mailto':
+    default: {
+      let url = `mailto:${to}?subject=${encSubject}&body=${encBody}`;
+      if (ccParam) url += `&cc=${ccParam}`;
+      if (bccParam) url += `&bcc=${bccParam}`;
+      return url;
+    }
+  }
+};
+
 export default function BuyerInquiries() {
   const { token } = useAuth();
   const [inquiries, setInquiries] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [now, setNow] = useState(Date.now());
   const [showComposeModal, setShowComposeModal] = useState(false);
   const [selectedInquiry, setSelectedInquiry] = useState(null);
   const [emailData, setEmailData] = useState({ cc: '', bcc: '', subject: '', body: '' });
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
+  const [showSendDropdown, setShowSendDropdown] = useState(false);
 
   const openComposeModal = (inquiry) => {
     setSelectedInquiry(inquiry);
     const subject = `Follow-up on Inquiry for ${inquiry.product_name}`;
-    const body = `Hello ${inquiry.company_name} Team,\n\nI am writing to follow up on my accepted inquiry.\n\n--- REQUEST DETAILS ---\nProduct: ${inquiry.product_name}\nPart Number: ${inquiry.part_number || 'N/A'}\nRequired Destination: ${inquiry.destination_location}\n\nPlease let me know what further information or documentation is required from my side to finalize this booking.\n\nBest regards,\nMarine Market Buyer`;
+    const body = `Hello ${inquiry.company_name} Team,\n\nI am writing to follow up on my inquiry.\n\n--- REQUEST DETAILS ---\nProduct: ${inquiry.product_name}\nPart Number: ${inquiry.part_number || 'N/A'}\nRequired Destination: ${inquiry.destination_location}\n\nPlease let me know what further information or documentation is required from my side to finalize this booking.\n\nBest regards,\nMarine Market Buyer`;
     
     setShowCc(!!inquiry.cc);
     setShowBcc(!!inquiry.bcc);
@@ -33,22 +69,22 @@ export default function BuyerInquiries() {
     setShowComposeModal(true);
   };
 
-  const handleSendEmail = () => {
+  const handleSendEmail = (clientType) => {
     if (!selectedInquiry) return;
     const to = selectedInquiry.provider_email || '';
-    const cc = emailData.cc ? `&cc=${encodeURIComponent(emailData.cc.trim())}` : '';
-    const bcc = emailData.bcc ? `&bcc=${encodeURIComponent(emailData.bcc.trim())}` : '';
+    const cc = emailData.cc ? emailData.cc.trim() : '';
+    const bcc = emailData.bcc ? emailData.bcc.trim() : '';
     
-    const mailtoLink = `mailto:${to}?subject=${encodeURIComponent(emailData.subject)}&body=${encodeURIComponent(emailData.body)}${cc}${bcc}`;
+    const emailUrl = getEmailClientUrl(clientType, to, emailData.subject, emailData.body, cc, bcc);
     
-    window.location.href = mailtoLink;
+    if (clientType === 'mailto') {
+      window.location.href = emailUrl;
+    } else {
+      window.open(emailUrl, '_blank', 'noreferrer');
+    }
+    
     setShowComposeModal(false);
   };
-
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     fetchInquiries();
@@ -117,66 +153,17 @@ export default function BuyerInquiries() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap', flexShrink: 0 }}>
-                  <span className={`nav-user-badge ${inquiry.status === 'accepted' ? 'badge-buyer' : inquiry.status === 'rejected' ? 'badge-error' : 'badge-provider'}`} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', fontWeight: '700', letterSpacing: '0.5px' }}>
-                    {inquiry.status.toUpperCase()}
-                  </span>
-                  
                   <div className="inquiry-actions" style={{ minWidth: '160px' }}>
-                    {(() => {
-                       const maxTime = 24 * 60 * 60 * 1000;
-                       const timePassed = now - new Date(inquiry.created_at).getTime();
-                       const timeLeft = maxTime - timePassed;
-                       const isExpired = timeLeft <= 0;
-                       
-                       const h = Math.max(0, Math.floor(timeLeft / (1000 * 60 * 60)));
-                       const m = Math.max(0, Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60)));
-                       const s = Math.max(0, Math.floor((timeLeft % (1000 * 60)) / 1000));
-
-                       if (inquiry.status === 'accepted') {
-                         return (
-                           <div style={{ padding: '0.5rem', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-sm)' }}>
-                             <p style={{ color: 'var(--success)', fontWeight: 'bold', margin: '0 0 0.25rem 0', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.85rem' }}>
-                               <span>✅</span> Accepted!
-                             </p>
-                              <button 
-                                type="button"
-                                onClick={() => openComposeModal(inquiry)}
-                                className="btn btn-primary btn-block"
-                                style={{ textDecoration: 'none', textAlign: 'center', padding: '0.35rem 0.5rem', fontSize: '0.78rem', lineHeight: '1.2', border: 'none', cursor: 'pointer', display: 'block', width: '100%' }}
-                              >
-                                ✉️ Email Vendor
-                              </button>
-                           </div>
-                         );
-                       } else if (inquiry.status === 'rejected') {
-                         return (
-                            <div style={{ padding: '0.5rem', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
-                             <p style={{ color: 'var(--danger)', fontWeight: 'bold', margin: 0, fontSize: '0.85rem' }}>
-                               ❌ Rejected
-                             </p>
-                           </div>
-                         );
-                       } else {
-                         return isExpired ? (
-                           <div style={{ padding: '0.5rem', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
-                             <p style={{ color: 'var(--danger)', fontWeight: 'bold', margin: 0, fontSize: '0.85rem' }}>
-                               ❌ No response
-                             </p>
-                           </div>
-                         ) : (
-                           <div style={{ padding: '0.5rem', background: 'var(--bg-surface)', borderRadius: 'var(--radius-sm)', textAlign: 'center', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', fontSize: '0.8rem' }}>
-                              ⌛ Waiting...<br/>
-                              <span style={{ color: 'var(--warning)', fontWeight: 'bold', fontSize: '0.75rem' }}>
-                                ⏳ {h}h {m}m
-                              </span>
-                           </div>
-                         );
-                       }
-                    })()}
+                    <button 
+                      type="button"
+                      onClick={() => openComposeModal(inquiry)}
+                      className="btn btn-primary"
+                      style={{ textDecoration: 'none', textAlign: 'center', padding: '0.55rem', border: 'none', cursor: 'pointer', display: 'block', width: '100%' }}
+                    >
+                      ✉️ Email Vendor
+                    </button>
                   </div>
                 </div>
-              </div>
             ))}
           </div>
         )}
@@ -387,41 +374,108 @@ export default function BuyerInquiries() {
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 {/* Blue pill Send button with dropdown */}
-                <div style={{ display: 'flex', borderRadius: '24px', overflow: 'hidden', background: '#0b57d0' }}>
-                  <button 
-                    onClick={handleSendEmail}
-                    style={{ 
-                      background: 'none',
-                      border: 'none',
-                      color: '#fff',
-                      padding: '10px 24px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'background 0.2s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#084bb8'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                  >
-                    Send
-                  </button>
-                  <div style={{ width: '1px', background: 'rgba(255,255,255,0.2)' }}></div>
-                  <button 
-                    style={{ 
-                      background: 'none',
-                      border: 'none',
-                      color: '#fff',
-                      padding: '10px 12px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#084bb8'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                  >
-                    <span style={{ fontSize: '10px' }}>▼</span>
-                  </button>
+                <div style={{ position: 'relative' }}>
+                  <div style={{ display: 'flex', borderRadius: '24px', overflow: 'hidden', background: '#0b57d0' }}>
+                    <button 
+                      onClick={() => setShowSendDropdown(!showSendDropdown)}
+                      style={{ 
+                        background: 'none',
+                        border: 'none',
+                        color: '#fff',
+                        padding: '10px 24px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#084bb8'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      Send Options
+                    </button>
+                    <div style={{ width: '1px', background: 'rgba(255,255,255,0.2)' }}></div>
+                    <button 
+                      onClick={() => setShowSendDropdown(!showSendDropdown)}
+                      style={{ 
+                        background: 'none',
+                        border: 'none',
+                        color: '#fff',
+                        padding: '10px 12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#084bb8'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      <span style={{ fontSize: '10px' }}>▼</span>
+                    </button>
+                  </div>
+
+                  {showSendDropdown && (
+                    <>
+                      <div 
+                        style={{ position: 'fixed', inset: 0, zIndex: 1005 }} 
+                        onClick={() => setShowSendDropdown(false)} 
+                      />
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: 0,
+                        marginBottom: '8px',
+                        background: 'white',
+                        border: '1px solid #ccc',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        width: '240px',
+                        zIndex: 1010,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                      }}>
+                        <div style={{ padding: '8px 12px', fontSize: '12px', color: '#666', borderBottom: '1px solid #eee', fontWeight: 'bold' }}>
+                          Select Email Client
+                        </div>
+                        {[
+                          { id: 'gmail', name: 'Google Mail (Gmail)', icon: '🔴', desc: 'Open in Gmail web' },
+                          { id: 'yahoo', name: 'Yahoo Mail', icon: '🟣', desc: 'Open in Yahoo Mail web' },
+                          { id: 'outlook', name: 'Outlook Web', icon: '🔵', desc: 'Open in Outlook web' },
+                          { id: 'mailto', name: 'Default Mail App', icon: '✉️', desc: 'Use system default client' }
+                        ].map(client => (
+                          <button
+                            key={client.id}
+                            onClick={() => {
+                              setShowSendDropdown(false);
+                              handleSendEmail(client.id);
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              textAlign: 'left',
+                              padding: '10px 16px',
+                              fontSize: '14px',
+                              color: '#333',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              width: '100%',
+                              transition: 'background 0.15s'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#f2f2f2'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                          >
+                            <span style={{ fontSize: '16px' }}>{client.icon}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontWeight: '500' }}>{client.name}</span>
+                              <span style={{ fontSize: '11px', color: '#888' }}>{client.desc}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Toolbar icons matching Gmail */}

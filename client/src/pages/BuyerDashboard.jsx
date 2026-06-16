@@ -6,6 +6,42 @@ import Navbar from '../components/Navbar';
 
 const API = '/api';
 
+const getEmailClientUrl = (clientType, to, subject, body, cc, bcc) => {
+  const encTo = encodeURIComponent(to);
+  const encSubject = encodeURIComponent(subject);
+  const encBody = encodeURIComponent(body);
+  const ccParam = cc ? encodeURIComponent(cc) : '';
+  const bccParam = bcc ? encodeURIComponent(bcc) : '';
+
+  switch (clientType) {
+    case 'gmail': {
+      let url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encTo}&su=${encSubject}&body=${encBody}`;
+      if (ccParam) url += `&cc=${ccParam}`;
+      if (bccParam) url += `&bcc=${bccParam}`;
+      return url;
+    }
+    case 'yahoo': {
+      let url = `https://compose.mail.yahoo.com/?to=${encTo}&subj=${encSubject}&body=${encBody}`;
+      if (ccParam) url += `&cc=${ccParam}`;
+      if (bccParam) url += `&bcc=${bccParam}`;
+      return url;
+    }
+    case 'outlook': {
+      let url = `https://outlook.live.com/mail/0/deeplink/compose?to=${encTo}&subject=${encSubject}&body=${encBody}`;
+      if (ccParam) url += `&cc=${ccParam}`;
+      if (bccParam) url += `&bcc=${bccParam}`;
+      return url;
+    }
+    case 'mailto':
+    default: {
+      let url = `mailto:${to}?subject=${encSubject}&body=${encBody}`;
+      if (ccParam) url += `&cc=${ccParam}`;
+      if (bccParam) url += `&bcc=${bccParam}`;
+      return url;
+    }
+  }
+};
+
 export default function BuyerDashboard() {
   const { user, token } = useAuth();
   const [allProducts, setAllProducts] = useState([]);
@@ -20,6 +56,7 @@ export default function BuyerDashboard() {
   const [inquiryMeta, setInquiryMeta] = useState({ eta: '', etd: '', vesselName: '', destination: '' });
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
+  const [showSendDropdown, setShowSendDropdown] = useState(false);
   const [equipmentSearch, setEquipmentSearch] = useState('');
   const [manufacturerSearch, setManufacturerSearch] = useState('');
   const [locationSearch, setLocationSearch] = useState('');
@@ -168,7 +205,7 @@ export default function BuyerDashboard() {
 
   const clearAll = () => { setFilters({ equipment:[], manufacturer:[], modelNumber:'', stockLocation:[], minQty:1, serviceType:'' }); };
 
-  const handleSendInquiry = async () => {
+  const handleSendInquiry = async (clientType) => {
     if (!selectedProduct) return;
     if (!inquiryMeta.destination.trim()) { toast.error('Set Destination Port in the inquiry details section.'); return; }
     if (sendingIds.has(selectedProduct.id)) return;
@@ -181,15 +218,17 @@ export default function BuyerDashboard() {
         bcc: emailData.bcc ? emailData.bcc.trim() : null,
       }, { headers: { Authorization: `Bearer ${token}` } });
 
-      // Generate mailto link
       const to = selectedProduct.provider_email || '';
-      const cc = emailData.cc ? `&cc=${encodeURIComponent(emailData.cc.trim())}` : '';
-      const bcc = emailData.bcc ? `&bcc=${encodeURIComponent(emailData.bcc.trim())}` : '';
+      const cc = emailData.cc ? emailData.cc.trim() : '';
+      const bcc = emailData.bcc ? emailData.bcc.trim() : '';
       
-      const mailtoLink = `mailto:${to}?subject=${encodeURIComponent(emailData.subject)}&body=${encodeURIComponent(emailData.body)}${cc}${bcc}`;
+      const emailUrl = getEmailClientUrl(clientType, to, emailData.subject, emailData.body, cc, bcc);
       
-      // Open default system client
-      window.location.href = mailtoLink;
+      if (clientType === 'mailto') {
+        window.location.href = emailUrl;
+      } else {
+        window.open(emailUrl, '_blank', 'noreferrer');
+      }
 
       toast.success(`✅ Inquiry registered! Opening mail client to contact ${selectedProduct.company_name}...`, { duration: 5000 });
       setShowComposeModal(false);
@@ -291,7 +330,7 @@ export default function BuyerDashboard() {
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:'0.75rem' }}>
             <div><label className="form-label">Destination Port *</label><input className="form-input" placeholder="e.g., Singapore" value={inquiryMeta.destination} onChange={e=>setInquiryMeta(m=>({...m,destination:e.target.value}))}/></div>
             <div><label className="form-label">ETA</label><input type="date" className="form-input" value={inquiryMeta.eta} onChange={e=>setInquiryMeta(m=>({...m,eta:e.target.value}))}/></div>
-            <div><label className="form-label">ETD</label><input type="date" className="form-input" value={inquiryMeta.etd} onChange={e=>setInquiryMeta(m=>({...m,etd:e.target.value}))}/></div>
+            <div><label className="form-label">ETD (Optional)</label><input type="date" className="form-input" value={inquiryMeta.etd} onChange={e=>setInquiryMeta(m=>({...m,etd:e.target.value}))}/></div>
             <div><label className="form-label">Vessel Name</label><input className="form-input" placeholder="e.g., MV Ocean Star" value={inquiryMeta.vesselName} onChange={e=>setInquiryMeta(m=>({...m,vesselName:e.target.value}))}/></div>
           </div>
         </div>
@@ -682,41 +721,108 @@ export default function BuyerDashboard() {
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 {/* Blue pill Send button with dropdown */}
-                <div style={{ display: 'flex', borderRadius: '24px', overflow: 'hidden', background: '#0b57d0' }}>
-                  <button 
-                    onClick={handleSendInquiry}
-                    style={{ 
-                      background: 'none',
-                      border: 'none',
-                      color: '#fff',
-                      padding: '10px 24px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'background 0.2s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#084bb8'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                  >
-                    Send
-                  </button>
-                  <div style={{ width: '1px', background: 'rgba(255,255,255,0.2)' }}></div>
-                  <button 
-                    style={{ 
-                      background: 'none',
-                      border: 'none',
-                      color: '#fff',
-                      padding: '10px 12px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#084bb8'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                  >
-                    <span style={{ fontSize: '10px' }}>▼</span>
-                  </button>
+                <div style={{ position: 'relative' }}>
+                  <div style={{ display: 'flex', borderRadius: '24px', overflow: 'hidden', background: '#0b57d0' }}>
+                    <button 
+                      onClick={() => setShowSendDropdown(!showSendDropdown)}
+                      style={{ 
+                        background: 'none',
+                        border: 'none',
+                        color: '#fff',
+                        padding: '10px 24px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#084bb8'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      Send Options
+                    </button>
+                    <div style={{ width: '1px', background: 'rgba(255,255,255,0.2)' }}></div>
+                    <button 
+                      onClick={() => setShowSendDropdown(!showSendDropdown)}
+                      style={{ 
+                        background: 'none',
+                        border: 'none',
+                        color: '#fff',
+                        padding: '10px 12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#084bb8'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      <span style={{ fontSize: '10px' }}>▼</span>
+                    </button>
+                  </div>
+
+                  {showSendDropdown && (
+                    <>
+                      <div 
+                        style={{ position: 'fixed', inset: 0, zIndex: 1005 }} 
+                        onClick={() => setShowSendDropdown(false)} 
+                      />
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: 0,
+                        marginBottom: '8px',
+                        background: 'white',
+                        border: '1px solid #ccc',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        width: '240px',
+                        zIndex: 1010,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                      }}>
+                        <div style={{ padding: '8px 12px', fontSize: '12px', color: '#666', borderBottom: '1px solid #eee', fontWeight: 'bold' }}>
+                          Select Email Client
+                        </div>
+                        {[
+                          { id: 'gmail', name: 'Google Mail (Gmail)', icon: '🔴', desc: 'Open in Gmail web' },
+                          { id: 'yahoo', name: 'Yahoo Mail', icon: '🟣', desc: 'Open in Yahoo Mail web' },
+                          { id: 'outlook', name: 'Outlook Web', icon: '🔵', desc: 'Open in Outlook web' },
+                          { id: 'mailto', name: 'Default Mail App', icon: '✉️', desc: 'Use system default client' }
+                        ].map(client => (
+                          <button
+                            key={client.id}
+                            onClick={() => {
+                              setShowSendDropdown(false);
+                              handleSendInquiry(client.id);
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              textAlign: 'left',
+                              padding: '10px 16px',
+                              fontSize: '14px',
+                              color: '#333',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              width: '100%',
+                              transition: 'background 0.15s'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#f2f2f2'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                          >
+                            <span style={{ fontSize: '16px' }}>{client.icon}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontWeight: '500' }}>{client.name}</span>
+                              <span style={{ fontSize: '11px', color: '#888' }}>{client.desc}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Toolbar icons matching Gmail */}
