@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import UploadModal from '../components/UploadModal';
+import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -57,7 +58,25 @@ export default function ProviderDashboard() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setProvider(res.data.provider);
-      setProducts(res.data.products || []);
+      const fetchedProducts = res.data.products || [];
+      setProducts(fetchedProducts);
+      const lowStock = fetchedProducts.filter(p => Number(p.quantity) < 5);
+      if (lowStock.length > 0) {
+        lowStock.slice(0, 3).forEach(p => {
+          toast.error(`${p.product_name} is running low, you have only ${p.quantity} products left!`, { 
+            duration: 5000,
+            id: `low_stock_${p.id}`,
+            style: { fontSize: '0.9rem', padding: '12px 16px' }
+          });
+        });
+        if (lowStock.length > 3) {
+          toast.error(`And ${lowStock.length - 3} more products are running low.`, { 
+            duration: 5000,
+            id: 'low_stock_more',
+            style: { fontSize: '0.9rem', padding: '12px 16px' }
+          });
+        }
+      }
     } catch (err) {
       console.error('Failed to fetch profile:', err);
     } finally {
@@ -81,6 +100,7 @@ export default function ProviderDashboard() {
         description: p.description || '',
         manufactured_at: p.manufactured_at || '',
         additional_info: p.additional_info || '',
+        media_link: p.media_link || '',
         service_type: p.service_type || 'Supply',
         id: p.id
       };
@@ -107,6 +127,7 @@ export default function ProviderDashboard() {
           description: p.description || '',
           manufactured_at: p.manufactured_at || '',
           additional_info: p.additional_info || '',
+          media_link: p.media_link || '',
           service_type: p.service_type || 'Supply',
           id: p.id
         };
@@ -145,6 +166,7 @@ export default function ProviderDashboard() {
           description: product.description || '',
           manufactured_at: product.manufactured_at || '',
           additional_info: product.additional_info || '',
+          media_link: product.media_link || '',
           service_type: product.service_type || 'Supply',
           id: product.id
         }
@@ -175,6 +197,7 @@ export default function ProviderDashboard() {
       price: 0,
       description: '',
       additional_info: '',
+      media_link: '',
       service_type: 'Supply'
     };
     
@@ -680,7 +703,8 @@ export default function ProviderDashboard() {
                           <th>Stock Location</th>
                           <th>Quantity</th>
                           <th>Service Type</th>
-                          <th style={{ width: '45px', minWidth: '45px', textAlign: 'center' }}></th>
+                          <th>Media Link</th>
+                          <th style={{ width: '65px', minWidth: '65px', textAlign: 'center', color: 'var(--danger)' }}>Remove</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -696,14 +720,21 @@ export default function ProviderDashboard() {
                             (p.location && p.location.toLowerCase().includes(q)) ||
                             (p.manufactured_at && String(p.manufactured_at).toLowerCase().includes(q)) ||
                             (p.service_type && p.service_type.toLowerCase().includes(q)) ||
+                            (p.media_link && p.media_link.toLowerCase().includes(q)) ||
                             (p.quantity !== undefined && p.quantity !== null && String(p.quantity).includes(q))
                           );
+                        }).sort((a, b) => {
+                          const aLow = Number(a.quantity) < 3 ? 0 : 1;
+                          const bLow = Number(b.quantity) < 3 ? 0 : 1;
+                          if (aLow !== bLow) return aLow - bLow;
+                          return 0; // maintain original order otherwise
                         }).map((product, idx) => {
                           const isEditingThisRow = isBulkEditing || editingIds.includes(product.id);
                           const isSelected = selectedIds.includes(product.id);
                           const rowClasses = [
                             isEditingThisRow ? 'editing-row' : '',
-                            isSelected ? 'spreadsheet-row-selected' : ''
+                            isSelected ? 'spreadsheet-row-selected' : '',
+                            Number(product.quantity) < 2 ? 'low-stock-row' : ''
                           ].filter(Boolean).join(' ');
                           return (
                           <tr
@@ -734,7 +765,8 @@ export default function ProviderDashboard() {
                                     <option value="Supply and Service">Supply and Service</option>
                                   </select>
                                 </td>
-                                <td style={{ textAlign: 'center' }}>
+                                <td>{editInput(product.id, 'media_link')}</td>
+                                <td style={{ textAlign: 'center', backgroundColor: '#fee2e2' }}>
                                   <button
                                     className="table-action-btn delete-btn"
                                     onClick={(e) => { e.stopPropagation(); deleteProduct(product.id); }}
@@ -754,9 +786,16 @@ export default function ProviderDashboard() {
                                 <td style={{ fontWeight: 600 }}>{highlightText(product.product_name, searchQuery)}</td>
                                 <td>{highlightText(product.part_number, searchQuery)}</td>
                                 <td><span className="location-cell" title={product.location || ''}>{highlightText(product.location, searchQuery)}</span></td>
-                                <td style={{ textAlign: 'center' }}>{highlightText(product.quantity, searchQuery)}</td>
+                                <td style={{ textAlign: 'center', color: Number(product.quantity) < 2 ? '#ef4444' : 'inherit', fontWeight: Number(product.quantity) < 2 ? 'bold' : 'normal' }}>
+                                  {highlightText(product.quantity, searchQuery)}
+                                </td>
                                 <td>{highlightText(product.service_type || 'Supply', searchQuery)}</td>
-                                <td style={{ textAlign: 'center' }}>
+                                <td>
+                                  {product.media_link ? (
+                                    <a href={product.media_link.startsWith('http') ? product.media_link : `https://${product.media_link}`} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'underline' }}>View</a>
+                                  ) : '-'}
+                                </td>
+                                <td style={{ textAlign: 'center', backgroundColor: '#fee2e2' }}>
                                   <button
                                     className="table-action-btn delete-btn"
                                     onClick={(e) => { e.stopPropagation(); deleteProduct(product.id); }}

@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  // Force vite restart
   server: {
     proxy: {
       '/api': {

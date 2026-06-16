@@ -6,32 +6,58 @@ import { Link } from 'react-router-dom';
 
 const API = '/api';
 
+const getEmailClientUrl = (clientType, to, subject, body, cc, bcc) => {
+  const encTo = encodeURIComponent(to);
+  const encSubject = encodeURIComponent(subject);
+  const encBody = encodeURIComponent(body);
+  const ccParam = cc ? encodeURIComponent(cc) : '';
+  const bccParam = bcc ? encodeURIComponent(bcc) : '';
+
+  switch (clientType) {
+    case 'gmail': {
+      let url = `https://mail.google.com/mail/?view=cm&fs=1&to=${encTo}&su=${encSubject}&body=${encBody}`;
+      if (ccParam) url += `&cc=${ccParam}`;
+      if (bccParam) url += `&bcc=${bccParam}`;
+      return url;
+    }
+    case 'yahoo': {
+      let url = `https://compose.mail.yahoo.com/?to=${encTo}&subj=${encSubject}&body=${encBody}`;
+      if (ccParam) url += `&cc=${ccParam}`;
+      if (bccParam) url += `&bcc=${bccParam}`;
+      return url;
+    }
+    case 'outlook': {
+      let url = `https://outlook.live.com/mail/0/deeplink/compose?to=${encTo}&subject=${encSubject}&body=${encBody}`;
+      if (ccParam) url += `&cc=${ccParam}`;
+      if (bccParam) url += `&bcc=${bccParam}`;
+      return url;
+    }
+    case 'mailto':
+    default: {
+      let url = `mailto:${to}?subject=${encSubject}&body=${encBody}`;
+      if (ccParam) url += `&cc=${ccParam}`;
+      if (bccParam) url += `&bcc=${bccParam}`;
+      return url;
+    }
+  }
+};
+
 export default function ProviderInquiries() {
   const { token } = useAuth();
   const [inquiries, setInquiries] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [now, setNow] = useState(Date.now());
   const [showComposeModal, setShowComposeModal] = useState(false);
   const [selectedInquiry, setSelectedInquiry] = useState(null);
-  const [emailType, setEmailType] = useState('accepted'); // 'accepted' or 'rejected'
   const [emailData, setEmailData] = useState({ cc: '', bcc: '', subject: '', body: '' });
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
+  const [showSendDropdown, setShowSendDropdown] = useState(false);
 
-  const openComposeModal = (inquiry, type) => {
+  const openComposeModal = (inquiry) => {
     setSelectedInquiry(inquiry);
-    setEmailType(type);
     
-    let subject = '';
-    let body = '';
-    
-    if (type === 'accepted') {
-      subject = `Booking Confirmation for ${inquiry.product_name}`;
-      body = `Dear ${inquiry.buyer_username},\n\nThis is an official confirmation regarding your inquiry.\n\n--- BOOKING DETAILS ---\nProduct: ${inquiry.product_name}\nPart Number: ${inquiry.part_number || 'N/A'}\nDestination: ${inquiry.destination_location}\n\n--- VESSEL DETAILS ---\nShip Name: ${inquiry.ship_name} (${inquiry.ship_type})\nIMO Number: ${inquiry.imo_number}\n\nWe are prepared to proceed with the fulfillment of this order. Please reply to this email so we can finalize the arrangements.\n\nBest regards,\nVendor Team`;
-    } else {
-      subject = `Update on your Inquiry for ${inquiry.product_name}`;
-      body = `Dear ${inquiry.buyer_username},\n\nThank you for reaching out to us.\n\nRegarding your inquiry for:\nProduct: ${inquiry.product_name}\nPart Number: ${inquiry.part_number || 'N/A'}\n\nUnfortunately, we are unable to fulfill this request at the moment. We hope to assist you with other requirements in the future.\n\nBest regards,\nVendor Team`;
-    }
+    const subject = `Regarding your inquiry for ${inquiry.product_name}`;
+    const body = `Dear ${inquiry.buyer_username},\n\nThank you for your inquiry regarding our product.\n\n--- INQUIRY DETAILS ---\nProduct: ${inquiry.product_name}\nPart Number: ${inquiry.part_number || 'N/A'}\nDestination: ${inquiry.destination_location}\n\n--- VESSEL DETAILS ---\nShip Name: ${inquiry.ship_name} (${inquiry.ship_type})\nIMO Number: ${inquiry.imo_number}\n\nWe would love to discuss this further. Please reply to this email so we can coordinate the details.\n\nBest regards,\nVendor Team`;
     
     setShowCc(!!inquiry.cc);
     setShowBcc(!!inquiry.bcc);
@@ -44,22 +70,22 @@ export default function ProviderInquiries() {
     setShowComposeModal(true);
   };
 
-  const handleOpenGmail = () => {
+  const handleSendEmail = (clientType) => {
     if (!selectedInquiry) return;
     const to = selectedInquiry.buyer_email || '';
-    const cc = emailData.cc ? `&cc=${encodeURIComponent(emailData.cc.trim())}` : '';
-    const bcc = emailData.bcc ? `&bcc=${encodeURIComponent(emailData.bcc.trim())}` : '';
+    const cc = emailData.cc ? emailData.cc.trim() : '';
+    const bcc = emailData.bcc ? emailData.bcc.trim() : '';
     
-    const gmailLink = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${encodeURIComponent(emailData.subject)}&body=${encodeURIComponent(emailData.body)}${cc}${bcc}`;
+    const emailUrl = getEmailClientUrl(clientType, to, emailData.subject, emailData.body, cc, bcc);
     
-    window.open(gmailLink, '_blank', 'noreferrer');
+    if (clientType === 'mailto') {
+      window.location.href = emailUrl;
+    } else {
+      window.open(emailUrl, '_blank', 'noreferrer');
+    }
+    
     setShowComposeModal(false);
   };
-
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     fetchInquiries();
@@ -75,19 +101,6 @@ export default function ProviderInquiries() {
       console.error('Failed to fetch inquiries:', err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const updateStatus = async (id, status) => {
-    try {
-      await axios.put(`${API}/provider/inquiries/${id}/status`, 
-        { status }, 
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      // Update locally
-      setInquiries(inquiries.map(i => i.id === id ? { ...i, status } : i));
-    } catch (err) {
-      alert('Failed to update status');
     }
   };
 
@@ -123,9 +136,6 @@ export default function ProviderInquiries() {
                 <div style={{ flex: 1, minWidth: '300px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
                     <h3 style={{ margin: 0, color: 'var(--text-primary)', fontFamily: "'Outfit', sans-serif" }}>{inquiry.product_name}</h3>
-                    <span className={`nav-user-badge ${inquiry.status === 'accepted' ? 'badge-buyer' : inquiry.status === 'rejected' ? 'badge-error' : 'badge-provider'}`}>
-                      {inquiry.status.toUpperCase()}
-                    </span>
                   </div>
                   
                   <div className="inquiry-details">
@@ -145,79 +155,15 @@ export default function ProviderInquiries() {
                   </div>
                 </div>
 
-                <div className="inquiry-actions">
-                  {(() => {
-                    const maxTime = 24 * 60 * 60 * 1000;
-                    const timePassed = now - new Date(inquiry.created_at).getTime();
-                    const timeLeft = maxTime - timePassed;
-                    const isExpired = timeLeft <= 0;
-                    
-                    const h = Math.max(0, Math.floor(timeLeft / (1000 * 60 * 60)));
-                    const m = Math.max(0, Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60)));
-                    const s = Math.max(0, Math.floor((timeLeft % (1000 * 60)) / 1000));
-
-                    if (inquiry.status === 'pending') {
-                      return isExpired ? (
-                        <div style={{ textAlign: 'center', padding: '0.8rem', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)' }}>
-                          <span style={{ fontSize: '0.85rem' }}>You haven't accepted the order ❌</span>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '0.5rem' }}>
-                          <div style={{ textAlign: 'center', fontWeight: 'bold', color: 'var(--warning)', background: 'var(--warning-bg)', padding: '0.3rem', borderRadius: '4px', fontSize: '0.9rem' }}>
-                            ⏳ {h}h {m}m {s}s
-                          </div>
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button 
-                              className="btn btn-danger" 
-                              style={{ flex: 1, padding: '0.5rem' }}
-                              onClick={() => updateStatus(inquiry.id, 'rejected')}
-                            >
-                              Reject
-                            </button>
-                            <button 
-                              className="btn btn-primary" 
-                              style={{ flex: 1, padding: '0.5rem' }} 
-                              onClick={() => updateStatus(inquiry.id, 'accepted')}
-                            >
-                              Accept
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    } else if (inquiry.status === 'accepted') {
-                      return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
-                        <div style={{ textAlign: 'center', padding: '0.5rem', background: 'var(--success-bg)', color: 'var(--success)', borderRadius: 'var(--radius-sm)', fontWeight: 'bold', border: '1px solid var(--success-border)' }}>
-                          Accepted ✅
-                        </div>
-                        <button 
-                          type="button"
-                          onClick={() => openComposeModal(inquiry, 'accepted')}
-                          className="btn btn-primary"
-                          style={{ textAlign: 'center', cursor: 'pointer', border: 'none', display: 'block', width: '100%', padding: '0.55rem' }}
-                        >
-                          ✉️ Email Buyer<br/><span style={{ fontSize: '0.8em', opacity: 0.9 }}>{inquiry.buyer_email}</span>
-                        </button>
-                      </div>
-                      );
-                    } else {
-                      return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
-                          <div style={{ textAlign: 'center', padding: '0.5rem', background: 'var(--danger-bg)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', fontWeight: 'bold', border: '1px solid var(--danger-border)' }}>
-                            Rejected ❌
-                          </div>
-                          <button 
-                            type="button"
-                            onClick={() => openComposeModal(inquiry, 'rejected')}
-                            className="btn btn-outline"
-                            style={{ textAlign: 'center', cursor: 'pointer', display: 'block', width: '100%', padding: '0.55rem', color: 'var(--danger)', borderColor: 'var(--danger)' }}
-                          >
-                            ✉️ Notify Buyer<br/><span style={{ fontSize: '0.8em', opacity: 0.9 }}>{inquiry.buyer_email}</span>
-                          </button>
-                        </div>
-                      );
-                    }
-                  })()}
+                <div className="inquiry-actions" style={{ minWidth: '160px' }}>
+                  <button 
+                    type="button"
+                    onClick={() => openComposeModal(inquiry)}
+                    className="btn btn-primary"
+                    style={{ textAlign: 'center', cursor: 'pointer', border: 'none', display: 'block', width: '100%', padding: '0.55rem' }}
+                  >
+                    ✉️ Email Buyer<br/><span style={{ fontSize: '0.8em', opacity: 0.9 }}>{inquiry.buyer_email}</span>
+                  </button>
                 </div>
               </div>
             ))}
@@ -429,42 +375,108 @@ export default function ProviderInquiries() {
             }}>
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                {/* Blue pill Send button with dropdown */}
-                <div style={{ display: 'flex', borderRadius: '24px', overflow: 'hidden', background: '#0b57d0' }}>
-                  <button 
-                    onClick={handleOpenGmail}
-                    style={{ 
-                      background: 'none',
-                      border: 'none',
-                      color: '#fff',
-                      padding: '10px 24px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      transition: 'background 0.2s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#084bb8'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                  >
-                    Send
-                  </button>
-                  <div style={{ width: '1px', background: 'rgba(255,255,255,0.2)' }}></div>
-                  <button 
-                    style={{ 
-                      background: 'none',
-                      border: 'none',
-                      color: '#fff',
-                      padding: '10px 12px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#084bb8'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                  >
-                    <span style={{ fontSize: '10px' }}>▼</span>
-                  </button>
+                        <div style={{ position: 'relative' }}>
+                  <div style={{ display: 'flex', borderRadius: '24px', overflow: 'hidden', background: '#0b57d0' }}>
+                    <button 
+                      onClick={() => setShowSendDropdown(!showSendDropdown)}
+                      style={{ 
+                        background: 'none',
+                        border: 'none',
+                        color: '#fff',
+                        padding: '10px 24px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#084bb8'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      Send Options
+                    </button>
+                    <div style={{ width: '1px', background: 'rgba(255,255,255,0.2)' }}></div>
+                    <button 
+                      onClick={() => setShowSendDropdown(!showSendDropdown)}
+                      style={{ 
+                        background: 'none',
+                        border: 'none',
+                        color: '#fff',
+                        padding: '10px 12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#084bb8'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      <span style={{ fontSize: '10px' }}>▼</span>
+                    </button>
+                  </div>
+
+                  {showSendDropdown && (
+                    <>
+                      <div 
+                        style={{ position: 'fixed', inset: 0, zIndex: 1005 }} 
+                        onClick={() => setShowSendDropdown(false)} 
+                      />
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '100%',
+                        left: 0,
+                        marginBottom: '8px',
+                        background: 'white',
+                        border: '1px solid #ccc',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        width: '240px',
+                        zIndex: 1010,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                      }}>
+                        <div style={{ padding: '8px 12px', fontSize: '12px', color: '#666', borderBottom: '1px solid #eee', fontWeight: 'bold' }}>
+                          Select Email Client
+                        </div>
+                        {[
+                          { id: 'gmail', name: 'Google Mail (Gmail)', icon: '🔴', desc: 'Open in Gmail web' },
+                          { id: 'yahoo', name: 'Yahoo Mail', icon: '🟣', desc: 'Open in Yahoo Mail web' },
+                          { id: 'outlook', name: 'Outlook Web', icon: '🔵', desc: 'Open in Outlook web' },
+                          { id: 'mailto', name: 'Default Mail App', icon: '✉️', desc: 'Use system default client' }
+                        ].map(client => (
+                          <button
+                            key={client.id}
+                            onClick={() => {
+                              setShowSendDropdown(false);
+                              handleSendEmail(client.id);
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              textAlign: 'left',
+                              padding: '10px 16px',
+                              fontSize: '14px',
+                              color: '#333',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              width: '100%',
+                              transition: 'background 0.15s'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#f2f2f2'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                          >
+                            <span style={{ fontSize: '16px' }}>{client.icon}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontWeight: '500' }}>{client.name}</span>
+                              <span style={{ fontSize: '11px', color: '#888' }}>{client.desc}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Toolbar icons matching Gmail */}

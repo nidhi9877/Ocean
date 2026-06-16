@@ -1210,6 +1210,11 @@ body {
   background: #d0ddf5 !important;
 }
 
+/* Low stock row */
+.provider-products-table tbody tr.low-stock-row td {
+  background: #fee2e2 !important;
+}
+
 /* Location column — truncate */
 .location-cell {
   display: inline-block;
