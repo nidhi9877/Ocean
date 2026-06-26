@@ -37,8 +37,16 @@ router.post('/register', async (req, res) => {
       }
     }
 
-    // Check if username already exists
-    const existingUser = await sql`SELECT id FROM users WHERE username = ${username}`;
+    // Check if username already exists (with retry logic for database cold starts)
+    let existingUser;
+    try {
+      existingUser = await sql`SELECT id FROM users WHERE username = ${username}`;
+    } catch (dbError) {
+      console.log('Database cold start, retrying register query...', dbError.message);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      existingUser = await sql`SELECT id FROM users WHERE username = ${username}`;
+    }
+
     if (existingUser.length > 0) {
       return res.status(409).json({ error: 'Username already exists. Please choose a different username.' });
     }
@@ -110,8 +118,16 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Username and password are required' });
     }
 
-    // Find user
-    const users = await sql`SELECT * FROM users WHERE username = ${username}`;
+    // Find user (with retry logic for database cold starts)
+    let users;
+    try {
+      users = await sql`SELECT * FROM users WHERE username = ${username}`;
+    } catch (dbError) {
+      console.log('Database cold start, retrying login query...', dbError.message);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      users = await sql`SELECT * FROM users WHERE username = ${username}`;
+    }
+
     if (users.length === 0) {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
