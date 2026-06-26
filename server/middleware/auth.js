@@ -14,6 +14,16 @@ export function authenticateToken(req, res, next) {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
+    
+    // If the token has a sessionId, verify it exists in the database
+    if (decoded.sessionId) {
+      const { sql } = await import('../db.js');
+      const sessions = await sql`SELECT id FROM user_sessions WHERE session_token = ${decoded.sessionId}`;
+      if (sessions.length === 0) {
+        return res.status(401).json({ error: 'Session expired or logged in from another device' });
+      }
+    }
+
     next();
   } catch (error) {
     return res.status(403).json({ error: 'Invalid or expired token' });
