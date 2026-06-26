@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { sql } from '../db.js';
 import dotenv from 'dotenv';
 
@@ -91,9 +92,25 @@ router.post('/register', async (req, res) => {
       `;
     }
 
-    // Generate JWT token
+    // --- Concurrent Session Limit Logic ---
+    const sessionToken = crypto.randomUUID();
+    
+    // Check active sessions count
+    const activeSessions = await sql`SELECT id FROM user_sessions WHERE user_id = ${user.id} ORDER BY created_at ASC`;
+    if (activeSessions.length >= 5) {
+      // If 5 or more, delete the oldest to make room for this 6th one
+      const sessionsToDelete = activeSessions.slice(0, activeSessions.length - 4); // Keep exactly 4, so this new one makes 5
+      for (const sess of sessionsToDelete) {
+        await sql`DELETE FROM user_sessions WHERE id = ${sess.id}`;
+      }
+    }
+    
+    // Insert new session
+    await sql`INSERT INTO user_sessions (user_id, session_token) VALUES (${user.id}, ${sessionToken})`;
+
+    // Generate JWT token with session ID
     const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
+      { id: user.id, username: user.username, role: user.role, sessionId: sessionToken },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -140,9 +157,25 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
-    // Generate JWT token
+    // --- Concurrent Session Limit Logic ---
+    const sessionToken = crypto.randomUUID();
+    
+    // Check active sessions count
+    const activeSessions = await sql`SELECT id FROM user_sessions WHERE user_id = ${user.id} ORDER BY created_at ASC`;
+    if (activeSessions.length >= 5) {
+      // Delete oldest sessions to keep exactly 4 (so inserting this new one makes it 5)
+      const sessionsToDelete = activeSessions.slice(0, activeSessions.length - 4);
+      for (const sess of sessionsToDelete) {
+        await sql`DELETE FROM user_sessions WHERE id = ${sess.id}`;
+      }
+    }
+    
+    // Insert new session
+    await sql`INSERT INTO user_sessions (user_id, session_token) VALUES (${user.id}, ${sessionToken})`;
+
+    // Generate JWT token with session ID
     const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
+      { id: user.id, username: user.username, role: user.role, sessionId: sessionToken },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -155,6 +188,25 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Logout
+router.post('/logout', async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (token) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      if (decoded && decoded.sessionId) {
+        await sql`DELETE FROM user_sessions WHERE session_token = ${decoded.sessionId}`;
+      }
+    }
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    // If token is invalid/expired, still consider it a successful logout from frontend perspective
+    res.json({ message: 'Logged out successfully' });
   }
 });
 

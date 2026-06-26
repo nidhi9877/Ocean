@@ -88,6 +88,15 @@ export async function initDatabase() {
       )
     `;
 
+    await sql`
+      CREATE TABLE IF NOT EXISTS user_sessions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        session_token VARCHAR(255) UNIQUE NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+
     // Execute ALTER TABLE in parallel
     try {
       await Promise.all([

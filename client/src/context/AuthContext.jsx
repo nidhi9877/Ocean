@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
 
 const AuthContext = createContext(null);
 
@@ -25,7 +26,16 @@ export function AuthProvider({ children }) {
     localStorage.setItem('marine_user', JSON.stringify(userData));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    if (token) {
+      try {
+        await axios.post('/api/auth/logout', {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (err) {
+        console.error('Logout error:', err);
+      }
+    }
     setUser(null);
     setToken(null);
     localStorage.removeItem('marine_token');
