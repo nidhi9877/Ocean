@@ -16,6 +16,7 @@ router.post('/register', authenticateToken, async (req, res) => {
       city,
       country,
       description,
+      paymentMode,
       products
     } = req.body;
 
@@ -34,8 +35,8 @@ router.post('/register', authenticateToken, async (req, res) => {
 
     // Insert provider
     const providerResult = await sql`
-      INSERT INTO providers (user_id, company_name, contact_person, email, phone, address, city, country, description)
-      VALUES (${req.user.id}, ${companyName}, ${contactPerson}, ${email}, ${phone}, ${address}, ${city || null}, ${country || null}, ${description || null})
+      INSERT INTO providers (user_id, company_name, contact_person, email, phone, address, city, country, description, payment_mode)
+      VALUES (${req.user.id}, ${companyName}, ${contactPerson}, ${email}, ${phone}, ${address}, ${city || null}, ${country || null}, ${description || null}, ${paymentMode || 'pre-payment/credit'})
       RETURNING id
     `;
 
@@ -48,7 +49,7 @@ router.post('/register', authenticateToken, async (req, res) => {
         if (qty > 0) {
           await sql`
             INSERT INTO products (
-              provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, service_type
+              provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, service_type, payment_mode
             )
             VALUES (
               ${providerId}, 
@@ -64,7 +65,8 @@ router.post('/register', authenticateToken, async (req, res) => {
               ${product.description || null},
               ${product.additionalInfo || null},
               ${product.mediaLink || null},
-              ${product.serviceType || 'Supply'}
+              ${product.serviceType || 'Supply'},
+              ${product.payment_mode || 'pre-payment/credit'}
             )
           `;
         }
@@ -111,7 +113,7 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
       if (qty > 0) {
         await sql`
           INSERT INTO products (
-            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, service_type
+            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, service_type, payment_mode
           )
           VALUES (
             ${providerId}, 
@@ -127,7 +129,8 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
             ${p.description || null},
             ${p.additionalInfo || null},
             ${p.mediaLink || null},
-            ${p.serviceType || 'Supply'}
+            ${p.serviceType || 'Supply'},
+            ${p.payment_mode || 'pre-payment/credit'}
           )
         `;
         insertedCount++;
@@ -190,7 +193,7 @@ router.get('/products/search', async (req, res) => {
     // Fuzzy search using pg_trgm similarity across multiple fields
     // Results are ranked by the best similarity score across all searched fields
     const products = await sql`
-      SELECT p.*, pr.company_name, pr.contact_person, pr.email as provider_email,
+      SELECT p.*, pr.company_name, pr.contact_person, pr.email as provider_email, COALESCE(p.payment_mode, pr.payment_mode) AS payment_mode,
              GREATEST(
                COALESCE(similarity(LOWER(p.product_name), ${searchTerm}), 0),
                COALESCE(similarity(LOWER(COALESCE(p.part_number, '')), ${searchTerm}), 0),
@@ -240,7 +243,7 @@ router.get('/products/search', async (req, res) => {
 router.get('/products', async (req, res) => {
   try {
     const products = await sql`
-      SELECT p.*, pr.company_name, pr.contact_person, pr.email as provider_email
+      SELECT p.*, pr.company_name, pr.contact_person, pr.email as provider_email, COALESCE(p.payment_mode, pr.payment_mode) AS payment_mode
       FROM products p
       JOIN providers pr ON p.provider_id = pr.id
       ORDER BY p.created_at DESC
@@ -367,7 +370,9 @@ router.put('/products/:id', authenticateToken, async (req, res) => {
         description = ${description || null},
         additional_info = ${additional_info || null},
         media_link = ${media_link || null},
-        service_type = ${req.body.service_type || 'Supply'}
+        service_type = ${req.body.service_type || 'Supply'},
+        payment_mode = ${req.body.payment_mode || 'pre-payment/credit'},
+        updated_at = NOW()
       WHERE id = ${productId}
     `;
 
@@ -410,7 +415,7 @@ router.post('/products/bulk-update-service-type', authenticateToken, async (req,
     if (existingProvider.length === 0) return res.status(404).json({ error: 'Provider profile not found' });
     const providerId = existingProvider[0].id;
 
-    await sql`UPDATE products SET service_type = ${serviceType} WHERE id = ANY(${ids}) AND provider_id = ${providerId}`;
+    await sql`UPDATE products SET service_type = ${serviceType}, updated_at = NOW() WHERE id = ANY(${ids}) AND provider_id = ${providerId}`;
     res.json({ message: 'Products updated successfully' });
   } catch (error) {
     console.error('Bulk update error:', error);
@@ -450,7 +455,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
       if (!p.id || String(p.id).startsWith('temp_')) {
         await sql`
           INSERT INTO products (
-            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, service_type
+            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, service_type, payment_mode
           )
           VALUES (
             ${providerId}, 
@@ -466,7 +471,8 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
             ${p.description || null},
             ${p.additional_info || null},
             ${p.media_link || null},
-            ${p.service_type || 'Supply'}
+            ${p.service_type || 'Supply'},
+            ${p.payment_mode || 'pre-payment/credit'}
           )
         `;
       } else {
@@ -484,7 +490,9 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
             description = ${p.description || null},
             additional_info = ${p.additional_info || null},
             media_link = ${p.media_link || null},
-            service_type = ${p.service_type || 'Supply'}
+            service_type = ${p.service_type || 'Supply'},
+            payment_mode = ${p.payment_mode || 'pre-payment/credit'},
+            updated_at = NOW()
           WHERE id = ${p.id} AND provider_id = ${providerId}
         `;
       }

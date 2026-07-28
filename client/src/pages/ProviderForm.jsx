@@ -49,6 +49,7 @@ export default function ProviderForm() {
     city: '',
     country: '',
     description: '',
+    paymentMode: 'pre-payment/credit',
   });
 
   const [products, setProducts] = useState([emptyProduct()]);
@@ -229,16 +230,32 @@ export default function ProviderForm() {
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label" htmlFor="companyDescription">Company Description</label>
-                  <textarea
-                    id="companyDescription"
-                    className="form-textarea"
-                    name="description"
-                    placeholder="Brief description of your company and specializations..."
-                    value={company.description}
-                    onChange={handleCompanyChange}
-                  />
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="companyDescription">Company Description</label>
+                    <textarea
+                      id="companyDescription"
+                      className="form-textarea"
+                      name="description"
+                      placeholder="Brief description of your company and specializations..."
+                      value={company.description}
+                      onChange={handleCompanyChange}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="paymentMode">Accepted Payment Mode *</label>
+                    <select
+                      id="paymentMode"
+                      className="form-select"
+                      name="paymentMode"
+                      value={company.paymentMode}
+                      onChange={handleCompanyChange}
+                    >
+                      <option value="pre-payment">pre-payment</option>
+                      <option value="credit">credit</option>
+                      <option value="pre-payment/credit">pre-payment/credit</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 

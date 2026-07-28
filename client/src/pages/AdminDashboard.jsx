@@ -145,6 +145,7 @@ export default function AdminDashboard() {
                   <th>Type / Desc</th>
                   <th>Email / Phone</th>
                   <th>Address</th>
+                  <th>Payment Mode</th>
                   <th>Username</th>
                 </tr>
               </thead>
@@ -160,6 +161,7 @@ export default function AdminDashboard() {
                     <td style={{ fontSize: '0.85rem' }}>
                       {provider.address || 'N/A'} {provider.city ? `, ${provider.city}` : ''} {provider.country ? `, ${provider.country}` : ''}
                     </td>
+                    <td>{provider.payment_mode || 'N/A'}</td>
                     <td>{provider.username}</td>
                   </tr>
                 ))}

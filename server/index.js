@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.js';
 import providerRoutes from './routes/provider.js';
 import adminRoutes from './routes/admin.js';
 import buyerRoutes from './routes/buyer.js';
+import managementRoutes from './routes/management.js';
 import { initCronJobs } from './cron.js';
 
 dotenv.config();
@@ -27,6 +28,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/provider', providerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/buyer', buyerRoutes);
+app.use('/api/management', managementRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

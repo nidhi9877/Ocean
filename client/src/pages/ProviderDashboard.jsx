@@ -102,6 +102,7 @@ export default function ProviderDashboard() {
         additional_info: p.additional_info || '',
         media_link: p.media_link || '',
         service_type: p.service_type || 'Supply',
+        payment_mode: p.payment_mode || 'pre-payment/credit',
         id: p.id
       };
     });
@@ -129,6 +130,7 @@ export default function ProviderDashboard() {
           additional_info: p.additional_info || '',
           media_link: p.media_link || '',
           service_type: p.service_type || 'Supply',
+          payment_mode: p.payment_mode || 'pre-payment/credit',
           id: p.id
         };
       }
@@ -168,6 +170,7 @@ export default function ProviderDashboard() {
           additional_info: product.additional_info || '',
           media_link: product.media_link || '',
           service_type: product.service_type || 'Supply',
+          payment_mode: product.payment_mode || 'pre-payment/credit',
           id: product.id
         }
       });
@@ -198,7 +201,8 @@ export default function ProviderDashboard() {
       description: '',
       additional_info: '',
       media_link: '',
-      service_type: 'Supply'
+      service_type: 'Supply',
+      payment_mode: 'pre-payment/credit'
     };
     
     // Add to products
@@ -566,6 +570,7 @@ export default function ProviderDashboard() {
                     <p>📧 {provider.email}</p>
                     <p>📞 {provider.phone}</p>
                     <p>📍 {provider.address}{provider.city ? `, ${provider.city}` : ''}{provider.country ? `, ${provider.country}` : ''}</p>
+                    <p>💳 Payment Mode: {provider.payment_mode || 'N/A'}</p>
                   </div>
                   {provider.description && (
                     <p style={{ marginTop: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
@@ -703,6 +708,7 @@ export default function ProviderDashboard() {
                           <th>Stock Location</th>
                           <th>Quantity</th>
                           <th>Service Type</th>
+                          <th>Payment Mode</th>
                           <th>Media Link</th>
                           <th style={{ width: '65px', minWidth: '65px', textAlign: 'center', color: 'var(--danger)' }}>Remove</th>
                         </tr>
@@ -765,6 +771,13 @@ export default function ProviderDashboard() {
                                     <option value="Supply and Service">Supply and Service</option>
                                   </select>
                                 </td>
+                                <td>
+                                  <select className="inline-edit-input" value={editDataMap[product.id]?.payment_mode || 'pre-payment/credit'} onChange={(e) => handleBulkEditChange(product.id, 'payment_mode', e.target.value)}>
+                                    <option value="pre-payment/credit">pre-payment/credit</option>
+                                    <option value="pre-payment">pre-payment</option>
+                                    <option value="credit">credit</option>
+                                  </select>
+                                </td>
                                 <td>{editInput(product.id, 'media_link')}</td>
                                 <td style={{ textAlign: 'center', backgroundColor: '#fee2e2' }}>
                                   <button
@@ -790,6 +803,7 @@ export default function ProviderDashboard() {
                                   {highlightText(product.quantity, searchQuery)}
                                 </td>
                                 <td>{highlightText(product.service_type || 'Supply', searchQuery)}</td>
+                                <td>{highlightText(product.payment_mode || 'pre-payment/credit', searchQuery)}</td>
                                 <td>
                                   {product.media_link ? (
                                     <a href={product.media_link.startsWith('http') ? product.media_link : `https://${product.media_link}`} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'underline' }}>View</a>

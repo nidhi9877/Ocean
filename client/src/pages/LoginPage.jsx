@@ -29,6 +29,9 @@ export default function LoginPage() {
       if (res.data.user.role === 'provider') {
         toast.success(`Welcome back, ${res.data.user.username}!`);
         navigate('/provider/dashboard');
+      } else if (res.data.user.role === 'management') {
+        toast.success(`Welcome back, ${res.data.user.username}!`);
+        navigate('/management/dashboard');
       } else {
         toast.success(`Welcome back, ${res.data.user.username}!`);
         navigate('/dashboard');
@@ -135,7 +138,7 @@ export default function LoginPage() {
                 className="btn btn-primary btn-block btn-lg"
                 disabled={loading}
               >
-                {loading ? <span className="spinner"></span> : '🔑 Sign In'}
+                {loading ? <span className="spinner"></span> : 'Sign In'}
               </button>
             </form>
 

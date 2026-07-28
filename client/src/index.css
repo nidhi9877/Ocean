@@ -1985,3 +1985,4 @@ select.inline-edit-input {
   flex-direction: column;
   gap: 1rem;
 }
+.badge-management { background: #8b5cf6; color: white; }

@@ -85,11 +85,17 @@ router.post('/register', async (req, res) => {
 
     // If provider, insert basic provider details
     if (role === 'provider') {
-      const { companyName, companyType, address } = req.body;
+      const { companyName, companyType, address, paymentMode } = req.body;
       await sql`
-        INSERT INTO providers (user_id, company_name, contact_person, email, phone, address, description)
-        VALUES (${user.id}, ${companyName || username}, ${username}, ${email}, ${phone}, ${address || 'Not specified'}, ${companyType || ''})
+        INSERT INTO providers (user_id, company_name, contact_person, email, phone, address, description, payment_mode, status)
+        VALUES (${user.id}, ${companyName || username}, ${username}, ${email}, ${phone}, ${address || 'Not specified'}, ${companyType || ''}, ${paymentMode || 'pre-payment/credit'}, 'pending')
       `;
+      
+      // For providers, do NOT log them in immediately. Return pending message.
+      return res.status(201).json({
+        message: 'Registration successful. Your account is pending management approval.',
+        pendingApproval: true
+      });
     }
 
     // --- Concurrent Session Limit Logic ---
@@ -155,6 +161,19 @@ router.post('/login', async (req, res) => {
     const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
       return res.status(401).json({ error: 'Invalid username or password' });
+    }
+
+    // Check approval status for providers
+    if (user.role === 'provider') {
+      const providerData = await sql`SELECT status FROM providers WHERE user_id = ${user.id}`;
+      if (providerData.length > 0) {
+        const status = providerData[0].status;
+        if (status === 'pending') {
+          return res.status(403).json({ error: 'Account pending approval by management.' });
+        } else if (status === 'rejected') {
+          return res.status(403).json({ error: 'Account application was rejected.' });
+        }
+      }
     }
 
     // --- Concurrent Session Limit Logic ---

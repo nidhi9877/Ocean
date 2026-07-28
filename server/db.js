@@ -33,6 +33,8 @@ export async function initDatabase() {
         city VARCHAR(100),
         country VARCHAR(100),
         description TEXT,
+        payment_mode VARCHAR(50) DEFAULT 'pre-payment/credit',
+        status VARCHAR(50) DEFAULT 'approved',
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
@@ -67,7 +69,9 @@ export async function initDatabase() {
         additional_info TEXT,
         media_link TEXT,
         service_type VARCHAR(50) DEFAULT 'Supply',
-        created_at TIMESTAMPTZ DEFAULT NOW()
+        payment_mode VARCHAR(50) DEFAULT 'pre-payment/credit',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
 
@@ -107,12 +111,15 @@ export async function initDatabase() {
         sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS additional_info TEXT`,
         sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS media_link TEXT`,
         sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS service_type VARCHAR(50) DEFAULT 'Supply'`,
+        sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT 'pre-payment/credit'`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS target_price DECIMAL(10,2)`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS surge_email_sent BOOLEAN DEFAULT FALSE`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS broadcast_id VARCHAR(100)`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS cc VARCHAR(255)`,
-        sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS bcc VARCHAR(255)`
+        sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS bcc VARCHAR(255)`,
+        sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT 'pre-payment/credit'`,
+        sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'approved'`
       ]);
     } catch (e) {
       console.log('Columns likely already exist or minor error:', e.message);
@@ -131,6 +138,20 @@ export async function initDatabase() {
     }
 
     console.log('✅ Database tables initialized successfully in', ((Date.now() - start) / 1000).toFixed(2), 'seconds');
+
+    // Create default management account if it doesn't exist
+    try {
+      const existingMgmt = await sql`SELECT id FROM users WHERE username = 'admin_management'`;
+      if (existingMgmt.length === 0) {
+        const bcrypt = await import('bcryptjs');
+        const salt = await bcrypt.default.genSalt(10);
+        const hash = await bcrypt.default.hash('Management@123', salt);
+        await sql`INSERT INTO users (username, password_hash, role) VALUES ('admin_management', ${hash}, 'management')`;
+        console.log('✅ Default management account created');
+      }
+    } catch (e) {
+      console.log('Note on management account:', e.message);
+    }
   } catch (error) {
     console.error('❌ Database initialization error:', error.message);
     throw error;
