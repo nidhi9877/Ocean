@@ -9,6 +9,7 @@ import AddDataOptions from './pages/AddDataOptions';
 import AddCsvData from './pages/AddCsvData';
 import BuyerDashboard from './pages/BuyerDashboard';
 import ProviderDashboard from './pages/ProviderDashboard';
+import ManagementDashboard from './pages/ManagementDashboard';
 import ProviderInquiries from './pages/ProviderInquiries';
 import BuyerInquiries from './pages/BuyerInquiries';
 import WelcomePage from './pages/WelcomePage';
@@ -33,7 +34,9 @@ function ProtectedRoute({ children, allowedRole }) {
   }
 
   if (allowedRole && user.role !== allowedRole) {
-    return <Navigate to={user.role === 'provider' ? '/provider/dashboard' : '/dashboard'} replace />;
+    if (user.role === 'provider') return <Navigate to="/provider/dashboard" replace />;
+    if (user.role === 'management') return <Navigate to="/management/dashboard" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -60,7 +63,7 @@ function AppRoutes() {
         path="/login"
         element={
           user ? (
-             <Navigate to={user.role === 'provider' ? '/provider/dashboard' : '/dashboard'} replace />
+             <Navigate to={user.role === 'provider' ? '/provider/dashboard' : user.role === 'management' ? '/management/dashboard' : '/dashboard'} replace />
           ) : (
             <LoginPage />
           )
@@ -91,6 +94,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRole="provider">
             <ProviderDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/management/dashboard"
+        element={
+          <ProtectedRoute allowedRole="management">
+            <ManagementDashboard />
           </ProtectedRoute>
         }
       />

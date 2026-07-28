@@ -356,7 +356,7 @@ export default function BuyerDashboard() {
               <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', fontSize:'0.9rem', minWidth:900 }}>
                 <thead>
                   <tr style={{ borderBottom:'2px solid var(--border-color)' }}>
-                    {['Equipment','Manufacturer','Model','Year','Part Name','Part #','Location','Qty','Service','Action'].map(h => (
+                    {['Equipment','Manufacturer','Model','Year','Part Name','Part #','Location','Qty','Service','Payment','Last Updated','Action'].map(h => (
                       <th key={h} style={{ padding:'0.75rem', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>{h}</th>
                     ))}
                   </tr>
@@ -377,6 +377,10 @@ export default function BuyerDashboard() {
                         <td style={{ padding:'0.75rem' }}>{p.location||'-'}</td>
                         <td style={{ padding:'0.75rem', color:'var(--accent-primary)', fontWeight:'bold' }}>{p.quantity||'-'}</td>
                         <td style={{ padding:'0.75rem' }}>{p.service_type || 'Supply'}</td>
+                        <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.payment_mode || 'pre-payment/credit'}</td>
+                        <td style={{ padding:'0.75rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                          {p.updated_at ? new Date(p.updated_at).toLocaleDateString() : p.created_at ? new Date(p.created_at).toLocaleDateString() : '-'}
+                        </td>
                         <td style={{ padding:'0.75rem' }}>
                           <button className="btn btn-primary" disabled={sending}
                             style={{ padding:'0.4rem 0.8rem', fontSize:'0.85rem', display:'inline-flex', alignItems:'center', gap:'0.4rem', minWidth:130, opacity:sending?0.7:1, cursor:sending?'not-allowed':'pointer' }}

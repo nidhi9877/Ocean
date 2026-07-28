@@ -52,6 +52,7 @@ export default function UploadModal({ onClose, onSuccess }) {
     const colPartNumer = findCol(firstRow, ['partnumer', 'partnumber', 'pn']);
     const colStockLocation = findCol(firstRow, ['stocklocation', 'location']);
     const colQunatity = findCol(firstRow, ['qunatity', 'quantity', 'qty']);
+    const colPaymentMode = findCol(firstRow, ['paymentmode', 'payment', 'paymode']);
 
     const validProducts = [];
     let skippedRows = 0;
@@ -84,7 +85,8 @@ export default function UploadModal({ onClose, onSuccess }) {
         quantity: qty,
         price: '0',
         email: user?.email || '',
-        additionalInfo: ''
+        additionalInfo: '',
+        payment_mode: colPaymentMode ? (row[colPaymentMode] || 'pre-payment/credit') : 'pre-payment/credit'
       });
     }
 
@@ -155,6 +157,19 @@ export default function UploadModal({ onClose, onSuccess }) {
     }
   };
 
+  const downloadSampleExcel = () => {
+    const headers = ['Equipment', 'Manufacturer', 'Model Number', 'Year of Manufacturer', 'Part Name', 'Part Number', 'Stock Location', 'Quantity', 'Service Type', 'Payment Mode'];
+    const rows = [
+      ['Navigation', 'Raymarine', 'Axiom 9', '2022', 'GPS Chartplotter', 'E70366', 'Miami, FL', 5, 'Supply', 'pre-payment/credit'],
+      ['Engine', 'Caterpillar', 'C32', '2020', 'Fuel Injector', '10R-1273', 'Houston, TX', 12, 'Supply and Service', 'pre-payment']
+    ];
+    
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Sample");
+    XLSX.writeFile(wb, "Vortex_Inventory_Sample.xlsx");
+  };
+
   return (
     <div style={{
       position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
@@ -196,6 +211,12 @@ export default function UploadModal({ onClose, onSuccess }) {
               {file ? file.name : "Click to select a file or drag and drop"}
             </h4>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Supports .csv, .xlsx, .xls</p>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+            <button type="button" onClick={downloadSampleExcel} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span>📥</span> Download Sample Excel
+            </button>
           </div>
 
           {pdfMessage && (

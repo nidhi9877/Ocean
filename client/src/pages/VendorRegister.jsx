@@ -14,6 +14,7 @@ export default function VendorRegister() {
     companyName: '',
     companyType: '',
     address: '',
+    paymentMode: 'pre-payment/credit',
     password: '',
     confirmPassword: ''
   });
@@ -64,14 +65,12 @@ export default function VendorRegister() {
         phone: formData.phone,
         companyName: formData.companyName,
         companyType: formData.companyType,
-        address: formData.address
+        address: formData.address,
+        paymentMode: formData.paymentMode
       });
       
-      login(res.data.user, res.data.token);
-      toast.success('Registration successful! Welcome to Vortex.');
-      
-      // Auto redirect to provider dashboard
-      navigate('/provider/dashboard');
+      toast.success('Registration successful! Your account is pending management approval.');
+      navigate('/login');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Registration failed. Please try again.');
     } finally {
@@ -144,6 +143,16 @@ export default function VendorRegister() {
                 <div className="form-group">
                   <label className="form-label">Address</label>
                   <input className="form-input" type="text" name="address" value={formData.address} onChange={handleChange} required />
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group" style={{ width: '100%' }}>
+                  <label className="form-label">Accepted Payment Mode</label>
+                  <select className="form-select" name="paymentMode" value={formData.paymentMode} onChange={handleChange}>
+                    <option value="pre-payment">pre-payment</option>
+                    <option value="credit">credit</option>
+                    <option value="pre-payment/credit">pre-payment/credit</option>
+                  </select>
                 </div>
               </div>
               <div className="form-row">

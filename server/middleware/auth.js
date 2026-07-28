@@ -3,11 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-<<<<<<< HEAD
 export async function authenticateToken(req, res, next) {
-=======
-export function authenticateToken(req, res, next) {
->>>>>>> 7d9ca406dc431e3d24adaee8fbf929dd6034a28f
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -32,4 +28,11 @@ export function authenticateToken(req, res, next) {
   } catch (error) {
     return res.status(403).json({ error: 'Invalid or expired token' });
   }
+}
+
+export function authenticateManagement(req, res, next) {
+  if (!req.user || req.user.role !== 'management') {
+    return res.status(403).json({ error: 'Access denied. Management role required.' });
+  }
+  next();
 }
