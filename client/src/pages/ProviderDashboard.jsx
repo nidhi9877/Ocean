@@ -25,6 +25,7 @@ export default function ProviderDashboard() {
   const [deleting, setDeleting] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState('');
   const navigate = useNavigate();
   const spreadsheetRef = useRef(null);
 
@@ -60,6 +61,13 @@ export default function ProviderDashboard() {
       setProvider(res.data.provider);
       const fetchedProducts = res.data.products || [];
       setProducts(fetchedProducts);
+      
+      // Auto-select first department if available and none selected
+      const deps = [...new Set(fetchedProducts.map(p => p.department).filter(Boolean))];
+      if (deps.length > 0) {
+        setSelectedDepartment(deps[0]);
+      }
+      
       const lowStock = fetchedProducts.filter(p => Number(p.quantity) < 5);
       if (lowStock.length > 0) {
         lowStock.slice(0, 3).forEach(p => {
@@ -522,6 +530,21 @@ export default function ProviderDashboard() {
               📤 Master Upload
             </button>
             
+            {/* Department Dropdown */}
+            {[...new Set(products.map(p => p.department).filter(Boolean))].length > 0 && (
+              <select 
+                className="form-select"
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+                style={{ width: 'auto', padding: '0.6rem 1rem' }}
+              >
+                <option value="">All Departments</option>
+                {[...new Set(products.map(p => p.department).filter(Boolean))].map(dep => (
+                  <option key={dep} value={dep}>{dep}</option>
+                ))}
+              </select>
+            )}
+
             <button 
               className="btn btn-secondary"
               onClick={() => navigate('/provider/inquiries')}
@@ -715,6 +738,7 @@ export default function ProviderDashboard() {
                       </thead>
                       <tbody>
                         {products.filter(p => {
+                          if (selectedDepartment && p.department !== selectedDepartment) return false;
                           if (!searchQuery) return true;
                           const q = searchQuery.toLowerCase();
                           return (
@@ -849,10 +873,11 @@ export default function ProviderDashboard() {
             {showUploadModal && (
               <UploadModal 
                 onClose={() => setShowUploadModal(false)}
-                onSuccess={(count, skipped) => {
-                  setShowUploadModal(false);
-                  alert(`Successfully uploaded ${count} products!${skipped > 0 ? ` Skipped ${skipped} empty/invalid rows.` : ''}`);
-                  fetchProfile();
+                onSuccess={(count, skipped, shouldClose = true) => {
+                  fetchProfile(); // Always fetch to get new departments
+                  if (shouldClose) {
+                    setShowUploadModal(false);
+                  }
                 }}
               />
             )}
