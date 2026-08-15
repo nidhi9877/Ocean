@@ -14,7 +14,6 @@ export default function VendorRegister() {
     companyName: '',
     companyType: '',
     address: '',
-    paymentMode: 'pre-payment/credit',
     password: '',
     confirmPassword: ''
   });
@@ -143,16 +142,6 @@ export default function VendorRegister() {
                 <div className="form-group">
                   <label className="form-label">Address</label>
                   <input className="form-input" type="text" name="address" value={formData.address} onChange={handleChange} required />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group" style={{ width: '100%' }}>
-                  <label className="form-label">Accepted Payment Mode</label>
-                  <select className="form-select" name="paymentMode" value={formData.paymentMode} onChange={handleChange}>
-                    <option value="pre-payment">pre-payment</option>
-                    <option value="credit">credit</option>
-                    <option value="pre-payment/credit">pre-payment/credit</option>
-                  </select>
                 </div>
               </div>
               <div className="form-row">

@@ -89,7 +89,7 @@ router.post('/register', authenticateToken, async (req, res) => {
 // Bulk Insert Products for Provider
 router.post('/bulk-products', authenticateToken, async (req, res) => {
   try {
-    const { products } = req.body;
+    const { products, department } = req.body;
     
     if (!products || !Array.isArray(products) || products.length === 0) {
       return res.status(400).json({ error: 'No valid products provided' });
@@ -113,7 +113,7 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
       if (qty > 0) {
         await sql`
           INSERT INTO products (
-            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, service_type, payment_mode
+            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, service_type, payment_mode, department
           )
           VALUES (
             ${providerId}, 
@@ -130,7 +130,8 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
             ${p.additionalInfo || null},
             ${p.mediaLink || null},
             ${p.serviceType || 'Supply'},
-            ${p.payment_mode || 'pre-payment/credit'}
+            ${p.payment_mode || 'pre-payment/credit'},
+            ${department || null}
           )
         `;
         insertedCount++;

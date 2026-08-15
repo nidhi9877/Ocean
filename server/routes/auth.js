@@ -88,14 +88,8 @@ router.post('/register', async (req, res) => {
       const { companyName, companyType, address, paymentMode } = req.body;
       await sql`
         INSERT INTO providers (user_id, company_name, contact_person, email, phone, address, description, payment_mode, status)
-        VALUES (${user.id}, ${companyName || username}, ${username}, ${email}, ${phone}, ${address || 'Not specified'}, ${companyType || ''}, ${paymentMode || 'pre-payment/credit'}, 'pending')
+        VALUES (${user.id}, ${companyName || username}, ${username}, ${email}, ${phone}, ${address || 'Not specified'}, ${companyType || ''}, ${paymentMode || 'pre-payment/credit'}, 'approved')
       `;
-      
-      // For providers, do NOT log them in immediately. Return pending message.
-      return res.status(201).json({
-        message: 'Registration successful. Your account is pending management approval.',
-        pendingApproval: true
-      });
     }
 
     // --- Concurrent Session Limit Logic ---

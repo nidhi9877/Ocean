@@ -70,6 +70,7 @@ export async function initDatabase() {
         media_link TEXT,
         service_type VARCHAR(50) DEFAULT 'Supply',
         payment_mode VARCHAR(50) DEFAULT 'pre-payment/credit',
+        department VARCHAR(255),
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
       )
@@ -112,6 +113,7 @@ export async function initDatabase() {
         sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS media_link TEXT`,
         sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS service_type VARCHAR(50) DEFAULT 'Supply'`,
         sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT 'pre-payment/credit'`,
+        sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS department VARCHAR(255)`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS target_price DECIMAL(10,2)`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS surge_email_sent BOOLEAN DEFAULT FALSE`,
