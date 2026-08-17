@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import { validateCompanyEmail } from '../utils/emailValidator';
 
 const API = '/api';
 
@@ -36,6 +37,13 @@ export default function BuyerRegister() {
       return;
     }
 
+    // Company email validation
+    const emailValidation = validateCompanyEmail(formData.email);
+    if (!emailValidation.isValid) {
+      toast.error(emailValidation.error);
+      return;
+    }
+
     if (!formData.phone.trim().startsWith('+')) {
       toast.error('Please enter your phone number with the country code (e.g., +91).');
       return;
@@ -58,7 +66,7 @@ export default function BuyerRegister() {
         username: formData.username, 
         password: formData.password, 
         role: 'buyer',
-        email: formData.email,
+        email: formData.email.trim().toLowerCase(),
         phone: formData.phone
       });
       
@@ -124,11 +132,19 @@ export default function BuyerRegister() {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="email">Email Address</label>
+                    <label className="form-label" htmlFor="email">
+                      Company Email Address
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.4rem', fontWeight: 'normal' }}>
+                        (corporate email only)
+                      </span>
+                    </label>
                     <input
                       id="email" name="email" className="form-input" type="email"
-                      placeholder="john@example.com" value={formData.email} onChange={handleChange} required
+                      placeholder="name@company.com" value={formData.email} onChange={handleChange} required
                     />
+                    <small style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+                      Personal emails (Gmail, Yahoo, Outlook, etc.) are not accepted.
+                    </small>
                   </div>
                 </div>
 

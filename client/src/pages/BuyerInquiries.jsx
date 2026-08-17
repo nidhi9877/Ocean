@@ -42,8 +42,32 @@ const getEmailClientUrl = (clientType, to, subject, body, cc, bcc) => {
   }
 };
 
+const getExpiryInfo = (createdAt) => {
+  const created = new Date(createdAt).getTime();
+  const expiresAt = created + 7 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const diffMs = expiresAt - now;
+
+  if (diffMs <= 0) {
+    return { text: 'Expiring today', isUrgent: true };
+  }
+
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffDays > 1) {
+    return { text: `${diffDays} days left`, isUrgent: false };
+  } else if (diffDays === 1) {
+    return { text: `1 day left`, isUrgent: true };
+  } else if (diffHours > 1) {
+    return { text: `${diffHours} hours left`, isUrgent: true };
+  } else {
+    return { text: `< 1 hour left`, isUrgent: true };
+  }
+};
+
 export default function BuyerInquiries() {
-  const { token } = useAuth();
+  const { user, token } = useAuth();
   const [inquiries, setInquiries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showComposeModal, setShowComposeModal] = useState(false);
@@ -53,19 +77,37 @@ export default function BuyerInquiries() {
   const [showBcc, setShowBcc] = useState(false);
   const [showSendDropdown, setShowSendDropdown] = useState(false);
 
-  const openComposeModal = (inquiry) => {
-    setSelectedInquiry(inquiry);
-    const subject = `Follow-up on Inquiry for ${inquiry.product_name}`;
-    const body = `Hello ${inquiry.company_name} Team,\n\nI am writing to follow up on my inquiry.\n\n--- REQUEST DETAILS ---\nProduct: ${inquiry.product_name}\nPart Number: ${inquiry.part_number || 'N/A'}\nRequired Destination: ${inquiry.destination_location}\n\nPlease let me know what further information or documentation is required from my side to finalize this booking.\n\nBest regards,\nMarine Market Buyer`;
-    
-    setShowCc(!!inquiry.cc);
-    setShowBcc(!!inquiry.bcc);
-    setEmailData({
-      cc: inquiry.cc || '',
-      bcc: inquiry.bcc || '',
-      subject,
-      body
-    });
+  const openComposeModal = (item) => {
+    setSelectedInquiry(item);
+    const isSent = item.category === 'sent' || item.item_type === 'inquiry';
+
+    if (isSent) {
+      const subject = `Follow-up on Inquiry for ${item.product_name}`;
+      const body = `Hello ${item.company_name} Team,\n\nI am writing to follow up on my inquiry.\n\n--- REQUEST DETAILS ---\nProduct: ${item.product_name}\nPart Number: ${item.part_number || 'N/A'}\nRequired Destination: ${item.destination_location || 'N/A'}${item.vessel_name ? `\nVessel Name: ${item.vessel_name}` : ''}${item.eta ? `\nETA: ${item.eta}` : ''}\n\nPlease let me know what further information or documentation is required from my side to finalize this booking.\n\nBest regards,\n${user?.username || 'Marine Market Buyer'}`;
+      
+      setShowCc(!!item.cc);
+      setShowBcc(!!item.bcc);
+      setEmailData({
+        cc: item.cc || '',
+        bcc: item.bcc || '',
+        subject,
+        body
+      });
+    } else {
+      // Searched product initial inquiry email
+      const subject = `🚢 Purchase Inquiry: ${item.product_name} — Vortex Marketplace`;
+      const body = `Dear ${item.company_name} Team,\n\nI am interested in purchasing the following listed product:\n\n- Product: ${item.product_name}\n- Brand: ${item.brand || 'N/A'}\n- Model: ${item.model_number || 'N/A'}\n- Part Number: ${item.part_number || 'N/A'}\n\nPlease let me know if you can fulfill this request and provide a price quote.\n\nBest regards,\n${user?.username || 'Buyer'}`;
+      
+      setShowCc(false);
+      setShowBcc(false);
+      setEmailData({
+        cc: '',
+        bcc: '',
+        subject,
+        body
+      });
+    }
+
     setShowComposeModal(true);
   };
 
@@ -110,8 +152,8 @@ export default function BuyerInquiries() {
       <div className="dashboard-container">
         <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h1>My Inquiries 📨</h1>
-            <p>Track the status of your product inquiries and contact vendors.</p>
+            <h1>My Recents 📨</h1>
+            <p>Track your searched products and sent inquiries. Records are automatically retained for <strong>1 week</strong> (7 days).</p>
           </div>
           <Link to="/dashboard" className="btn btn-secondary">
             ← Back to Search
@@ -125,46 +167,109 @@ export default function BuyerInquiries() {
         ) : inquiries.length === 0 ? (
           <div className="glass-card empty-state">
             <span className="empty-state-icon">📭</span>
-            <h3>No inquiries sent</h3>
-            <p>Search for a product and send an inquiry to vendors.</p>
+            <h3>No recent activity</h3>
+            <p>You have no recent searches or sent inquiries from the last 7 days. Search for products to view details and contact vendors.</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '1rem' }}>
-            {inquiries.map(inquiry => (
-              <div key={inquiry.id} className="glass-card inquiry-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1.5rem', padding: '1.25rem 1.5rem', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: '280px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--text-primary)', fontFamily: "'Outfit', sans-serif" }}>{inquiry.product_name}</h3>
-                    <span style={{ fontSize: '0.82rem', fontFamily: 'monospace', color: 'var(--text-secondary)', background: 'rgba(37,99,235,0.06)', padding: '0.15rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(37,99,235,0.1)' }}>
-                      Part #: {inquiry.part_number || 'N/A'}
-                    </span>
+            {inquiries.map(item => {
+              const expiry = getExpiryInfo(item.created_at);
+              const isSent = item.category === 'sent' || item.item_type === 'inquiry';
+              return (
+                <div key={`${item.category}-${item.id}`} className="glass-card inquiry-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1.5rem', padding: '1.25rem 1.5rem', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: '280px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--text-primary)', fontFamily: "'Outfit', sans-serif" }}>{item.product_name}</h3>
+                      <span style={{ fontSize: '0.82rem', fontFamily: 'monospace', color: 'var(--text-secondary)', background: 'rgba(37,99,235,0.06)', padding: '0.15rem 0.4rem', borderRadius: '4px', border: '1px solid rgba(37,99,235,0.1)' }}>
+                        Part #: {item.part_number || 'N/A'}
+                      </span>
+                      <span style={{
+                        fontSize: '0.78rem',
+                        fontWeight: '600',
+                        padding: '0.2rem 0.55rem',
+                        borderRadius: '12px',
+                        background: isSent ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                        color: isSent ? '#059669' : '#2563eb',
+                        border: `1px solid ${isSent ? 'rgba(16, 185, 129, 0.25)' : 'rgba(59, 130, 246, 0.25)'}`,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.3rem'
+                      }}>
+                        {isSent ? '📤 Sent on' : '🔍 Searched on'}: {new Date(item.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                      </span>
+                      <span style={{
+                        fontSize: '0.78rem',
+                        fontWeight: '600',
+                        padding: '0.2rem 0.55rem',
+                        borderRadius: '12px',
+                        background: expiry.isUrgent ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                        color: expiry.isUrgent ? '#dc2626' : '#d97706',
+                        border: `1px solid ${expiry.isUrgent ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.25)'}`,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.3rem'
+                      }}>
+                        ⏱️ {expiry.text}
+                      </span>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '0.6rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                        <span>🏭</span> <strong>Vendor:</strong> {item.company_name}
+                      </div>
+                      {isSent ? (
+                        <>
+                          {item.destination_location && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                              <span>📍</span> <strong>Destination:</strong> {item.destination_location}
+                            </div>
+                          )}
+                          {item.vessel_name && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                              <span>🚢</span> <strong>Vessel:</strong> {item.vessel_name}
+                            </div>
+                          )}
+                          {item.eta && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                              <span>⚓</span> <strong>ETA:</strong> {item.eta}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {item.brand && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                              <span>🏷️</span> <strong>Brand:</strong> {item.brand}
+                            </div>
+                          )}
+                          {item.model_number && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                              <span>🔎</span> <strong>Model:</strong> {item.model_number}
+                            </div>
+                          )}
+                          {item.product_location && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
+                              <span>📍</span> <strong>Location:</strong> {item.product_location}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
-                  
-                  <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '0.6rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-                      <span>🏭</span> <strong>Vendor:</strong> {inquiry.company_name} ({inquiry.provider_phone})
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-                      <span>📍</span> <strong>Destination:</strong> {inquiry.destination_location}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                      <span>📅</span> <strong>Sent:</strong> {new Date(inquiry.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
 
                   <div className="inquiry-actions" style={{ minWidth: '160px' }}>
                     <button 
                       type="button"
-                      onClick={() => openComposeModal(inquiry)}
+                      onClick={() => openComposeModal(item)}
                       className="btn btn-primary"
-                      style={{ textDecoration: 'none', textAlign: 'center', padding: '0.55rem', border: 'none', cursor: 'pointer', display: 'block', width: '100%' }}
+                      style={{ textDecoration: 'none', textAlign: 'center', padding: '0.55rem 1rem', border: 'none', cursor: 'pointer', display: 'block', width: '100%' }}
                     >
-                      ✉️ Email Vendor
+                      {isSent ? '✉️ Follow up mail' : '✉️ Email Vendor'}
                     </button>
                   </div>
                 </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

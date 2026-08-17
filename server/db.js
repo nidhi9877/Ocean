@@ -101,6 +101,17 @@ export async function initDatabase() {
       )
     `;
 
+    await sql`
+      CREATE TABLE IF NOT EXISTS buyer_searches (
+        id SERIAL PRIMARY KEY,
+        buyer_id INTEGER REFERENCES buyers(id) ON DELETE CASCADE,
+        product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+        search_query VARCHAR(255),
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        CONSTRAINT unique_buyer_product_search UNIQUE (buyer_id, product_id)
+      )
+    `;
+
     // Execute ALTER TABLE in parallel
     try {
       await Promise.all([
@@ -118,6 +129,9 @@ export async function initDatabase() {
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS broadcast_id VARCHAR(100)`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS cc VARCHAR(255)`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS bcc VARCHAR(255)`,
+        sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS eta VARCHAR(100)`,
+        sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS etd VARCHAR(100)`,
+        sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS vessel_name VARCHAR(255)`,
         sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT 'pre-payment/credit'`,
         sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'approved'`
       ]);
