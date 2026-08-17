@@ -12,6 +12,9 @@ export default function UploadModal({ onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [pdfMessage, setPdfMessage] = useState(false);
+  const [department, setDepartment] = useState('');
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [successStats, setSuccessStats] = useState(null);
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -51,7 +54,7 @@ export default function UploadModal({ onClose, onSuccess }) {
     const colPartName = findCol(firstRow, ['partname', 'productname', 'item']);
     const colPartNumer = findCol(firstRow, ['partnumer', 'partnumber', 'pn']);
     const colStockLocation = findCol(firstRow, ['stocklocation', 'location']);
-    const colQunatity = findCol(firstRow, ['qunatity', 'quantity', 'qty']);
+    const colQunatity = findCol(firstRow, ['qunatity', 'quantity', 'qty', 'quantiy']);
     const colPaymentMode = findCol(firstRow, ['paymentmode', 'payment', 'paymode']);
 
     const validProducts = [];
@@ -99,10 +102,12 @@ export default function UploadModal({ onClose, onSuccess }) {
     try {
       await axios.post(
         `${API}/provider/bulk-products`,
-        { products: validProducts },
+        { products: validProducts, department },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      onSuccess(validProducts.length, skippedRows);
+      setSuccessStats({ count: validProducts.length, skipped: skippedRows });
+      setUploadSuccess(true);
+      onSuccess(validProducts.length, skippedRows, false); // tell parent we succeeded, but don't close yet
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to upload products.');
     } finally {
@@ -190,52 +195,101 @@ export default function UploadModal({ onClose, onSuccess }) {
           Upload your existing inventory spreadsheet. We support Excel (.xlsx, .xls) and CSV files.
         </p>
 
-        <form onSubmit={handleUpload}>
-          {error && <div className="alert alert-error" style={{ marginBottom: '1rem' }}>{error}</div>}
-          
-          <div style={{ 
-            border: file ? '2px solid var(--accent-primary)' : '2px dashed var(--border-color)', 
-            padding: '2.5rem 2rem', borderRadius: 'var(--radius-md)', 
-            background: file ? 'rgba(59, 130, 246, 0.04)' : 'var(--bg-surface)', 
-            cursor: 'pointer', position: 'relative', textAlign: 'center', transition: 'all 0.3s ease',
-            marginBottom: '1.5rem'
-          }}>
-            <input 
-              type="file" 
-              accept=".csv, .xlsx, .xls, .pdf" 
-              onChange={handleFileChange} 
-              style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }}
-            />
-            <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📁</div>
-            <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.35rem', fontSize: '1rem' }}>
-              {file ? file.name : "Click to select a file or drag and drop"}
-            </h4>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Supports .csv, .xlsx, .xls</p>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-            <button type="button" onClick={downloadSampleExcel} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span>📥</span> Download Sample Excel
-            </button>
-          </div>
-
-          {pdfMessage && (
-            <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', padding: '1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem' }}>
-              <p style={{ margin: 0, color: '#92400e', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                <strong>PDF Detected:</strong> To ensure accurate extraction of your tabular data, please convert your PDF to an Excel file using a free tool before uploading.
-              </p>
+        {!uploadSuccess ? (
+          <form onSubmit={handleUpload}>
+            {error && <div className="alert alert-error" style={{ marginBottom: '1rem' }}>{error}</div>}
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Department Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Engine Parts, Deck Equipment"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                className="form-input"
+                required
+                style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}
+              />
             </div>
-          )}
 
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-            <button type="button" className="btn btn-secondary" onClick={onClose} style={{ padding: '0.5rem 1rem' }}>
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={!file || loading || pdfMessage} style={{ padding: '0.5rem 1.5rem' }}>
-              {loading ? 'Processing...' : 'Upload & Add'}
-            </button>
+            <div style={{ 
+              border: file ? '2px solid var(--accent-primary)' : '2px dashed var(--border-color)', 
+              padding: '2.5rem 2rem', borderRadius: 'var(--radius-md)', 
+              background: file ? 'rgba(59, 130, 246, 0.04)' : 'var(--bg-surface)', 
+              cursor: 'pointer', position: 'relative', textAlign: 'center', transition: 'all 0.3s ease',
+              marginBottom: '1.5rem'
+            }}>
+              <input 
+                type="file" 
+                accept=".csv, .xlsx, .xls, .pdf" 
+                onChange={handleFileChange} 
+                style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+              />
+              <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📁</div>
+              <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.35rem', fontSize: '1rem' }}>
+                {file ? file.name : "Click to select a file or drag and drop"}
+              </h4>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Supports .csv, .xlsx, .xls</p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+              <button type="button" onClick={downloadSampleExcel} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span>📥</span> Download Sample Excel
+              </button>
+            </div>
+
+            {pdfMessage && (
+              <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', padding: '1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem' }}>
+                <p style={{ margin: 0, color: '#92400e', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                  <strong>PDF Detected:</strong> To ensure accurate extraction of your tabular data, please convert your PDF to an Excel file using a free tool before uploading.
+                </p>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-secondary" onClick={onClose} style={{ padding: '0.5rem 1rem' }}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={!file || !department.trim() || loading || pdfMessage} style={{ padding: '0.5rem 1.5rem' }}>
+                {loading ? 'Processing...' : 'Upload & Add'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
+            <h3 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Upload Successful!</h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+              Successfully uploaded {successStats?.count} products for the "{department}" department. 
+              {successStats?.skipped > 0 && ` Skipped ${successStats.skipped} empty/invalid rows.`}
+            </p>
+            
+            <p style={{ color: 'var(--text-primary)', marginBottom: '1.5rem', fontWeight: 'bold' }}>
+              Do you want to add more files for another department?
+            </p>
+            
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button 
+                className="btn btn-secondary" 
+                onClick={onClose} 
+                style={{ padding: '0.5rem 1.5rem' }}
+              >
+                No, I'm Done
+              </button>
+              <button 
+                className="btn btn-primary" 
+                onClick={() => {
+                  setUploadSuccess(false);
+                  setFile(null);
+                  setDepartment('');
+                }} 
+                style={{ padding: '0.5rem 1.5rem' }}
+              >
+                Yes, Add More
+              </button>
+            </div>
           </div>
-        </form>
+        )}
       </div>
     </div>
   );
