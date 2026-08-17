@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { sql } from '../db.js';
 import dotenv from 'dotenv';
+import { validateCompanyEmail } from '../utils/emailValidator.js';
 
 dotenv.config();
 
@@ -35,6 +36,11 @@ router.post('/register', async (req, res) => {
     if (role === 'buyer') {
       if (!email || !phone) {
         return res.status(400).json({ error: 'All buyer details (email, phone) are required' });
+      }
+
+      const emailValidation = validateCompanyEmail(email);
+      if (!emailValidation.isValid) {
+        return res.status(400).json({ error: emailValidation.error });
       }
     }
 

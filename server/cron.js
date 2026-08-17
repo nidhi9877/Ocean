@@ -1,21 +1,40 @@
 import cron from 'node-cron';
 import { sql } from './db.js';
-import { Resend } from 'resend';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-const SYSTEM_FROM = process.env.SYSTEM_EMAIL_FROM || 'Vortex Marketplace <onboarding@resend.dev>';
-const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
 /**
- * The Surge Pricing Engine
- * Runs every 30 minutes.
- * Scans for pending inquiries older than 1 hour where the buyer hasn't been emailed yet.
- * Sends a FOMO/Surge email to the buyer urging them to increase the Target Price.
+ * Vortex Background Cron Jobs
+ * 1. Automatically deletes inquiry records older than 1 week (7 days).
+ * Runs every hour and also executes immediately upon server startup.
  */
 export function initCronJobs() {
-  console.log('⏳ Initializing Vortex Surge Pricing Engine (Cron Jobs)...');
-  // Surge pricing disabled because Target Price feature was removed.
+  console.log('⏳ Initializing Vortex Background Cron Jobs (Auto-delete inquiries older than 7 days)...');
+
+  // Helper function to clean up expired inquiries and searches
+  const cleanupExpiredRecords = async (source = 'Scheduled') => {
+    try {
+      const deletedInquiries = await sql`
+        DELETE FROM inquiries 
+        WHERE created_at < NOW() - INTERVAL '7 days'
+        RETURNING id
+      `;
+      const deletedSearches = await sql`
+        DELETE FROM buyer_searches
+        WHERE created_at < NOW() - INTERVAL '7 days'
+        RETURNING id
+      `;
+      if (deletedInquiries.length > 0 || deletedSearches.length > 0) {
+        console.log(`🧹 [${source} Cleanup] Deleted ${deletedInquiries.length} inquiry and ${deletedSearches.length} search record(s) older than 1 week (7 days).`);
+      }
+    } catch (err) {
+      console.error(`❌ [${source} Cleanup] Error cleaning up expired records:`, err.message);
+    }
+  };
+
+  // Run on startup
+  cleanupExpiredRecords('Startup');
+
+  // Schedule to run every hour at minute 0
+  cron.schedule('0 * * * *', () => {
+    cleanupExpiredRecords('Hourly Cron');
+  });
 }

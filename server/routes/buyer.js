@@ -19,8 +19,20 @@ router.post('/inquiries', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'No products selected for inquiry' });
     }
 
-    if (!destination_location) {
-      return res.status(400).json({ error: 'Destination location is required' });
+    const eta = delivery_requirements?.eta || req.body.eta;
+    const etd = delivery_requirements?.etd || req.body.etd || null;
+    const vesselName = delivery_requirements?.vessel_name || req.body.vessel_name || req.body.vesselName;
+
+    if (!destination_location || !destination_location.trim()) {
+      return res.status(400).json({ error: 'Destination location is required.' });
+    }
+
+    if (!eta || !eta.toString().trim()) {
+      return res.status(400).json({ error: 'ETA is compulsory for sending an inquiry.' });
+    }
+
+    if (!vesselName || !vesselName.toString().trim()) {
+      return res.status(400).json({ error: 'Vessel Name is compulsory for sending an inquiry.' });
     }
 
     // Get the buyer profile
@@ -44,8 +56,8 @@ router.post('/inquiries', authenticateToken, async (req, res) => {
     for (const sel of selections) {
       // Insert inquiry into DB
       await sql`
-        INSERT INTO inquiries (buyer_id, provider_id, product_id, destination_location, target_price, broadcast_id, cc, bcc)
-        VALUES (${buyer_id}, ${sel.provider_id}, ${sel.product_id}, ${destination_location}, NULL, ${broadcast_id}, ${cc || null}, ${bcc || null})
+        INSERT INTO inquiries (buyer_id, provider_id, product_id, destination_location, eta, etd, vessel_name, target_price, broadcast_id, cc, bcc)
+        VALUES (${buyer_id}, ${sel.provider_id}, ${sel.product_id}, ${destination_location.trim()}, ${eta.toString().trim()}, ${etd ? etd.toString().trim() : null}, ${vesselName.toString().trim()}, NULL, ${broadcast_id}, ${cc || null}, ${bcc || null})
       `;
     }
 
@@ -58,7 +70,40 @@ router.post('/inquiries', authenticateToken, async (req, res) => {
   }
 });
 
-// ─── GET /inquiries — Get all buyer inquiries ────────────────────────────────
+// ─── POST /searches — Log buyer searched products ─────────────────────────────
+router.post('/searches', authenticateToken, async (req, res) => {
+  try {
+    const { product_ids, search_query } = req.body;
+    if (!product_ids || !Array.isArray(product_ids) || product_ids.length === 0) {
+      return res.status(400).json({ error: 'No product IDs provided.' });
+    }
+
+    const buyerProfile = await sql`SELECT id FROM buyers WHERE user_id = ${req.user.id}`;
+    if (buyerProfile.length === 0) {
+      return res.status(403).json({ error: 'Only registered buyers can log search history.' });
+    }
+    const buyer_id = buyerProfile[0].id;
+
+    // Limit batch size to top 20 results to avoid massive bulk writes
+    const safeProductIds = product_ids.slice(0, 20);
+
+    for (const pid of safeProductIds) {
+      await sql`
+        INSERT INTO buyer_searches (buyer_id, product_id, search_query, created_at)
+        VALUES (${buyer_id}, ${pid}, ${search_query || null}, NOW())
+        ON CONFLICT (buyer_id, product_id)
+        DO UPDATE SET created_at = NOW(), search_query = EXCLUDED.search_query
+      `;
+    }
+
+    res.json({ message: 'Search activity logged.' });
+  } catch (error) {
+    console.error('Error logging search activity:', error);
+    res.status(500).json({ error: 'Failed to log search activity.' });
+  }
+});
+
+// ─── GET /inquiries — Get recent buyer inquiries & searches (within 1 week limit) ───
 router.get('/inquiries', authenticateToken, async (req, res) => {
   try {
     const buyerProfile = await sql`SELECT id FROM buyers WHERE user_id = ${req.user.id}`;
@@ -67,21 +112,84 @@ router.get('/inquiries', authenticateToken, async (req, res) => {
     }
     const buyer_id = buyerProfile[0].id;
 
+    // Automatically purge records older than 1 week (7 days)
+    await sql`DELETE FROM inquiries WHERE created_at < NOW() - INTERVAL '7 days'`;
+    await sql`DELETE FROM buyer_searches WHERE created_at < NOW() - INTERVAL '7 days'`;
+
+    // 1. Fetch Sent Inquiries
     const inquiries = await sql`
-      SELECT i.*, 
-             p.product_name, p.part_number,
-             pr.company_name, pr.email as provider_email, pr.phone as provider_phone
+      SELECT 
+        i.id,
+        'inquiry' as item_type,
+        'sent' as category,
+        i.product_id,
+        i.destination_location,
+        i.vessel_name,
+        i.eta,
+        i.etd,
+        i.cc,
+        i.bcc,
+        i.created_at,
+        p.product_name,
+        p.part_number,
+        p.brand,
+        p.model_number,
+        p.location as product_location,
+        p.price as product_price,
+        pr.id as provider_id,
+        pr.company_name,
+        pr.email as provider_email
       FROM inquiries i
       LEFT JOIN products p ON i.product_id = p.id
       JOIN providers pr ON i.provider_id = pr.id
       WHERE i.buyer_id = ${buyer_id}
+        AND i.created_at >= NOW() - INTERVAL '7 days'
       ORDER BY i.created_at DESC
     `;
 
-    res.json(inquiries);
+    // 2. Fetch Searched Products (excluding ones that already have an inquiry)
+    const searchedProducts = await sql`
+      SELECT 
+        s.id,
+        'search' as item_type,
+        'searched' as category,
+        s.product_id,
+        NULL as destination_location,
+        NULL as vessel_name,
+        NULL as eta,
+        NULL as etd,
+        NULL as cc,
+        NULL as bcc,
+        s.created_at,
+        p.product_name,
+        p.part_number,
+        p.brand,
+        p.model_number,
+        p.location as product_location,
+        p.price as product_price,
+        pr.id as provider_id,
+        pr.company_name,
+        pr.email as provider_email
+      FROM buyer_searches s
+      JOIN products p ON s.product_id = p.id
+      JOIN providers pr ON p.provider_id = pr.id
+      WHERE s.buyer_id = ${buyer_id}
+        AND s.created_at >= NOW() - INTERVAL '7 days'
+        AND s.product_id NOT IN (
+          SELECT product_id FROM inquiries WHERE buyer_id = ${buyer_id} AND product_id IS NOT NULL
+        )
+      ORDER BY s.created_at DESC
+    `;
+
+    // Combine and sort by created_at DESC
+    const combined = [...inquiries, ...searchedProducts].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    res.json(combined);
   } catch (error) {
-    console.error('Inquiries fetch error:', error);
-    res.status(500).json({ error: 'Internal server error while fetching inquiries.' });
+    console.error('Inquiries/Recents fetch error:', error);
+    res.status(500).json({ error: 'Internal server error while fetching recents.' });
   }
 });
 

@@ -62,7 +62,7 @@ export default function BuyerDashboard() {
   const [locationSearch, setLocationSearch] = useState('');
 
   const [filters, setFilters] = useState({
-    equipment: [], manufacturer: [], modelNumber: '',
+    equipment: [], manufacturer: [], modelNumber: '', partNumber: '',
     stockLocation: [], minQty: 1, serviceType: '',
   });
 
@@ -85,6 +85,7 @@ export default function BuyerDashboard() {
     if (filters.equipment.length) c++;
     if (filters.manufacturer.length) c++;
     if (filters.modelNumber) c++;
+    if (filters.partNumber) c++;
     if (filters.stockLocation.length) c++;
     if (filters.minQty > 1) c++;
     if (filters.serviceType) c++;
@@ -131,6 +132,7 @@ export default function BuyerDashboard() {
       if (filters.equipment.length && !filters.equipment.includes(p.category)) return false;
       if (filters.manufacturer.length && !filters.manufacturer.includes(p.brand)) return false;
       if (filters.modelNumber && !fuzzyMatch(p.model_number, filters.modelNumber)) return false;
+      if (filters.partNumber && !fuzzyMatch(p.part_number, filters.partNumber)) return false;
       if (filters.stockLocation.length && !filters.stockLocation.includes(p.location)) return false;
       if (filters.minQty > 1 && Number(p.quantity) < filters.minQty) return false;
       const sType = p.service_type || 'Supply';
@@ -191,10 +193,26 @@ export default function BuyerDashboard() {
     return locationOpts.filter(o => getFuzzyMatch()(o, locationSearch));
   }, [locationOpts, locationSearch, filters.stockLocation]);
 
+  const logSearchedProducts = async (products, query) => {
+    if (!products || products.length === 0 || !token) return;
+    try {
+      const product_ids = products.slice(0, 15).map(p => p.id);
+      await axios.post(`${API}/buyer/searches`, {
+        product_ids,
+        search_query: query || ''
+      }, { headers: { Authorization: `Bearer ${token}` } });
+    } catch (e) {
+      // Non-critical background logging
+    }
+  };
+
   const handleSearch = (e) => {
     e?.preventDefault();
     if (!searchQuery.trim() && activeFilterCount === 0) { toast.error('Enter a search term or apply filters.'); return; }
     setHasSearched(true);
+    setTimeout(() => {
+      logSearchedProducts(displayedProducts, searchQuery.trim());
+    }, 100);
   };
 
   const toggleCheckbox = (field, value) => {
@@ -203,17 +221,24 @@ export default function BuyerDashboard() {
     }));
   };
 
-  const clearAll = () => { setFilters({ equipment:[], manufacturer:[], modelNumber:'', stockLocation:[], minQty:1, serviceType:'' }); };
+  const clearAll = () => { setFilters({ equipment:[], manufacturer:[], modelNumber:'', partNumber:'', stockLocation:[], minQty:1, serviceType:'' }); };
 
   const handleSendInquiry = async (clientType) => {
     if (!selectedProduct) return;
-    if (!inquiryMeta.destination.trim()) { toast.error('Set Destination Port in the inquiry details section.'); return; }
+    if (!inquiryMeta.destination.trim()) { toast.error('Please enter Destination Port in the inquiry details section.'); return; }
+    if (!inquiryMeta.eta.trim()) { toast.error('Please select ETA in the inquiry details section (compulsory).'); return; }
+    if (!inquiryMeta.vesselName.trim()) { toast.error('Please enter Vessel Name in the inquiry details section (compulsory).'); return; }
     if (sendingIds.has(selectedProduct.id)) return;
     setSendingIds(prev => new Set(prev).add(selectedProduct.id));
     try {
       await axios.post(`${API}/buyer/inquiries`, {
         selections: [{ provider_id: selectedProduct.provider_id, product_id: selectedProduct.id }],
         destination_location: inquiryMeta.destination.trim(),
+        delivery_requirements: {
+          eta: inquiryMeta.eta.trim(),
+          etd: inquiryMeta.etd ? inquiryMeta.etd.trim() : null,
+          vessel_name: inquiryMeta.vesselName.trim()
+        },
         cc: emailData.cc ? emailData.cc.trim() : null,
         bcc: emailData.bcc ? emailData.bcc.trim() : null,
       }, { headers: { Authorization: `Bearer ${token}` } });
@@ -241,12 +266,20 @@ export default function BuyerDashboard() {
 
   const openComposeModal = (product) => {
     if (!inquiryMeta.destination.trim()) {
-      toast.error('Set Destination Port in the inquiry details section first.');
+      toast.error('Please enter Destination Port in the inquiry details section.');
+      return;
+    }
+    if (!inquiryMeta.eta.trim()) {
+      toast.error('Please select ETA in the inquiry details section (compulsory).');
+      return;
+    }
+    if (!inquiryMeta.vesselName.trim()) {
+      toast.error('Please enter Vessel Name in the inquiry details section (compulsory).');
       return;
     }
     setSelectedProduct(product);
     const subject = `🚢 Purchase Inquiry: ${product.product_name} — Vortex Marketplace`;
-    const body = `Dear ${product.company_name} Team,\n\nI am interested in purchasing the following listed product:\n\n- Product: ${product.product_name}\n- Brand: ${product.brand || 'N/A'}\n- Model: ${product.model_number || 'N/A'}\n- Part Number: ${product.part_number || 'N/A'}\n\nDelivery Details:\n- Destination Port: ${inquiryMeta.destination.trim()}\n- ETA: ${inquiryMeta.eta || 'N/A'}\n- ETD: ${inquiryMeta.etd || 'N/A'}\n- Vessel Name: ${inquiryMeta.vesselName || 'N/A'}\n- Minimum Quantity Required: ${filters.minQty}\n\nPlease let me know if you can fulfill this request and provide a price quote.\n\nBest regards,\n${user?.username || 'Buyer'}`;
+    const body = `Dear ${product.company_name} Team,\n\nI am interested in purchasing the following listed product:\n\n- Product: ${product.product_name}\n- Brand: ${product.brand || 'N/A'}\n- Model: ${product.model_number || 'N/A'}\n- Part Number: ${product.part_number || 'N/A'}\n\nDelivery Details:\n- Destination Port: ${inquiryMeta.destination.trim()}\n- ETA: ${inquiryMeta.eta.trim()}\n- ETD: ${inquiryMeta.etd ? inquiryMeta.etd.trim() : 'N/A'}\n- Vessel Name: ${inquiryMeta.vesselName.trim()}\n- Minimum Quantity Required: ${filters.minQty}\n\nPlease let me know if you can fulfill this request and provide a price quote.\n\nBest regards,\n${user?.username || 'Buyer'}`;
     
     setShowCc(false);
     setShowBcc(false);
@@ -284,7 +317,7 @@ export default function BuyerDashboard() {
             <h1 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.8rem', fontWeight:'700' }}>Welcome, {user?.username} 👋</h1>
             <p style={{ color:'var(--text-secondary)', marginTop:'0.25rem' }}>Search marine spare parts and send inquiries directly to vendors.</p>
           </div>
-          <a href="/buyer/inquiries" className="btn btn-primary" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem' }}><span>📨</span> My Inquiries Inbox</a>
+          <a href="/buyer/inquiries" className="btn btn-primary" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem' }}><span>📨</span> My recents</a>
         </div>
 
         {/* Search Bar */}
@@ -314,6 +347,7 @@ export default function BuyerDashboard() {
               {filters.equipment.map(v => <Chip key={`eq-${v}`} label={`Equipment: ${v}`} onRemove={() => toggleCheckbox('equipment',v)} />)}
               {filters.manufacturer.map(v => <Chip key={`mf-${v}`} label={`Brand: ${v}`} onRemove={() => toggleCheckbox('manufacturer',v)} />)}
               {filters.modelNumber && <Chip label={`Model: ${filters.modelNumber}`} onRemove={() => setFilters(f=>({...f,modelNumber:''}))} />}
+              {filters.partNumber && <Chip label={`Part #: ${filters.partNumber}`} onRemove={() => setFilters(f=>({...f,partNumber:''}))} />}
               {filters.stockLocation.map(v => <Chip key={`sl-${v}`} label={`Location: ${v}`} onRemove={() => toggleCheckbox('stockLocation',v)} />)}
               {filters.minQty > 1 && <Chip label={`Min Qty: ${filters.minQty}`} onRemove={() => setFilters(f=>({...f,minQty:1}))} />}
               {filters.serviceType && <Chip label={`Service: ${filters.serviceType}`} onRemove={() => setFilters(f=>({...f,serviceType:''}))} />}
@@ -325,13 +359,25 @@ export default function BuyerDashboard() {
         {/* Inquiry Details (ETA/ETD/Vessel/Destination) */}
         <div className="glass-card" style={{ padding:'1.25rem 1.5rem', marginBottom:'1.25rem' }}>
           <h4 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1rem', fontWeight:'600', marginBottom:'0.75rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
-            📋 Inquiry Details <span style={{ fontSize:'0.75rem', fontWeight:'400', color:'var(--text-muted)' }}>(opens mail client with options)</span>
+            📋 Inquiry Details <span style={{ fontSize:'0.75rem', fontWeight:'400', color:'var(--text-muted)' }}>(Destination, ETA & Vessel Name are compulsory)</span>
           </h4>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:'0.75rem' }}>
-            <div><label className="form-label">Destination Port *</label><input className="form-input" placeholder="e.g., Singapore" value={inquiryMeta.destination} onChange={e=>setInquiryMeta(m=>({...m,destination:e.target.value}))}/></div>
-            <div><label className="form-label">ETA</label><input type="date" className="form-input" value={inquiryMeta.eta} onChange={e=>setInquiryMeta(m=>({...m,eta:e.target.value}))}/></div>
-            <div><label className="form-label">ETD (Optional)</label><input type="date" className="form-input" value={inquiryMeta.etd} onChange={e=>setInquiryMeta(m=>({...m,etd:e.target.value}))}/></div>
-            <div><label className="form-label">Vessel Name</label><input className="form-input" placeholder="e.g., MV Ocean Star" value={inquiryMeta.vesselName} onChange={e=>setInquiryMeta(m=>({...m,vesselName:e.target.value}))}/></div>
+            <div>
+              <label className="form-label">Destination Port <span style={{ color:'var(--danger)' }}>*</span></label>
+              <input className="form-input" placeholder="e.g., Singapore" value={inquiryMeta.destination} onChange={e=>setInquiryMeta(m=>({...m,destination:e.target.value}))} required />
+            </div>
+            <div>
+              <label className="form-label">ETA <span style={{ color:'var(--danger)' }}>*</span></label>
+              <input type="date" className="form-input" value={inquiryMeta.eta} onChange={e=>setInquiryMeta(m=>({...m,eta:e.target.value}))} required />
+            </div>
+            <div>
+              <label className="form-label">ETD <span style={{ fontSize:'0.8rem', color:'var(--text-muted)', fontWeight:'normal' }}>(Optional)</span></label>
+              <input type="date" className="form-input" value={inquiryMeta.etd} onChange={e=>setInquiryMeta(m=>({...m,etd:e.target.value}))}/>
+            </div>
+            <div>
+              <label className="form-label">Vessel Name <span style={{ color:'var(--danger)' }}>*</span></label>
+              <input className="form-input" placeholder="e.g., MV Ocean Star" value={inquiryMeta.vesselName} onChange={e=>setInquiryMeta(m=>({...m,vesselName:e.target.value}))} required />
+            </div>
           </div>
         </div>
 
@@ -467,6 +513,17 @@ export default function BuyerDashboard() {
                   </div>
                 </div>
 
+                {/* Part Number */}
+                <div>
+                  <SectionTitle icon="🏷️" label="Part Number" />
+                  <div style={{ position:'relative', marginBottom:'0.75rem' }}>
+                    <span style={{ position:'absolute', left:'0.85rem', top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', fontSize:'0.9rem' }}>🔍</span>
+                    <input className="form-input" placeholder="Search part number..." value={filters.partNumber}
+                      onChange={e => setFilters(f=>({...f, partNumber:e.target.value}))}
+                      style={{ paddingLeft:'2.5rem' }} />
+                  </div>
+                </div>
+
                 {/* Stock Location */}
                 <div>
                   <SectionTitle icon="📍" label="Stock Location" />
@@ -515,7 +572,12 @@ export default function BuyerDashboard() {
             {/* Footer */}
             <div style={{ padding:'1rem 1.5rem', borderTop:'1px solid var(--border-color)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
               <button className="btn btn-secondary" onClick={clearAll} style={{ fontSize:'0.85rem' }}>🧹 Clear All</button>
-              <button className="btn btn-primary" onClick={() => { setShowModal(false); setHasSearched(true); toast.success(`${activeFilterCount} filter(s) applied.`); }}
+              <button className="btn btn-primary" onClick={() => { 
+                setShowModal(false); 
+                setHasSearched(true); 
+                setTimeout(() => logSearchedProducts(displayedProducts, searchQuery.trim()), 100);
+                toast.success(`${activeFilterCount} filter(s) applied.`); 
+              }}
                 style={{ padding:'0.7rem 1.8rem' }}>
                 Apply Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
               </button>
