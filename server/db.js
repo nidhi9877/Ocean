@@ -113,6 +113,17 @@ export async function initDatabase() {
       )
     `;
 
+    await sql`
+      CREATE TABLE IF NOT EXISTS buyer_specifications (
+        id SERIAL PRIMARY KEY,
+        buyer_id INTEGER REFERENCES buyers(id) ON DELETE CASCADE,
+        equipment VARCHAR(255) NOT NULL,
+        manufacturer VARCHAR(255),
+        model VARCHAR(255),
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+
     // Execute ALTER TABLE in parallel
     try {
       await Promise.all([

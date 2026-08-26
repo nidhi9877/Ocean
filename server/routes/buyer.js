@@ -193,4 +193,84 @@ router.get('/inquiries', authenticateToken, async (req, res) => {
   }
 });
 
+// ─── POST /specifications — Save buyer equipment specifications from CSV ──────
+router.post('/specifications', authenticateToken, async (req, res) => {
+  try {
+    const { specifications } = req.body;
+    if (!specifications || !Array.isArray(specifications) || specifications.length === 0) {
+      return res.status(400).json({ error: 'No specifications provided.' });
+    }
+
+    // Validate each row has at least an equipment field
+    for (const spec of specifications) {
+      if (!spec.equipment || !spec.equipment.trim()) {
+        return res.status(400).json({ error: 'Each specification must have an Equipment field.' });
+      }
+    }
+
+    const buyerProfile = await sql`SELECT id FROM buyers WHERE user_id = ${req.user.id}`;
+    if (buyerProfile.length === 0) {
+      return res.status(403).json({ error: 'Only registered buyers can save specifications.' });
+    }
+    const buyer_id = buyerProfile[0].id;
+
+    // Delete existing specifications (full replace on re-upload)
+    await sql`DELETE FROM buyer_specifications WHERE buyer_id = ${buyer_id}`;
+
+    // Insert new specifications
+    for (const spec of specifications) {
+      await sql`
+        INSERT INTO buyer_specifications (buyer_id, equipment, manufacturer, model)
+        VALUES (${buyer_id}, ${spec.equipment.trim()}, ${spec.manufacturer ? spec.manufacturer.trim() : null}, ${spec.model ? spec.model.trim() : null})
+      `;
+    }
+
+    res.status(201).json({ message: `${specifications.length} specification(s) saved successfully.` });
+  } catch (error) {
+    console.error('Error saving specifications:', error);
+    res.status(500).json({ error: 'Internal server error while saving specifications.' });
+  }
+});
+
+// ─── GET /specifications — Get buyer's saved specifications ───────────────────
+router.get('/specifications', authenticateToken, async (req, res) => {
+  try {
+    const buyerProfile = await sql`SELECT id FROM buyers WHERE user_id = ${req.user.id}`;
+    if (buyerProfile.length === 0) {
+      return res.status(403).json({ error: 'Only registered buyers can view specifications.' });
+    }
+    const buyer_id = buyerProfile[0].id;
+
+    const specs = await sql`
+      SELECT id, equipment, manufacturer, model, created_at
+      FROM buyer_specifications
+      WHERE buyer_id = ${buyer_id}
+      ORDER BY equipment ASC, manufacturer ASC
+    `;
+
+    res.json(specs);
+  } catch (error) {
+    console.error('Error fetching specifications:', error);
+    res.status(500).json({ error: 'Internal server error while fetching specifications.' });
+  }
+});
+
+// ─── DELETE /specifications — Clear all buyer specifications ──────────────────
+router.delete('/specifications', authenticateToken, async (req, res) => {
+  try {
+    const buyerProfile = await sql`SELECT id FROM buyers WHERE user_id = ${req.user.id}`;
+    if (buyerProfile.length === 0) {
+      return res.status(403).json({ error: 'Only registered buyers can delete specifications.' });
+    }
+    const buyer_id = buyerProfile[0].id;
+
+    await sql`DELETE FROM buyer_specifications WHERE buyer_id = ${buyer_id}`;
+
+    res.json({ message: 'All specifications cleared.' });
+  } catch (error) {
+    console.error('Error deleting specifications:', error);
+    res.status(500).json({ error: 'Internal server error while deleting specifications.' });
+  }
+});
+
 export default router;
