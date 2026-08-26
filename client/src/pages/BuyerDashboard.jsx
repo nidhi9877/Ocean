@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
+import Papa from 'papaparse';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
@@ -61,6 +62,16 @@ export default function BuyerDashboard() {
   const [manufacturerSearch, setManufacturerSearch] = useState('');
   const [locationSearch, setLocationSearch] = useState('');
 
+  // ── My Specifications state ──
+  const [showSpecsModal, setShowSpecsModal] = useState(false);
+  const [savedSpecs, setSavedSpecs] = useState([]);
+  const [specsFilterActive, setSpecsFilterActive] = useState(false);
+  const [csvPreview, setCsvPreview] = useState([]);
+  const [csvFileName, setCsvFileName] = useState('');
+  const [specsSaving, setSpecsSaving] = useState(false);
+  const [specsLoading, setSpecsLoading] = useState(true);
+  const [dragOver, setDragOver] = useState(false);
+
   const [filters, setFilters] = useState({
     equipment: [], manufacturer: [], modelNumber: '', partNumber: '',
     stockLocation: [], minQty: 1, serviceType: '',
@@ -74,6 +85,99 @@ export default function BuyerDashboard() {
       } catch (e) { console.error(e); }
     })();
   }, []);
+
+  // Load saved specifications on mount
+  useEffect(() => {
+    if (!token) { setSpecsLoading(false); return; }
+    (async () => {
+      try {
+        const r = await axios.get(`${API}/buyer/specifications`, { headers: { Authorization: `Bearer ${token}` } });
+        const specs = r.data || [];
+        setSavedSpecs(specs);
+        if (specs.length > 0) setSpecsFilterActive(true);
+      } catch (e) { console.error('Failed to load specs:', e); }
+      finally { setSpecsLoading(false); }
+    })();
+  }, [token]);
+
+  // ── CSV parsing handler ──
+  const handleCsvFile = useCallback((file) => {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      toast.error('Please upload a .csv file.');
+      return;
+    }
+    setCsvFileName(file.name);
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const headers = results.meta.fields.map(h => h.trim().toLowerCase());
+        if (!headers.includes('equipment')) {
+          toast.error('CSV must contain an "Equipment" column.');
+          setCsvPreview([]);
+          setCsvFileName('');
+          return;
+        }
+        // Map rows to normalized objects
+        const rows = results.data.map(row => {
+          const normalized = {};
+          Object.keys(row).forEach(k => { normalized[k.trim().toLowerCase()] = row[k]; });
+          return {
+            equipment: (normalized['equipment'] || '').trim(),
+            manufacturer: (normalized['manufacturer'] || '').trim(),
+            model: (normalized['model'] || '').trim(),
+          };
+        }).filter(r => r.equipment); // skip rows with empty equipment
+        if (rows.length === 0) {
+          toast.error('No valid rows found in the CSV.');
+          setCsvPreview([]);
+          setCsvFileName('');
+          return;
+        }
+        setCsvPreview(rows);
+        toast.success(`Parsed ${rows.length} specification(s) from ${file.name}`);
+      },
+      error: (err) => {
+        toast.error('Failed to parse CSV: ' + err.message);
+        setCsvPreview([]);
+        setCsvFileName('');
+      }
+    });
+  }, []);
+
+  // ── Save specifications to server ──
+  const handleSaveSpecs = async () => {
+    if (csvPreview.length === 0) { toast.error('No specifications to save.'); return; }
+    setSpecsSaving(true);
+    try {
+      await axios.post(`${API}/buyer/specifications`, { specifications: csvPreview }, { headers: { Authorization: `Bearer ${token}` } });
+      setSavedSpecs(csvPreview.map((s, i) => ({ ...s, id: i })));
+      setSpecsFilterActive(true);
+      setCsvPreview([]);
+      setCsvFileName('');
+      toast.success(`✅ ${csvPreview.length} specification(s) saved!`);
+      // Refresh from server
+      const r = await axios.get(`${API}/buyer/specifications`, { headers: { Authorization: `Bearer ${token}` } });
+      setSavedSpecs(r.data || []);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save specifications.');
+    } finally { setSpecsSaving(false); }
+  };
+
+  // ── Delete all specifications ──
+  const handleDeleteSpecs = async () => {
+    try {
+      await axios.delete(`${API}/buyer/specifications`, { headers: { Authorization: `Bearer ${token}` } });
+      setSavedSpecs([]);
+      setSpecsFilterActive(false);
+      setCsvPreview([]);
+      setCsvFileName('');
+      toast.success('All specifications cleared.');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to delete specifications.');
+    }
+  };
 
   // Dynamic options from DB
   const equipmentOpts = useMemo(() => [...new Set(allProducts.map(p => p.category).filter(Boolean))], [allProducts]);
@@ -128,6 +232,17 @@ export default function BuyerDashboard() {
     };
 
     return allProducts.filter(p => {
+      // ── My Specifications filter ──
+      if (specsFilterActive && savedSpecs.length > 0) {
+        const matchesAnySpec = savedSpecs.some(spec => {
+          if (spec.equipment && !fuzzyMatch(p.category, spec.equipment)) return false;
+          if (spec.manufacturer && !fuzzyMatch(p.brand, spec.manufacturer)) return false;
+          if (spec.model && !fuzzyMatch(p.model_number, spec.model)) return false;
+          return true;
+        });
+        if (!matchesAnySpec) return false;
+      }
+
       if (q && !(fuzzyMatch(p.product_name, q) || fuzzyMatch(p.part_number, q) || fuzzyMatch(p.category, q) || fuzzyMatch(p.brand, q))) return false;
       if (filters.equipment.length && !filters.equipment.includes(p.category)) return false;
       if (filters.manufacturer.length && !filters.manufacturer.includes(p.brand)) return false;
@@ -139,7 +254,7 @@ export default function BuyerDashboard() {
       if (filters.serviceType && sType !== filters.serviceType) return false;
       return true;
     });
-  }, [hasSearched, searchQuery, filters, allProducts]);
+  }, [hasSearched, searchQuery, filters, allProducts, specsFilterActive, savedSpecs]);
 
   // Shared fuzzy match logic for option filtering
   const getFuzzyMatch = () => {
@@ -317,7 +432,13 @@ export default function BuyerDashboard() {
             <h1 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.8rem', fontWeight:'700' }}>Welcome, {user?.username} 👋</h1>
             <p style={{ color:'var(--text-secondary)', marginTop:'0.25rem' }}>Search marine spare parts and send inquiries directly to vendors.</p>
           </div>
-          <a href="/buyer/inquiries" className="btn btn-primary" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem' }}><span>📨</span> My recents</a>
+          <div style={{ display:'flex', gap:'0.75rem', flexWrap:'wrap' }}>
+            <button onClick={() => setShowSpecsModal(true)} className="btn btn-primary" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', background: savedSpecs.length > 0 ? 'linear-gradient(135deg, #059669, #10b981)' : undefined, position:'relative' }}>
+              <span>📋</span> My Specifications
+              {savedSpecs.length > 0 && <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:20, height:20, borderRadius:'50%', background:'rgba(255,255,255,0.3)', fontSize:'0.7rem', fontWeight:'700' }}>{savedSpecs.length}</span>}
+            </button>
+            <a href="/buyer/inquiries" className="btn btn-primary" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem' }}><span>📨</span> My recents</a>
+          </div>
         </div>
 
         {/* Search Bar */}
@@ -339,6 +460,15 @@ export default function BuyerDashboard() {
               Filters
               {activeFilterCount > 0 && <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:20, height:20, borderRadius:'50%', background:'var(--accent-gradient)', color:'white', fontSize:'0.7rem', fontWeight:'700' }}>{activeFilterCount}</span>}
             </button>
+            {savedSpecs.length > 0 && (
+              <button type="button" onClick={() => setSpecsFilterActive(v => !v)}
+                style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', padding:'0.8rem 1.4rem', background: specsFilterActive ? 'rgba(5,150,105,0.08)' : 'var(--bg-surface)', border:`2px solid ${specsFilterActive ? '#059669' : 'var(--border-color)'}`, borderRadius:'var(--radius-full)', color: specsFilterActive ? '#059669' : 'var(--text-secondary)', fontWeight:'600', fontSize:'0.9rem', cursor:'pointer', transition:'all 0.2s', fontFamily:"'Inter',sans-serif" }}>
+                <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:18, height:18, borderRadius:4, border:`2px solid ${specsFilterActive ? '#059669' : 'var(--border-color)'}`, background: specsFilterActive ? '#059669' : 'white', transition:'all 0.15s', flexShrink:0 }}>
+                  {specsFilterActive && <svg width="11" height="9" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                </span>
+                My Specs ({savedSpecs.length})
+              </button>
+            )}
             <button type="submit" className="btn btn-primary" style={{ padding:'0.8rem 1.8rem', borderRadius:'var(--radius-full)' }}>Search</button>
           </form>
 
@@ -929,6 +1059,165 @@ export default function BuyerDashboard() {
 
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ═══ SPECIFICATIONS MODAL ═══ */}
+      {showSpecsModal && (
+        <div style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(0,0,0,0.45)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', animation:'fadeIn 0.2s' }}
+             onClick={() => { setShowSpecsModal(false); setCsvPreview([]); setCsvFileName(''); }}>
+          <div style={{ background:'var(--bg-card)', borderRadius:'var(--radius-lg)', boxShadow:'0 25px 60px rgba(0,0,0,0.2)', width:680, maxWidth:'94vw', maxHeight:'85vh', display:'flex', flexDirection:'column', overflow:'hidden', animation:'scaleIn 0.25s' }}
+               onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div style={{ padding:'1.25rem 1.5rem', borderBottom:'1px solid var(--border-color)', display:'flex', justifyContent:'space-between', alignItems:'center', background:'linear-gradient(135deg, rgba(5,150,105,0.05), rgba(16,185,129,0.05))' }}>
+              <div>
+                <h3 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.2rem', fontWeight:'700', margin:0, display:'flex', alignItems:'center', gap:'0.5rem' }}>📋 My Specifications</h3>
+                <p style={{ fontSize:'0.8rem', color:'var(--text-muted)', margin:'0.15rem 0 0' }}>Upload your ship equipment CSV to filter matching parts</p>
+              </div>
+              <button onClick={() => { setShowSpecsModal(false); setCsvPreview([]); setCsvFileName(''); }} style={{ background:'none', border:'none', fontSize:'1.3rem', cursor:'pointer', color:'var(--text-muted)', padding:'0.25rem' }}>✕</button>
+            </div>
+
+            {/* Body */}
+            <div style={{ flex:1, padding:'1.5rem', overflowY:'auto' }}>
+
+              {/* Upload Area */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => { e.preventDefault(); setDragOver(false); const file = e.dataTransfer.files[0]; handleCsvFile(file); }}
+                style={{
+                  border: `2px dashed ${dragOver ? '#059669' : csvFileName ? '#059669' : 'var(--border-color)'}`,
+                  borderRadius: 'var(--radius-md)',
+                  padding: '2rem',
+                  textAlign: 'center',
+                  background: dragOver ? 'rgba(5,150,105,0.06)' : csvFileName ? 'rgba(5,150,105,0.03)' : 'var(--bg-surface)',
+                  transition: 'all 0.2s',
+                  cursor: 'pointer',
+                  marginBottom: '1.25rem'
+                }}
+                onClick={() => document.getElementById('specs-csv-input').click()}
+              >
+                <input
+                  id="specs-csv-input"
+                  type="file"
+                  accept=".csv"
+                  style={{ display: 'none' }}
+                  onChange={(e) => { handleCsvFile(e.target.files[0]); e.target.value = ''; }}
+                />
+                <span style={{ fontSize:'2.5rem', display:'block', marginBottom:'0.75rem' }}>{csvFileName ? '✅' : '📄'}</span>
+                {csvFileName ? (
+                  <>
+                    <p style={{ fontWeight:'600', color:'#059669', marginBottom:'0.25rem' }}>{csvFileName}</p>
+                    <p style={{ fontSize:'0.85rem', color:'var(--text-muted)' }}>{csvPreview.length} row(s) parsed. Click to upload a different file.</p>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ fontWeight:'600', color:'var(--text-primary)', marginBottom:'0.25rem' }}>Drag & drop your CSV here, or click to browse</p>
+                    <p style={{ fontSize:'0.85rem', color:'var(--text-muted)' }}>Required columns: <strong>Equipment</strong>, <strong>Manufacturer</strong>, <strong>Model</strong></p>
+                  </>
+                )}
+              </div>
+
+              {/* CSV Preview Table */}
+              {csvPreview.length > 0 && (
+                <div style={{ marginBottom:'1.25rem' }}>
+                  <h4 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'0.95rem', fontWeight:'600', marginBottom:'0.75rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                    👁️ Preview ({csvPreview.length} rows)
+                  </h4>
+                  <div style={{ maxHeight:'200px', overflowY:'auto', border:'1px solid var(--border-color)', borderRadius:'var(--radius-sm)' }}>
+                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.85rem' }}>
+                      <thead>
+                        <tr style={{ background:'var(--bg-surface)', borderBottom:'2px solid var(--border-color)', position:'sticky', top:0 }}>
+                          <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>#</th>
+                          <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>Equipment</th>
+                          <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>Manufacturer</th>
+                          <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>Model</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {csvPreview.map((row, i) => (
+                          <tr key={i} style={{ borderBottom:'1px solid var(--border-color)' }}>
+                            <td style={{ padding:'0.5rem 0.75rem', color:'var(--text-muted)' }}>{i + 1}</td>
+                            <td style={{ padding:'0.5rem 0.75rem', fontWeight:'500' }}>{row.equipment}</td>
+                            <td style={{ padding:'0.5rem 0.75rem', color:'var(--text-secondary)' }}>{row.manufacturer || '—'}</td>
+                            <td style={{ padding:'0.5rem 0.75rem', color:'var(--text-secondary)' }}>{row.model || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ marginTop:'0.75rem', display:'flex', gap:'0.75rem' }}>
+                    <button className="btn btn-primary" onClick={handleSaveSpecs} disabled={specsSaving}
+                      style={{ padding:'0.7rem 1.8rem', background:'linear-gradient(135deg, #059669, #10b981)', display:'inline-flex', alignItems:'center', gap:'0.5rem' }}>
+                      {specsSaving ? <><span className="spinner" style={{ width:14, height:14, borderWidth:2 }}/> Saving...</> : <>💾 Save Specifications</>}
+                    </button>
+                    <button className="btn btn-secondary" onClick={() => { setCsvPreview([]); setCsvFileName(''); }}
+                      style={{ padding:'0.7rem 1.2rem', fontSize:'0.85rem' }}>Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Saved Specifications */}
+              {savedSpecs.length > 0 && csvPreview.length === 0 && (
+                <div>
+                  <h4 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'0.95rem', fontWeight:'600', marginBottom:'0.75rem', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                    <span style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>✅ Saved Specifications ({savedSpecs.length})</span>
+                    <span style={{
+                      display:'inline-flex', alignItems:'center', gap:'0.35rem', padding:'0.3rem 0.75rem',
+                      borderRadius:'var(--radius-full)', fontSize:'0.78rem', fontWeight:'600',
+                      background: specsFilterActive ? 'rgba(5,150,105,0.1)' : 'rgba(100,100,100,0.08)',
+                      color: specsFilterActive ? '#059669' : 'var(--text-muted)'
+                    }}>
+                      <span style={{ width:8, height:8, borderRadius:'50%', background: specsFilterActive ? '#059669' : '#94a3b8' }}></span>
+                      {specsFilterActive ? 'Filter Active' : 'Filter Inactive'}
+                    </span>
+                  </h4>
+                  <div style={{ maxHeight:'200px', overflowY:'auto', border:'1px solid var(--border-color)', borderRadius:'var(--radius-sm)' }}>
+                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.85rem' }}>
+                      <thead>
+                        <tr style={{ background:'var(--bg-surface)', borderBottom:'2px solid var(--border-color)', position:'sticky', top:0 }}>
+                          <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>#</th>
+                          <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>Equipment</th>
+                          <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>Manufacturer</th>
+                          <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>Model</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {savedSpecs.map((row, i) => (
+                          <tr key={row.id || i} style={{ borderBottom:'1px solid var(--border-color)' }}>
+                            <td style={{ padding:'0.5rem 0.75rem', color:'var(--text-muted)' }}>{i + 1}</td>
+                            <td style={{ padding:'0.5rem 0.75rem', fontWeight:'500' }}>{row.equipment}</td>
+                            <td style={{ padding:'0.5rem 0.75rem', color:'var(--text-secondary)' }}>{row.manufacturer || '—'}</td>
+                            <td style={{ padding:'0.5rem 0.75rem', color:'var(--text-secondary)' }}>{row.model || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ marginTop:'0.75rem', display:'flex', gap:'0.75rem', justifyContent:'space-between', alignItems:'center' }}>
+                    <button className="btn btn-secondary" onClick={handleDeleteSpecs}
+                      style={{ padding:'0.6rem 1.2rem', fontSize:'0.85rem', color:'var(--danger)', borderColor:'var(--danger)' }}>🗑️ Clear All Specs</button>
+                    <p style={{ fontSize:'0.8rem', color:'var(--text-muted)', margin:0 }}>Upload a new CSV to replace these specifications</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state */}
+              {savedSpecs.length === 0 && csvPreview.length === 0 && (
+                <div style={{ textAlign:'center', padding:'1.5rem 1rem', color:'var(--text-muted)' }}>
+                  <span style={{ fontSize:'2.5rem', display:'block', marginBottom:'0.75rem' }}>🚢</span>
+                  <p style={{ fontWeight:'500', color:'var(--text-secondary)', marginBottom:'0.25rem' }}>No specifications uploaded yet</p>
+                  <p style={{ fontSize:'0.85rem' }}>Upload a CSV with your ship's equipment list to see matching parts automatically.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding:'1rem 1.5rem', borderTop:'1px solid var(--border-color)', display:'flex', justifyContent:'flex-end' }}>
+              <button className="btn btn-secondary" onClick={() => { setShowSpecsModal(false); setCsvPreview([]); setCsvFileName(''); }} style={{ padding:'0.7rem 1.5rem' }}>Close</button>
+            </div>
           </div>
         </div>
       )}

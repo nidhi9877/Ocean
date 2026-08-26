@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { initDatabase } from './db.js';
 import authRoutes from './routes/auth.js';
@@ -103,11 +104,22 @@ app.get('/api/deal/accept', async (req, res) => {
 
 // Serve React client build in production
 const clientBuildPath = path.join(__dirname, '..', 'client', 'dist');
-app.use(express.static(clientBuildPath));
+const clientIndexPath = path.join(clientBuildPath, 'index.html');
+
+if (fs.existsSync(clientBuildPath)) {
+  app.use(express.static(clientBuildPath));
+}
 
 // Catch-all: serve React app for any non-API route (supports React Router)
 app.get('*', (req, res) => {
-  res.sendFile(path.join(clientBuildPath, 'index.html'));
+  if (fs.existsSync(clientIndexPath)) {
+    res.sendFile(clientIndexPath);
+  } else {
+    res.status(200).json({
+      status: 'API running',
+      message: 'Marine Marketplace API Server is running. In development mode, please access the frontend via Vite (e.g., http://localhost:5173).'
+    });
+  }
 });
 
 // Initialize database and start server
