@@ -114,9 +114,21 @@ export async function initDatabase() {
     `;
 
     await sql`
+      CREATE TABLE IF NOT EXISTS buyer_ships (
+        id SERIAL PRIMARY KEY,
+        buyer_id INTEGER REFERENCES buyers(id) ON DELETE CASCADE,
+        ship_name VARCHAR(255) NOT NULL,
+        imo_number VARCHAR(100),
+        ship_type VARCHAR(100),
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+
+    await sql`
       CREATE TABLE IF NOT EXISTS buyer_specifications (
         id SERIAL PRIMARY KEY,
         buyer_id INTEGER REFERENCES buyers(id) ON DELETE CASCADE,
+        ship_id INTEGER REFERENCES buyer_ships(id) ON DELETE CASCADE,
         equipment VARCHAR(255) NOT NULL,
         manufacturer VARCHAR(255),
         model VARCHAR(255),
@@ -146,7 +158,8 @@ export async function initDatabase() {
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS etd VARCHAR(100)`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS vessel_name VARCHAR(255)`,
         sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT 'pre-payment/credit'`,
-        sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'approved'`
+        sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'approved'`,
+        sql`ALTER TABLE buyer_specifications ADD COLUMN IF NOT EXISTS ship_id INTEGER REFERENCES buyer_ships(id) ON DELETE CASCADE`
       ]);
     } catch (e) {
       console.log('Columns likely already exist or minor error:', e.message);

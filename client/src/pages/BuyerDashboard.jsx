@@ -62,15 +62,24 @@ export default function BuyerDashboard() {
   const [manufacturerSearch, setManufacturerSearch] = useState('');
   const [locationSearch, setLocationSearch] = useState('');
 
-  // ── My Specifications state ──
-  const [showSpecsModal, setShowSpecsModal] = useState(false);
+  // ── Multi-Ship & Specifications state ──
+  const [showShipsModal, setShowShipsModal] = useState(false);
+  const [ships, setShips] = useState([]);
+  const [selectedShipId, setSelectedShipId] = useState(null); // null = "All Equipment"
   const [savedSpecs, setSavedSpecs] = useState([]);
   const [specsFilterActive, setSpecsFilterActive] = useState(false);
   const [csvPreview, setCsvPreview] = useState([]);
   const [csvFileName, setCsvFileName] = useState('');
   const [specsSaving, setSpecsSaving] = useState(false);
-  const [specsLoading, setSpecsLoading] = useState(true);
+  const [shipsLoading, setShipsLoading] = useState(true);
   const [dragOver, setDragOver] = useState(false);
+  const [showRelated, setShowRelated] = useState(false);
+  const [newShipName, setNewShipName] = useState('');
+  const [newShipImo, setNewShipImo] = useState('');
+  const [newShipType, setNewShipType] = useState('');
+  const [creatingShip, setCreatingShip] = useState(false);
+  const [expandedShipId, setExpandedShipId] = useState(null);
+  const [showShipDropdown, setShowShipDropdown] = useState(false);
 
   const [filters, setFilters] = useState({
     equipment: [], manufacturer: [], modelNumber: '', partNumber: '',
@@ -86,19 +95,34 @@ export default function BuyerDashboard() {
     })();
   }, []);
 
-  // Load saved specifications on mount
+  // Load buyer's ships on mount
+  const loadShips = useCallback(async () => {
+    if (!token) { setShipsLoading(false); return; }
+    try {
+      const r = await axios.get(`${API}/buyer/ships`, { headers: { Authorization: `Bearer ${token}` } });
+      setShips(r.data || []);
+    } catch (e) { console.error('Failed to load ships:', e); }
+    finally { setShipsLoading(false); }
+  }, [token]);
+
+  useEffect(() => { loadShips(); }, [loadShips]);
+
+  // Load specs when a ship is selected
   useEffect(() => {
-    if (!token) { setSpecsLoading(false); return; }
+    if (!token || !selectedShipId) {
+      setSavedSpecs([]);
+      setSpecsFilterActive(false);
+      return;
+    }
     (async () => {
       try {
-        const r = await axios.get(`${API}/buyer/specifications`, { headers: { Authorization: `Bearer ${token}` } });
+        const r = await axios.get(`${API}/buyer/ships/${selectedShipId}/specifications`, { headers: { Authorization: `Bearer ${token}` } });
         const specs = r.data || [];
         setSavedSpecs(specs);
-        if (specs.length > 0) setSpecsFilterActive(true);
-      } catch (e) { console.error('Failed to load specs:', e); }
-      finally { setSpecsLoading(false); }
+        setSpecsFilterActive(specs.length > 0);
+      } catch (e) { console.error('Failed to load ship specs:', e); setSavedSpecs([]); setSpecsFilterActive(false); }
     })();
-  }, [token]);
+  }, [token, selectedShipId]);
 
   // ── CSV parsing handler ──
   const handleCsvFile = useCallback((file) => {
@@ -146,38 +170,77 @@ export default function BuyerDashboard() {
     });
   }, []);
 
-  // ── Save specifications to server ──
-  const handleSaveSpecs = async () => {
+  // ── Save specifications for a specific ship ──
+  const handleSaveSpecs = async (shipId) => {
     if (csvPreview.length === 0) { toast.error('No specifications to save.'); return; }
     setSpecsSaving(true);
     try {
-      await axios.post(`${API}/buyer/specifications`, { specifications: csvPreview }, { headers: { Authorization: `Bearer ${token}` } });
-      setSavedSpecs(csvPreview.map((s, i) => ({ ...s, id: i })));
-      setSpecsFilterActive(true);
+      await axios.post(`${API}/buyer/ships/${shipId}/specifications`, { specifications: csvPreview }, { headers: { Authorization: `Bearer ${token}` } });
       setCsvPreview([]);
       setCsvFileName('');
       toast.success(`✅ ${csvPreview.length} specification(s) saved!`);
-      // Refresh from server
-      const r = await axios.get(`${API}/buyer/specifications`, { headers: { Authorization: `Bearer ${token}` } });
-      setSavedSpecs(r.data || []);
+      // Refresh ships list to get updated spec_count
+      await loadShips();
+      // If this is the selected ship, reload its specs
+      if (selectedShipId === shipId) {
+        const r = await axios.get(`${API}/buyer/ships/${shipId}/specifications`, { headers: { Authorization: `Bearer ${token}` } });
+        setSavedSpecs(r.data || []);
+        setSpecsFilterActive(true);
+      }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to save specifications.');
     } finally { setSpecsSaving(false); }
   };
 
-  // ── Delete all specifications ──
-  const handleDeleteSpecs = async () => {
+  // ── Create a new ship ──
+  const handleCreateShip = async () => {
+    if (!newShipName.trim()) { toast.error('Ship name is required.'); return; }
+    setCreatingShip(true);
     try {
-      await axios.delete(`${API}/buyer/specifications`, { headers: { Authorization: `Bearer ${token}` } });
-      setSavedSpecs([]);
-      setSpecsFilterActive(false);
-      setCsvPreview([]);
-      setCsvFileName('');
-      toast.success('All specifications cleared.');
+      const r = await axios.post(`${API}/buyer/ships`, {
+        ship_name: newShipName.trim(),
+        imo_number: newShipImo.trim() || null,
+        ship_type: newShipType.trim() || null
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      setNewShipName('');
+      setNewShipImo('');
+      setNewShipType('');
+      toast.success(`🚢 Ship "${r.data.ship_name}" created!`);
+      await loadShips();
+      setExpandedShipId(r.data.id);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to delete specifications.');
+      toast.error(err.response?.data?.error || 'Failed to create ship.');
+    } finally { setCreatingShip(false); }
+  };
+
+  // ── Delete a ship ──
+  const handleDeleteShip = async (shipId, shipName) => {
+    try {
+      await axios.delete(`${API}/buyer/ships/${shipId}`, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success(`Ship "${shipName}" deleted.`);
+      if (selectedShipId === shipId) {
+        setSelectedShipId(null);
+        setSavedSpecs([]);
+        setSpecsFilterActive(false);
+      }
+      await loadShips();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to delete ship.');
     }
   };
+
+  // ── Select a ship (or "All Equipment") ──
+  const handleSelectShip = (shipId) => {
+    setSelectedShipId(shipId);
+    setShowShipDropdown(false);
+    setShowRelated(false);
+    if (!shipId) {
+      setSavedSpecs([]);
+      setSpecsFilterActive(false);
+    }
+  };
+
+  const selectedShip = ships.find(s => s.id === selectedShipId) || null;
 
   // Dynamic options from DB
   const equipmentOpts = useMemo(() => [...new Set(allProducts.map(p => p.category).filter(Boolean))], [allProducts]);
@@ -256,6 +319,59 @@ export default function BuyerDashboard() {
     });
   }, [hasSearched, searchQuery, filters, allProducts, specsFilterActive, savedSpecs]);
 
+  // ── Related products: same equipment type but different manufacturer/model ──
+  const relatedProducts = useMemo(() => {
+    if (!hasSearched || !specsFilterActive || !savedSpecs.length || displayedProducts.length > 0) return [];
+    const q = searchQuery.trim().toLowerCase();
+
+    const levenshtein = (a, b) => {
+      if(!a.length) return b.length;
+      if(!b.length) return a.length;
+      const m = [];
+      for(let i=0; i<=b.length; i++) m[i] = [i];
+      for(let j=0; j<=a.length; j++) m[0][j] = j;
+      for(let i=1; i<=b.length; i++){
+        for(let j=1; j<=a.length; j++){
+          if(b.charAt(i-1) === a.charAt(j-1)) m[i][j] = m[i-1][j-1];
+          else m[i][j] = Math.min(m[i-1][j-1]+1, Math.min(m[i][j-1]+1, m[i-1][j]+1));
+        }
+      }
+      return m[b.length][a.length];
+    };
+    const fuzzyMatch = (str, pattern) => {
+      if (!pattern) return true;
+      if (!str) return false;
+      const s = String(str).toLowerCase();
+      const p = pattern.toLowerCase().trim();
+      if (s.includes(p)) return true;
+      const sWords = s.split(/[\s-]+/);
+      const pWords = p.split(/[\s-]+/);
+      return pWords.every(pw => sWords.some(sw => {
+        if (sw.includes(pw) || pw.includes(sw)) return true;
+        return levenshtein(sw, pw) <= (pw.length <= 4 ? 1 : 2);
+      }));
+    };
+
+    // Match products that share the same equipment/category as any spec, but may differ in manufacturer/model
+    return allProducts.filter(p => {
+      const matchesEquipmentOnly = savedSpecs.some(spec => {
+        if (!spec.equipment) return false;
+        return fuzzyMatch(p.category, spec.equipment);
+      });
+      if (!matchesEquipmentOnly) return false;
+
+      // Apply text search if present
+      if (q && !(fuzzyMatch(p.product_name, q) || fuzzyMatch(p.part_number, q) || fuzzyMatch(p.category, q) || fuzzyMatch(p.brand, q))) return false;
+      // Apply other filters
+      if (filters.equipment.length && !filters.equipment.includes(p.category)) return false;
+      if (filters.stockLocation.length && !filters.stockLocation.includes(p.location)) return false;
+      if (filters.minQty > 1 && Number(p.quantity) < filters.minQty) return false;
+      const sType = p.service_type || 'Supply';
+      if (filters.serviceType && sType !== filters.serviceType) return false;
+      return true;
+    });
+  }, [hasSearched, searchQuery, filters, allProducts, specsFilterActive, savedSpecs, displayedProducts]);
+
   // Shared fuzzy match logic for option filtering
   const getFuzzyMatch = () => {
     const levenshtein = (a, b) => {
@@ -325,6 +441,7 @@ export default function BuyerDashboard() {
     e?.preventDefault();
     if (!searchQuery.trim() && activeFilterCount === 0) { toast.error('Enter a search term or apply filters.'); return; }
     setHasSearched(true);
+    setShowRelated(false);
     setTimeout(() => {
       logSearchedProducts(displayedProducts, searchQuery.trim());
     }, 100);
@@ -433,9 +550,9 @@ export default function BuyerDashboard() {
             <p style={{ color:'var(--text-secondary)', marginTop:'0.25rem' }}>Search marine spare parts and send inquiries directly to vendors.</p>
           </div>
           <div style={{ display:'flex', gap:'0.75rem', flexWrap:'wrap' }}>
-            <button onClick={() => setShowSpecsModal(true)} className="btn btn-primary" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', background: savedSpecs.length > 0 ? 'linear-gradient(135deg, #059669, #10b981)' : undefined, position:'relative' }}>
-              <span>📋</span> My Specifications
-              {savedSpecs.length > 0 && <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:20, height:20, borderRadius:'50%', background:'rgba(255,255,255,0.3)', fontSize:'0.7rem', fontWeight:'700' }}>{savedSpecs.length}</span>}
+            <button onClick={() => setShowShipsModal(true)} className="btn btn-primary" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', background: ships.length > 0 ? 'linear-gradient(135deg, #059669, #10b981)' : undefined, position:'relative' }}>
+              <span>🚢</span> My Ships
+              {ships.length > 0 && <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:20, height:20, borderRadius:'50%', background:'rgba(255,255,255,0.3)', fontSize:'0.7rem', fontWeight:'700' }}>{ships.length}</span>}
             </button>
             <a href="/buyer/inquiries" className="btn btn-primary" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem' }}><span>📨</span> My recents</a>
           </div>
@@ -460,14 +577,37 @@ export default function BuyerDashboard() {
               Filters
               {activeFilterCount > 0 && <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:20, height:20, borderRadius:'50%', background:'var(--accent-gradient)', color:'white', fontSize:'0.7rem', fontWeight:'700' }}>{activeFilterCount}</span>}
             </button>
-            {savedSpecs.length > 0 && (
-              <button type="button" onClick={() => setSpecsFilterActive(v => !v)}
-                style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', padding:'0.8rem 1.4rem', background: specsFilterActive ? 'rgba(5,150,105,0.08)' : 'var(--bg-surface)', border:`2px solid ${specsFilterActive ? '#059669' : 'var(--border-color)'}`, borderRadius:'var(--radius-full)', color: specsFilterActive ? '#059669' : 'var(--text-secondary)', fontWeight:'600', fontSize:'0.9rem', cursor:'pointer', transition:'all 0.2s', fontFamily:"'Inter',sans-serif" }}>
-                <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:18, height:18, borderRadius:4, border:`2px solid ${specsFilterActive ? '#059669' : 'var(--border-color)'}`, background: specsFilterActive ? '#059669' : 'white', transition:'all 0.15s', flexShrink:0 }}>
-                  {specsFilterActive && <svg width="11" height="9" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                </span>
-                My Specs ({savedSpecs.length})
-              </button>
+            {ships.length > 0 && (
+              <div style={{ position:'relative' }}>
+                <button type="button" onClick={() => setShowShipDropdown(v => !v)}
+                  style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', padding:'0.8rem 1.4rem', background: selectedShipId ? 'rgba(5,150,105,0.08)' : 'var(--bg-surface)', border:`2px solid ${selectedShipId ? '#059669' : 'var(--border-color)'}`, borderRadius:'var(--radius-full)', color: selectedShipId ? '#059669' : 'var(--text-secondary)', fontWeight:'600', fontSize:'0.9rem', cursor:'pointer', transition:'all 0.2s', fontFamily:"'Inter',sans-serif" }}>
+                  <span>🚢</span>
+                  {selectedShip ? selectedShip.ship_name : 'All Equipment'}
+                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transition:'transform 0.2s', transform: showShipDropdown ? 'rotate(180deg)' : 'none' }}><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+                {showShipDropdown && (
+                  <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, zIndex:100, background:'var(--bg-card)', border:'1px solid var(--border-color)', borderRadius:'var(--radius-md)', boxShadow:'0 8px 24px rgba(0,0,0,0.12)', minWidth:220, overflow:'hidden', animation:'fadeIn 0.15s' }}>
+                    <button onClick={() => handleSelectShip(null)}
+                      style={{ display:'flex', alignItems:'center', gap:'0.5rem', width:'100%', padding:'0.7rem 1rem', background: !selectedShipId ? 'rgba(37,99,235,0.06)' : 'transparent', border:'none', textAlign:'left', cursor:'pointer', fontSize:'0.88rem', fontWeight: !selectedShipId ? '600' : '400', color: !selectedShipId ? 'var(--accent-primary)' : 'var(--text-primary)', fontFamily:"'Inter',sans-serif", transition:'background 0.1s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = !selectedShipId ? 'rgba(37,99,235,0.06)' : 'var(--bg-surface)'}
+                      onMouseLeave={e => e.currentTarget.style.background = !selectedShipId ? 'rgba(37,99,235,0.06)' : 'transparent'}>
+                      🌍 All Equipment
+                      {!selectedShipId && <span style={{ marginLeft:'auto', color:'var(--accent-primary)' }}>✓</span>}
+                    </button>
+                    <div style={{ height:1, background:'var(--border-color)' }}></div>
+                    {ships.map(ship => (
+                      <button key={ship.id} onClick={() => handleSelectShip(ship.id)}
+                        style={{ display:'flex', alignItems:'center', gap:'0.5rem', width:'100%', padding:'0.7rem 1rem', background: selectedShipId === ship.id ? 'rgba(5,150,105,0.06)' : 'transparent', border:'none', textAlign:'left', cursor:'pointer', fontSize:'0.88rem', fontWeight: selectedShipId === ship.id ? '600' : '400', color: selectedShipId === ship.id ? '#059669' : 'var(--text-primary)', fontFamily:"'Inter',sans-serif", transition:'background 0.1s' }}
+                        onMouseEnter={e => e.currentTarget.style.background = selectedShipId === ship.id ? 'rgba(5,150,105,0.06)' : 'var(--bg-surface)'}
+                        onMouseLeave={e => e.currentTarget.style.background = selectedShipId === ship.id ? 'rgba(5,150,105,0.06)' : 'transparent'}>
+                        🚢 {ship.ship_name}
+                        <span style={{ marginLeft:'auto', fontSize:'0.75rem', color:'var(--text-muted)' }}>{ship.spec_count} specs</span>
+                        {selectedShipId === ship.id && <span style={{ color:'#059669' }}>✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
             <button type="submit" className="btn btn-primary" style={{ padding:'0.8rem 1.8rem', borderRadius:'var(--radius-full)' }}>Search</button>
           </form>
@@ -519,10 +659,106 @@ export default function BuyerDashboard() {
             <p style={{ color:'var(--text-muted)', maxWidth:400, margin:'0 auto' }}>Use the search bar or apply filters to find the marine spare parts you need.</p>
           </div>
         ) : displayedProducts.length === 0 ? (
-          <div className="glass-card empty-state" style={{ padding:'3rem', textAlign:'center' }}>
-            <span className="empty-state-icon">🌊</span>
-            <p style={{ color:'var(--text-secondary)' }}>No products found. Try broadening your search.</p>
-          </div>
+          <>
+            <div className="glass-card empty-state" style={{ padding:'3rem', textAlign:'center' }}>
+              {specsFilterActive && savedSpecs.length > 0 && relatedProducts.length > 0 ? (
+                <>
+                  <span style={{ fontSize:'3rem', display:'block', marginBottom:'1rem' }}>🔍</span>
+                  <h3 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.2rem', fontWeight:'700', color:'var(--text-primary)', marginBottom:'0.5rem' }}>
+                    Product Unavailable for Your Specifications
+                  </h3>
+                  <p style={{ color:'var(--text-secondary)', maxWidth:480, margin:'0 auto 1.25rem', lineHeight:'1.5' }}>
+                    We couldn't find an exact match for your ship's equipment specifications (manufacturer & model).
+                    However, we found <strong style={{ color:'var(--accent-primary)' }}>{relatedProducts.length}</strong> related product{relatedProducts.length !== 1 ? 's' : ''} with the same equipment type but from different manufacturers or models.
+                  </p>
+                  <p style={{ color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'1.25rem' }}>
+                    Would you like to see alternative products?
+                  </p>
+                  {!showRelated ? (
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => setShowRelated(true)}
+                      style={{
+                        padding:'0.85rem 2rem',
+                        fontSize:'0.95rem',
+                        borderRadius:'var(--radius-full)',
+                        background:'linear-gradient(135deg, #059669, #10b981)',
+                        display:'inline-flex',
+                        alignItems:'center',
+                        gap:'0.6rem',
+                        animation:'pulse 2s ease-in-out infinite'
+                      }}
+                    >
+                      ✅ Yes, Show Related Products
+                    </button>
+                  ) : (
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setShowRelated(false)}
+                      style={{ padding:'0.7rem 1.5rem', fontSize:'0.9rem', borderRadius:'var(--radius-full)' }}
+                    >
+                      ✕ Hide Related Products
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="empty-state-icon">🌊</span>
+                  <p style={{ color:'var(--text-secondary)' }}>No products found. Try broadening your search.</p>
+                </>
+              )}
+            </div>
+
+            {/* Related Products Table */}
+            {showRelated && relatedProducts.length > 0 && (
+              <div className="glass-card" style={{ padding:'1.25rem', overflowX:'auto', marginTop:'1rem' }}>
+                <p style={{ color:'var(--text-secondary)', fontSize:'0.95rem', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                  <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:24, height:24, borderRadius:'50%', background:'linear-gradient(135deg, #f59e0b, #f97316)', fontSize:'0.75rem' }}>⚡</span>
+                  <span>Showing <strong style={{ color:'var(--accent-primary)' }}>{relatedProducts.length}</strong> related product{relatedProducts.length !== 1 ? 's' : ''} <span style={{ color:'var(--text-muted)', fontSize:'0.85rem' }}>(same equipment type, different manufacturer/model)</span></span>
+                </p>
+                <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', fontSize:'0.9rem', minWidth:900 }}>
+                  <thead>
+                    <tr style={{ borderBottom:'2px solid var(--border-color)' }}>
+                      {['Equipment','Manufacturer','Model','Year','Part Name','Part #','Location','Qty','Service','Payment','Last Updated','Action'].map(h => (
+                        <th key={h} style={{ padding:'0.75rem', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {relatedProducts.map(p => {
+                      const sending = sendingIds.has(p.id);
+                      return (
+                        <tr key={p.id} style={{ borderBottom:'1px solid var(--border-color)', transition:'background 0.15s' }}
+                            onMouseEnter={e=>e.currentTarget.style.background='var(--bg-card-hover)'}
+                            onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                          <td style={{ padding:'0.75rem' }}>{p.category||'-'}</td>
+                          <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.brand||'-'}</td>
+                          <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.model_number||'-'}</td>
+                          <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.manufactured_at||'-'}</td>
+                          <td style={{ padding:'0.75rem', fontWeight:'500' }}>{p.product_name||'-'}</td>
+                          <td style={{ padding:'0.75rem', fontFamily:'monospace', color:'var(--text-secondary)' }}>{p.part_number||'-'}</td>
+                          <td style={{ padding:'0.75rem' }}>{p.location||'-'}</td>
+                          <td style={{ padding:'0.75rem', color:'var(--accent-primary)', fontWeight:'bold' }}>{p.quantity||'-'}</td>
+                          <td style={{ padding:'0.75rem' }}>{p.service_type || 'Supply'}</td>
+                          <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.payment_mode || 'pre-payment/credit'}</td>
+                          <td style={{ padding:'0.75rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                            {p.updated_at ? new Date(p.updated_at).toLocaleDateString() : p.created_at ? new Date(p.created_at).toLocaleDateString() : '-'}
+                          </td>
+                          <td style={{ padding:'0.75rem' }}>
+                            <button className="btn btn-primary" disabled={sending}
+                              style={{ padding:'0.4rem 0.8rem', fontSize:'0.85rem', display:'inline-flex', alignItems:'center', gap:'0.4rem', minWidth:130, opacity:sending?0.7:1, cursor:sending?'not-allowed':'pointer' }}
+                              onClick={() => openComposeModal(p)}>
+                              {sending ? (<><span className="spinner" style={{ width:14, height:14, borderWidth:2 }}/> Sending...</>) : (<>✉️ Send Inquiry</>)}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         ) : (
           <>
             <div className="glass-card" style={{ padding:'1.25rem', overflowX:'auto' }}>
@@ -1063,160 +1299,187 @@ export default function BuyerDashboard() {
         </div>
       )}
 
-      {/* ═══ SPECIFICATIONS MODAL ═══ */}
-      {showSpecsModal && (
+      {/* ═══ SHIPS MANAGEMENT MODAL ═══ */}
+      {showShipsModal && (
         <div style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(0,0,0,0.45)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', animation:'fadeIn 0.2s' }}
-             onClick={() => { setShowSpecsModal(false); setCsvPreview([]); setCsvFileName(''); }}>
-          <div style={{ background:'var(--bg-card)', borderRadius:'var(--radius-lg)', boxShadow:'0 25px 60px rgba(0,0,0,0.2)', width:680, maxWidth:'94vw', maxHeight:'85vh', display:'flex', flexDirection:'column', overflow:'hidden', animation:'scaleIn 0.25s' }}
+             onClick={() => { setShowShipsModal(false); setCsvPreview([]); setCsvFileName(''); setExpandedShipId(null); }}>
+          <div style={{ background:'var(--bg-card)', borderRadius:'var(--radius-lg)', boxShadow:'0 25px 60px rgba(0,0,0,0.2)', width:720, maxWidth:'94vw', maxHeight:'85vh', display:'flex', flexDirection:'column', overflow:'hidden', animation:'scaleIn 0.25s' }}
                onClick={e => e.stopPropagation()}>
 
             {/* Header */}
             <div style={{ padding:'1.25rem 1.5rem', borderBottom:'1px solid var(--border-color)', display:'flex', justifyContent:'space-between', alignItems:'center', background:'linear-gradient(135deg, rgba(5,150,105,0.05), rgba(16,185,129,0.05))' }}>
               <div>
-                <h3 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.2rem', fontWeight:'700', margin:0, display:'flex', alignItems:'center', gap:'0.5rem' }}>📋 My Specifications</h3>
-                <p style={{ fontSize:'0.8rem', color:'var(--text-muted)', margin:'0.15rem 0 0' }}>Upload your ship equipment CSV to filter matching parts</p>
+                <h3 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.2rem', fontWeight:'700', margin:0, display:'flex', alignItems:'center', gap:'0.5rem' }}>🚢 Manage My Ships</h3>
+                <p style={{ fontSize:'0.8rem', color:'var(--text-muted)', margin:'0.15rem 0 0' }}>Add ships and upload their equipment specifications.</p>
               </div>
-              <button onClick={() => { setShowSpecsModal(false); setCsvPreview([]); setCsvFileName(''); }} style={{ background:'none', border:'none', fontSize:'1.3rem', cursor:'pointer', color:'var(--text-muted)', padding:'0.25rem' }}>✕</button>
+              <button onClick={() => { setShowShipsModal(false); setCsvPreview([]); setCsvFileName(''); setExpandedShipId(null); }} style={{ background:'none', border:'none', fontSize:'1.3rem', cursor:'pointer', color:'var(--text-muted)', padding:'0.25rem' }}>✕</button>
             </div>
 
             {/* Body */}
-            <div style={{ flex:1, padding:'1.5rem', overflowY:'auto' }}>
+            <div style={{ flex:1, padding:'1.5rem', overflowY:'auto', background:'var(--bg-body)' }}>
 
-              {/* Upload Area */}
-              <div
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={(e) => { e.preventDefault(); setDragOver(false); const file = e.dataTransfer.files[0]; handleCsvFile(file); }}
-                style={{
-                  border: `2px dashed ${dragOver ? '#059669' : csvFileName ? '#059669' : 'var(--border-color)'}`,
-                  borderRadius: 'var(--radius-md)',
-                  padding: '2rem',
-                  textAlign: 'center',
-                  background: dragOver ? 'rgba(5,150,105,0.06)' : csvFileName ? 'rgba(5,150,105,0.03)' : 'var(--bg-surface)',
-                  transition: 'all 0.2s',
-                  cursor: 'pointer',
-                  marginBottom: '1.25rem'
-                }}
-                onClick={() => document.getElementById('specs-csv-input').click()}
-              >
-                <input
-                  id="specs-csv-input"
-                  type="file"
-                  accept=".csv"
-                  style={{ display: 'none' }}
-                  onChange={(e) => { handleCsvFile(e.target.files[0]); e.target.value = ''; }}
-                />
-                <span style={{ fontSize:'2.5rem', display:'block', marginBottom:'0.75rem' }}>{csvFileName ? '✅' : '📄'}</span>
-                {csvFileName ? (
-                  <>
-                    <p style={{ fontWeight:'600', color:'#059669', marginBottom:'0.25rem' }}>{csvFileName}</p>
-                    <p style={{ fontSize:'0.85rem', color:'var(--text-muted)' }}>{csvPreview.length} row(s) parsed. Click to upload a different file.</p>
-                  </>
-                ) : (
-                  <>
-                    <p style={{ fontWeight:'600', color:'var(--text-primary)', marginBottom:'0.25rem' }}>Drag & drop your CSV here, or click to browse</p>
-                    <p style={{ fontSize:'0.85rem', color:'var(--text-muted)' }}>Required columns: <strong>Equipment</strong>, <strong>Manufacturer</strong>, <strong>Model</strong></p>
-                  </>
-                )}
+              {/* Add New Ship Form */}
+              <div className="glass-card" style={{ padding:'1.25rem', marginBottom:'1.5rem' }}>
+                <h4 style={{ fontSize:'0.9rem', fontWeight:'600', marginBottom:'1rem', color:'var(--text-primary)' }}>➕ Add a New Ship</h4>
+                <div style={{ display:'flex', gap:'0.75rem', flexWrap:'wrap', alignItems:'flex-end' }}>
+                  <div style={{ flex:1, minWidth:200 }}>
+                    <label style={{ display:'block', fontSize:'0.75rem', fontWeight:'600', color:'var(--text-secondary)', marginBottom:'0.25rem' }}>Ship Name *</label>
+                    <input className="form-input" placeholder="e.g. MV Ocean Star" value={newShipName} onChange={e=>setNewShipName(e.target.value)} />
+                  </div>
+                  <div style={{ flex:1, minWidth:120 }}>
+                    <label style={{ display:'block', fontSize:'0.75rem', fontWeight:'600', color:'var(--text-secondary)', marginBottom:'0.25rem' }}>IMO Number</label>
+                    <input className="form-input" placeholder="Optional" value={newShipImo} onChange={e=>setNewShipImo(e.target.value)} />
+                  </div>
+                  <div style={{ flex:1, minWidth:120 }}>
+                    <label style={{ display:'block', fontSize:'0.75rem', fontWeight:'600', color:'var(--text-secondary)', marginBottom:'0.25rem' }}>Ship Type</label>
+                    <input className="form-input" placeholder="Optional" value={newShipType} onChange={e=>setNewShipType(e.target.value)} />
+                  </div>
+                  <button className="btn btn-primary" onClick={handleCreateShip} disabled={creatingShip || !newShipName.trim()} style={{ height:'42px', padding:'0 1.25rem' }}>
+                    {creatingShip ? 'Creating...' : 'Create Ship'}
+                  </button>
+                </div>
               </div>
 
-              {/* CSV Preview Table */}
-              {csvPreview.length > 0 && (
-                <div style={{ marginBottom:'1.25rem' }}>
-                  <h4 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'0.95rem', fontWeight:'600', marginBottom:'0.75rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                    👁️ Preview ({csvPreview.length} rows)
-                  </h4>
-                  <div style={{ maxHeight:'200px', overflowY:'auto', border:'1px solid var(--border-color)', borderRadius:'var(--radius-sm)' }}>
-                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.85rem' }}>
-                      <thead>
-                        <tr style={{ background:'var(--bg-surface)', borderBottom:'2px solid var(--border-color)', position:'sticky', top:0 }}>
-                          <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>#</th>
-                          <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>Equipment</th>
-                          <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>Manufacturer</th>
-                          <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>Model</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {csvPreview.map((row, i) => (
-                          <tr key={i} style={{ borderBottom:'1px solid var(--border-color)' }}>
-                            <td style={{ padding:'0.5rem 0.75rem', color:'var(--text-muted)' }}>{i + 1}</td>
-                            <td style={{ padding:'0.5rem 0.75rem', fontWeight:'500' }}>{row.equipment}</td>
-                            <td style={{ padding:'0.5rem 0.75rem', color:'var(--text-secondary)' }}>{row.manufacturer || '—'}</td>
-                            <td style={{ padding:'0.5rem 0.75rem', color:'var(--text-secondary)' }}>{row.model || '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div style={{ marginTop:'0.75rem', display:'flex', gap:'0.75rem' }}>
-                    <button className="btn btn-primary" onClick={handleSaveSpecs} disabled={specsSaving}
-                      style={{ padding:'0.7rem 1.8rem', background:'linear-gradient(135deg, #059669, #10b981)', display:'inline-flex', alignItems:'center', gap:'0.5rem' }}>
-                      {specsSaving ? <><span className="spinner" style={{ width:14, height:14, borderWidth:2 }}/> Saving...</> : <>💾 Save Specifications</>}
-                    </button>
-                    <button className="btn btn-secondary" onClick={() => { setCsvPreview([]); setCsvFileName(''); }}
-                      style={{ padding:'0.7rem 1.2rem', fontSize:'0.85rem' }}>Cancel</button>
-                  </div>
-                </div>
-              )}
-
-              {/* Saved Specifications */}
-              {savedSpecs.length > 0 && csvPreview.length === 0 && (
-                <div>
-                  <h4 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'0.95rem', fontWeight:'600', marginBottom:'0.75rem', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                    <span style={{ display:'flex', alignItems:'center', gap:'0.5rem' }}>✅ Saved Specifications ({savedSpecs.length})</span>
-                    <span style={{
-                      display:'inline-flex', alignItems:'center', gap:'0.35rem', padding:'0.3rem 0.75rem',
-                      borderRadius:'var(--radius-full)', fontSize:'0.78rem', fontWeight:'600',
-                      background: specsFilterActive ? 'rgba(5,150,105,0.1)' : 'rgba(100,100,100,0.08)',
-                      color: specsFilterActive ? '#059669' : 'var(--text-muted)'
-                    }}>
-                      <span style={{ width:8, height:8, borderRadius:'50%', background: specsFilterActive ? '#059669' : '#94a3b8' }}></span>
-                      {specsFilterActive ? 'Filter Active' : 'Filter Inactive'}
-                    </span>
-                  </h4>
-                  <div style={{ maxHeight:'200px', overflowY:'auto', border:'1px solid var(--border-color)', borderRadius:'var(--radius-sm)' }}>
-                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.85rem' }}>
-                      <thead>
-                        <tr style={{ background:'var(--bg-surface)', borderBottom:'2px solid var(--border-color)', position:'sticky', top:0 }}>
-                          <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>#</th>
-                          <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>Equipment</th>
-                          <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>Manufacturer</th>
-                          <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>Model</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {savedSpecs.map((row, i) => (
-                          <tr key={row.id || i} style={{ borderBottom:'1px solid var(--border-color)' }}>
-                            <td style={{ padding:'0.5rem 0.75rem', color:'var(--text-muted)' }}>{i + 1}</td>
-                            <td style={{ padding:'0.5rem 0.75rem', fontWeight:'500' }}>{row.equipment}</td>
-                            <td style={{ padding:'0.5rem 0.75rem', color:'var(--text-secondary)' }}>{row.manufacturer || '—'}</td>
-                            <td style={{ padding:'0.5rem 0.75rem', color:'var(--text-secondary)' }}>{row.model || '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div style={{ marginTop:'0.75rem', display:'flex', gap:'0.75rem', justifyContent:'space-between', alignItems:'center' }}>
-                    <button className="btn btn-secondary" onClick={handleDeleteSpecs}
-                      style={{ padding:'0.6rem 1.2rem', fontSize:'0.85rem', color:'var(--danger)', borderColor:'var(--danger)' }}>🗑️ Clear All Specs</button>
-                    <p style={{ fontSize:'0.8rem', color:'var(--text-muted)', margin:0 }}>Upload a new CSV to replace these specifications</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Empty state */}
-              {savedSpecs.length === 0 && csvPreview.length === 0 && (
-                <div style={{ textAlign:'center', padding:'1.5rem 1rem', color:'var(--text-muted)' }}>
+              {/* Ships List */}
+              <h4 style={{ fontSize:'1rem', fontWeight:'600', marginBottom:'1rem', color:'var(--text-primary)' }}>Your Ships ({ships.length})</h4>
+              
+              {ships.length === 0 ? (
+                <div style={{ textAlign:'center', padding:'3rem 1rem', color:'var(--text-muted)', background:'var(--bg-surface)', borderRadius:'var(--radius-md)', border:'1px dashed var(--border-color)' }}>
                   <span style={{ fontSize:'2.5rem', display:'block', marginBottom:'0.75rem' }}>🚢</span>
-                  <p style={{ fontWeight:'500', color:'var(--text-secondary)', marginBottom:'0.25rem' }}>No specifications uploaded yet</p>
-                  <p style={{ fontSize:'0.85rem' }}>Upload a CSV with your ship's equipment list to see matching parts automatically.</p>
+                  <p style={{ fontWeight:'500', color:'var(--text-secondary)', marginBottom:'0.25rem' }}>No ships added yet</p>
+                  <p style={{ fontSize:'0.85rem' }}>Create a ship above to start managing its specifications.</p>
+                </div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
+                  {ships.map(ship => (
+                    <div key={ship.id} style={{ background:'var(--bg-surface)', border:`1px solid ${expandedShipId === ship.id ? '#059669' : 'var(--border-color)'}`, borderRadius:'var(--radius-md)', overflow:'hidden', transition:'all 0.2s' }}>
+                      
+                      {/* Ship Header (Click to expand) */}
+                      <div 
+                        onClick={() => {
+                          setExpandedShipId(expandedShipId === ship.id ? null : ship.id);
+                          setCsvPreview([]);
+                          setCsvFileName('');
+                        }}
+                        style={{ padding:'1rem 1.25rem', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer', background: expandedShipId === ship.id ? 'rgba(5,150,105,0.03)' : 'transparent' }}
+                      >
+                        <div>
+                          <h5 style={{ margin:0, fontSize:'1.05rem', fontWeight:'600', display:'flex', alignItems:'center', gap:'0.5rem', color: expandedShipId === ship.id ? '#059669' : 'var(--text-primary)' }}>
+                            🚢 {ship.ship_name}
+                          </h5>
+                          <div style={{ display:'flex', gap:'1rem', marginTop:'0.25rem', fontSize:'0.8rem', color:'var(--text-muted)' }}>
+                            {ship.imo_number && <span>IMO: {ship.imo_number}</span>}
+                            {ship.ship_type && <span>Type: {ship.ship_type}</span>}
+                          </div>
+                        </div>
+                        <div style={{ display:'flex', alignItems:'center', gap:'1rem' }}>
+                          <span style={{ display:'inline-flex', alignItems:'center', gap:'0.35rem', padding:'0.25rem 0.6rem', borderRadius:'1rem', fontSize:'0.75rem', fontWeight:'600', background: ship.spec_count > 0 ? 'rgba(5,150,105,0.1)' : 'rgba(100,100,100,0.1)', color: ship.spec_count > 0 ? '#059669' : 'var(--text-secondary)' }}>
+                            {ship.spec_count} Specifications
+                          </span>
+                          <svg width="12" height="8" viewBox="0 0 12 8" fill="none" style={{ transition:'transform 0.2s', transform: expandedShipId === ship.id ? 'rotate(180deg)' : 'none', color:'var(--text-muted)' }}><path d="M1.5 1.5L6 6L10.5 1.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                      </div>
+
+                      {/* Ship Details (Expanded) */}
+                      {expandedShipId === ship.id && (
+                        <div style={{ padding:'1.25rem', borderTop:'1px solid var(--border-color)', background:'var(--bg-card)', animation:'fadeIn 0.2s' }} onClick={e => e.stopPropagation()}>
+                          
+                          {/* Upload Area for this ship */}
+                          <div
+                            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                            onDragLeave={() => setDragOver(false)}
+                            onDrop={(e) => { e.preventDefault(); setDragOver(false); const file = e.dataTransfer.files[0]; handleCsvFile(file); }}
+                            style={{
+                              border: `2px dashed ${dragOver ? '#059669' : csvFileName ? '#059669' : 'var(--border-color)'}`,
+                              borderRadius: 'var(--radius-md)',
+                              padding: '1.5rem',
+                              textAlign: 'center',
+                              background: dragOver ? 'rgba(5,150,105,0.06)' : csvFileName ? 'rgba(5,150,105,0.03)' : 'var(--bg-surface)',
+                              transition: 'all 0.2s',
+                              cursor: 'pointer',
+                              marginBottom: '1.25rem'
+                            }}
+                            onClick={() => document.getElementById(`specs-csv-input-${ship.id}`).click()}
+                          >
+                            <input
+                              id={`specs-csv-input-${ship.id}`}
+                              type="file"
+                              accept=".csv"
+                              style={{ display: 'none' }}
+                              onChange={(e) => { handleCsvFile(e.target.files[0]); e.target.value = ''; }}
+                            />
+                            <span style={{ fontSize:'2rem', display:'block', marginBottom:'0.5rem' }}>{csvFileName ? '✅' : '📄'}</span>
+                            {csvFileName ? (
+                              <>
+                                <p style={{ fontWeight:'600', color:'#059669', marginBottom:'0.25rem', fontSize:'0.9rem' }}>{csvFileName}</p>
+                                <p style={{ fontSize:'0.8rem', color:'var(--text-muted)' }}>{csvPreview.length} row(s) parsed. Click to change file.</p>
+                              </>
+                            ) : (
+                              <>
+                                <p style={{ fontWeight:'600', color:'var(--text-primary)', marginBottom:'0.25rem', fontSize:'0.9rem' }}>Upload Specs CSV for {ship.ship_name}</p>
+                                <p style={{ fontSize:'0.8rem', color:'var(--text-muted)' }}>Required columns: <strong>Equipment</strong>, <strong>Manufacturer</strong>, <strong>Model</strong></p>
+                                {ship.spec_count > 0 && <p style={{ fontSize:'0.75rem', color:'var(--danger)', marginTop:'0.5rem', fontWeight:'500' }}>⚠️ Warning: Uploading a new CSV will replace existing specifications.</p>}
+                              </>
+                            )}
+                          </div>
+
+                          {/* CSV Preview Table */}
+                          {csvPreview.length > 0 && (
+                            <div style={{ marginBottom:'1.25rem' }}>
+                              <h4 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'0.9rem', fontWeight:'600', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                                👁️ Preview ({csvPreview.length} rows)
+                              </h4>
+                              <div style={{ maxHeight:'180px', overflowY:'auto', border:'1px solid var(--border-color)', borderRadius:'var(--radius-sm)' }}>
+                                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.8rem' }}>
+                                  <thead>
+                                    <tr style={{ background:'var(--bg-surface)', borderBottom:'2px solid var(--border-color)', position:'sticky', top:0 }}>
+                                      <th style={{ padding:'0.5rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>#</th>
+                                      <th style={{ padding:'0.5rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Equipment</th>
+                                      <th style={{ padding:'0.5rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Manufacturer</th>
+                                      <th style={{ padding:'0.5rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Model</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {csvPreview.map((row, i) => (
+                                      <tr key={i} style={{ borderBottom:'1px solid var(--border-color)' }}>
+                                        <td style={{ padding:'0.4rem 0.5rem', color:'var(--text-muted)' }}>{i + 1}</td>
+                                        <td style={{ padding:'0.4rem 0.5rem', fontWeight:'500' }}>{row.equipment}</td>
+                                        <td style={{ padding:'0.4rem 0.5rem', color:'var(--text-secondary)' }}>{row.manufacturer || '—'}</td>
+                                        <td style={{ padding:'0.4rem 0.5rem', color:'var(--text-secondary)' }}>{row.model || '—'}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <div style={{ marginTop:'0.75rem', display:'flex', gap:'0.75rem' }}>
+                                <button className="btn btn-primary" onClick={() => handleSaveSpecs(ship.id)} disabled={specsSaving}
+                                  style={{ padding:'0.6rem 1.5rem', background:'linear-gradient(135deg, #059669, #10b981)', fontSize:'0.85rem' }}>
+                                  {specsSaving ? 'Saving...' : '💾 Save to Ship'}
+                                </button>
+                                <button className="btn btn-secondary" onClick={() => { setCsvPreview([]); setCsvFileName(''); }}
+                                  style={{ padding:'0.6rem 1.2rem', fontSize:'0.85rem' }}>Cancel</button>
+                              </div>
+                            </div>
+                          )}
+
+                          <div style={{ display:'flex', justifyContent:'flex-end', borderTop:'1px solid var(--border-color)', paddingTop:'1rem', marginTop:'1rem' }}>
+                            <button className="btn btn-secondary" 
+                              onClick={() => { if(window.confirm(`Are you sure you want to delete "${ship.ship_name}" and all its specifications?`)) handleDeleteShip(ship.id, ship.ship_name); }}
+                              style={{ padding:'0.5rem 1rem', fontSize:'0.8rem', color:'var(--danger)', borderColor:'var(--danger)' }}>
+                              🗑️ Delete Ship
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
 
             {/* Footer */}
-            <div style={{ padding:'1rem 1.5rem', borderTop:'1px solid var(--border-color)', display:'flex', justifyContent:'flex-end' }}>
-              <button className="btn btn-secondary" onClick={() => { setShowSpecsModal(false); setCsvPreview([]); setCsvFileName(''); }} style={{ padding:'0.7rem 1.5rem' }}>Close</button>
+            <div style={{ padding:'1rem 1.5rem', borderTop:'1px solid var(--border-color)', display:'flex', justifyContent:'flex-end', background:'var(--bg-card)' }}>
+              <button className="btn btn-secondary" onClick={() => { setShowShipsModal(false); setCsvPreview([]); setCsvFileName(''); setExpandedShipId(null); }} style={{ padding:'0.7rem 1.5rem' }}>Close</button>
             </div>
           </div>
         </div>
