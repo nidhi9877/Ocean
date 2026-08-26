@@ -193,15 +193,98 @@ router.get('/inquiries', authenticateToken, async (req, res) => {
   }
 });
 
-// ─── POST /specifications — Save buyer equipment specifications from CSV ──────
-router.post('/specifications', authenticateToken, async (req, res) => {
+// ═══════════════════════════════════════════════════════════════════════════════
+// SHIP MANAGEMENT ENDPOINTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── POST /ships — Create a new ship ──────────────────────────────────────────
+router.post('/ships', authenticateToken, async (req, res) => {
   try {
+    const { ship_name, imo_number, ship_type } = req.body;
+    if (!ship_name || !ship_name.trim()) {
+      return res.status(400).json({ error: 'Ship name is required.' });
+    }
+
+    const buyerProfile = await sql`SELECT id FROM buyers WHERE user_id = ${req.user.id}`;
+    if (buyerProfile.length === 0) {
+      return res.status(403).json({ error: 'Only registered buyers can create ships.' });
+    }
+    const buyer_id = buyerProfile[0].id;
+
+    const result = await sql`
+      INSERT INTO buyer_ships (buyer_id, ship_name, imo_number, ship_type)
+      VALUES (${buyer_id}, ${ship_name.trim()}, ${imo_number ? imo_number.trim() : null}, ${ship_type ? ship_type.trim() : null})
+      RETURNING id, ship_name, imo_number, ship_type, created_at
+    `;
+
+    res.status(201).json(result[0]);
+  } catch (error) {
+    console.error('Error creating ship:', error);
+    res.status(500).json({ error: 'Internal server error while creating ship.' });
+  }
+});
+
+// ─── GET /ships — List all buyer's ships (with spec count) ────────────────────
+router.get('/ships', authenticateToken, async (req, res) => {
+  try {
+    const buyerProfile = await sql`SELECT id FROM buyers WHERE user_id = ${req.user.id}`;
+    if (buyerProfile.length === 0) {
+      return res.status(403).json({ error: 'Only registered buyers can view ships.' });
+    }
+    const buyer_id = buyerProfile[0].id;
+
+    const ships = await sql`
+      SELECT s.id, s.ship_name, s.imo_number, s.ship_type, s.created_at,
+        (SELECT COUNT(*) FROM buyer_specifications bs WHERE bs.ship_id = s.id)::int AS spec_count
+      FROM buyer_ships s
+      WHERE s.buyer_id = ${buyer_id}
+      ORDER BY s.created_at DESC
+    `;
+
+    res.json(ships);
+  } catch (error) {
+    console.error('Error fetching ships:', error);
+    res.status(500).json({ error: 'Internal server error while fetching ships.' });
+  }
+});
+
+// ─── DELETE /ships/:shipId — Delete a ship and its specifications ─────────────
+router.delete('/ships/:shipId', authenticateToken, async (req, res) => {
+  try {
+    const { shipId } = req.params;
+
+    const buyerProfile = await sql`SELECT id FROM buyers WHERE user_id = ${req.user.id}`;
+    if (buyerProfile.length === 0) {
+      return res.status(403).json({ error: 'Only registered buyers can delete ships.' });
+    }
+    const buyer_id = buyerProfile[0].id;
+
+    // Verify ship belongs to this buyer
+    const ship = await sql`SELECT id FROM buyer_ships WHERE id = ${shipId} AND buyer_id = ${buyer_id}`;
+    if (ship.length === 0) {
+      return res.status(404).json({ error: 'Ship not found.' });
+    }
+
+    // Cascade delete removes specs too
+    await sql`DELETE FROM buyer_ships WHERE id = ${shipId} AND buyer_id = ${buyer_id}`;
+
+    res.json({ message: 'Ship and its specifications deleted.' });
+  } catch (error) {
+    console.error('Error deleting ship:', error);
+    res.status(500).json({ error: 'Internal server error while deleting ship.' });
+  }
+});
+
+// ─── POST /ships/:shipId/specifications — Save specs for a specific ship ──────
+router.post('/ships/:shipId/specifications', authenticateToken, async (req, res) => {
+  try {
+    const { shipId } = req.params;
     const { specifications } = req.body;
+
     if (!specifications || !Array.isArray(specifications) || specifications.length === 0) {
       return res.status(400).json({ error: 'No specifications provided.' });
     }
 
-    // Validate each row has at least an equipment field
     for (const spec of specifications) {
       if (!spec.equipment || !spec.equipment.trim()) {
         return res.status(400).json({ error: 'Each specification must have an Equipment field.' });
@@ -214,63 +297,60 @@ router.post('/specifications', authenticateToken, async (req, res) => {
     }
     const buyer_id = buyerProfile[0].id;
 
-    // Delete existing specifications (full replace on re-upload)
-    await sql`DELETE FROM buyer_specifications WHERE buyer_id = ${buyer_id}`;
+    // Verify ship belongs to this buyer
+    const ship = await sql`SELECT id FROM buyer_ships WHERE id = ${shipId} AND buyer_id = ${buyer_id}`;
+    if (ship.length === 0) {
+      return res.status(404).json({ error: 'Ship not found.' });
+    }
+
+    // Delete existing specs for this ship (full replace)
+    await sql`DELETE FROM buyer_specifications WHERE ship_id = ${shipId}`;
 
     // Insert new specifications
     for (const spec of specifications) {
       await sql`
-        INSERT INTO buyer_specifications (buyer_id, equipment, manufacturer, model)
-        VALUES (${buyer_id}, ${spec.equipment.trim()}, ${spec.manufacturer ? spec.manufacturer.trim() : null}, ${spec.model ? spec.model.trim() : null})
+        INSERT INTO buyer_specifications (buyer_id, ship_id, equipment, manufacturer, model)
+        VALUES (${buyer_id}, ${shipId}, ${spec.equipment.trim()}, ${spec.manufacturer ? spec.manufacturer.trim() : null}, ${spec.model ? spec.model.trim() : null})
       `;
     }
 
-    res.status(201).json({ message: `${specifications.length} specification(s) saved successfully.` });
+    res.status(201).json({ message: `${specifications.length} specification(s) saved for ship.` });
   } catch (error) {
-    console.error('Error saving specifications:', error);
+    console.error('Error saving ship specifications:', error);
     res.status(500).json({ error: 'Internal server error while saving specifications.' });
   }
 });
 
-// ─── GET /specifications — Get buyer's saved specifications ───────────────────
-router.get('/specifications', authenticateToken, async (req, res) => {
+// ─── GET /ships/:shipId/specifications — Get specs for a specific ship ────────
+router.get('/ships/:shipId/specifications', authenticateToken, async (req, res) => {
   try {
+    const { shipId } = req.params;
+
     const buyerProfile = await sql`SELECT id FROM buyers WHERE user_id = ${req.user.id}`;
     if (buyerProfile.length === 0) {
       return res.status(403).json({ error: 'Only registered buyers can view specifications.' });
     }
     const buyer_id = buyerProfile[0].id;
 
+    // Verify ship belongs to this buyer
+    const ship = await sql`SELECT id FROM buyer_ships WHERE id = ${shipId} AND buyer_id = ${buyer_id}`;
+    if (ship.length === 0) {
+      return res.status(404).json({ error: 'Ship not found.' });
+    }
+
     const specs = await sql`
       SELECT id, equipment, manufacturer, model, created_at
       FROM buyer_specifications
-      WHERE buyer_id = ${buyer_id}
+      WHERE ship_id = ${shipId}
       ORDER BY equipment ASC, manufacturer ASC
     `;
 
     res.json(specs);
   } catch (error) {
-    console.error('Error fetching specifications:', error);
+    console.error('Error fetching ship specifications:', error);
     res.status(500).json({ error: 'Internal server error while fetching specifications.' });
   }
 });
 
-// ─── DELETE /specifications — Clear all buyer specifications ──────────────────
-router.delete('/specifications', authenticateToken, async (req, res) => {
-  try {
-    const buyerProfile = await sql`SELECT id FROM buyers WHERE user_id = ${req.user.id}`;
-    if (buyerProfile.length === 0) {
-      return res.status(403).json({ error: 'Only registered buyers can delete specifications.' });
-    }
-    const buyer_id = buyerProfile[0].id;
-
-    await sql`DELETE FROM buyer_specifications WHERE buyer_id = ${buyer_id}`;
-
-    res.json({ message: 'All specifications cleared.' });
-  } catch (error) {
-    console.error('Error deleting specifications:', error);
-    res.status(500).json({ error: 'Internal server error while deleting specifications.' });
-  }
-});
-
 export default router;
+
