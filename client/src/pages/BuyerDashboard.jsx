@@ -209,7 +209,9 @@ export default function BuyerDashboard() {
       await loadShips();
       setExpandedShipId(r.data.id);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to create ship.');
+      if (err.response?.status !== 401 && err.response?.status !== 403) {
+        toast.error(err.response?.data?.error || 'Failed to create ship.');
+      }
     } finally { setCreatingShip(false); }
   };
 
@@ -559,7 +561,7 @@ export default function BuyerDashboard() {
         </div>
 
         {/* Search Bar */}
-        <div className="glass-card" style={{ padding:'1.5rem 2rem', marginBottom:'1.25rem' }}>
+        <div className="glass-card" style={{ padding:'1.5rem 2rem', marginBottom:'1.25rem', overflow:'visible', position:'relative', zIndex:30 }}>
           <form onSubmit={handleSearch} style={{ display:'flex', gap:'0.75rem', alignItems:'center', flexWrap:'wrap' }}>
             <div style={{ position:'relative', flex:1, minWidth:'280px' }}>
               <span style={{ position:'absolute', left:'1rem', top:'50%', transform:'translateY(-50%)', fontSize:'1.15rem', color:'var(--text-muted)', pointerEvents:'none' }}>🔍</span>
@@ -582,30 +584,36 @@ export default function BuyerDashboard() {
                 <button type="button" onClick={() => setShowShipDropdown(v => !v)}
                   style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', padding:'0.8rem 1.4rem', background: selectedShipId ? 'rgba(5,150,105,0.08)' : 'var(--bg-surface)', border:`2px solid ${selectedShipId ? '#059669' : 'var(--border-color)'}`, borderRadius:'var(--radius-full)', color: selectedShipId ? '#059669' : 'var(--text-secondary)', fontWeight:'600', fontSize:'0.9rem', cursor:'pointer', transition:'all 0.2s', fontFamily:"'Inter',sans-serif" }}>
                   <span>🚢</span>
-                  {selectedShip ? selectedShip.ship_name : 'All Equipment'}
+                  <span>Ship: <strong>{selectedShip ? selectedShip.ship_name : 'All Equipment'}</strong></span>
                   <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transition:'transform 0.2s', transform: showShipDropdown ? 'rotate(180deg)' : 'none' }}><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
                 {showShipDropdown && (
-                  <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, zIndex:100, background:'var(--bg-card)', border:'1px solid var(--border-color)', borderRadius:'var(--radius-md)', boxShadow:'0 8px 24px rgba(0,0,0,0.12)', minWidth:220, overflow:'hidden', animation:'fadeIn 0.15s' }}>
-                    <button onClick={() => handleSelectShip(null)}
-                      style={{ display:'flex', alignItems:'center', gap:'0.5rem', width:'100%', padding:'0.7rem 1rem', background: !selectedShipId ? 'rgba(37,99,235,0.06)' : 'transparent', border:'none', textAlign:'left', cursor:'pointer', fontSize:'0.88rem', fontWeight: !selectedShipId ? '600' : '400', color: !selectedShipId ? 'var(--accent-primary)' : 'var(--text-primary)', fontFamily:"'Inter',sans-serif", transition:'background 0.1s' }}
-                      onMouseEnter={e => e.currentTarget.style.background = !selectedShipId ? 'rgba(37,99,235,0.06)' : 'var(--bg-surface)'}
-                      onMouseLeave={e => e.currentTarget.style.background = !selectedShipId ? 'rgba(37,99,235,0.06)' : 'transparent'}>
-                      🌍 All Equipment
-                      {!selectedShipId && <span style={{ marginLeft:'auto', color:'var(--accent-primary)' }}>✓</span>}
-                    </button>
-                    <div style={{ height:1, background:'var(--border-color)' }}></div>
-                    {ships.map(ship => (
-                      <button key={ship.id} onClick={() => handleSelectShip(ship.id)}
-                        style={{ display:'flex', alignItems:'center', gap:'0.5rem', width:'100%', padding:'0.7rem 1rem', background: selectedShipId === ship.id ? 'rgba(5,150,105,0.06)' : 'transparent', border:'none', textAlign:'left', cursor:'pointer', fontSize:'0.88rem', fontWeight: selectedShipId === ship.id ? '600' : '400', color: selectedShipId === ship.id ? '#059669' : 'var(--text-primary)', fontFamily:"'Inter',sans-serif", transition:'background 0.1s' }}
-                        onMouseEnter={e => e.currentTarget.style.background = selectedShipId === ship.id ? 'rgba(5,150,105,0.06)' : 'var(--bg-surface)'}
-                        onMouseLeave={e => e.currentTarget.style.background = selectedShipId === ship.id ? 'rgba(5,150,105,0.06)' : 'transparent'}>
-                        🚢 {ship.ship_name}
-                        <span style={{ marginLeft:'auto', fontSize:'0.75rem', color:'var(--text-muted)' }}>{ship.spec_count} specs</span>
-                        {selectedShipId === ship.id && <span style={{ color:'#059669' }}>✓</span>}
+                  <>
+                    <div style={{ position:'fixed', inset:0, zIndex:99 }} onClick={() => setShowShipDropdown(false)} />
+                    <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, zIndex:100, background:'var(--bg-card)', border:'1px solid var(--border-color)', borderRadius:'var(--radius-md)', boxShadow:'0 12px 32px rgba(0,0,0,0.18)', minWidth:260, maxHeight:320, overflowY:'auto', animation:'fadeIn 0.15s' }}>
+                      <div style={{ padding:'0.6rem 1rem', fontSize:'0.75rem', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--text-muted)', borderBottom:'1px solid var(--border-color)', background:'var(--bg-surface)' }}>
+                        Select Ship to Filter Parts
+                      </div>
+                      <button onClick={() => handleSelectShip(null)}
+                        style={{ display:'flex', alignItems:'center', gap:'0.5rem', width:'100%', padding:'0.75rem 1rem', background: !selectedShipId ? 'rgba(37,99,235,0.06)' : 'transparent', border:'none', textAlign:'left', cursor:'pointer', fontSize:'0.88rem', fontWeight: !selectedShipId ? '600' : '400', color: !selectedShipId ? 'var(--accent-primary)' : 'var(--text-primary)', fontFamily:"'Inter',sans-serif", transition:'background 0.1s' }}
+                        onMouseEnter={e => e.currentTarget.style.background = !selectedShipId ? 'rgba(37,99,235,0.06)' : 'var(--bg-surface)'}
+                        onMouseLeave={e => e.currentTarget.style.background = !selectedShipId ? 'rgba(37,99,235,0.06)' : 'transparent'}>
+                        🌍 All Equipment
+                        {!selectedShipId && <span style={{ marginLeft:'auto', color:'var(--accent-primary)' }}>✓</span>}
                       </button>
-                    ))}
-                  </div>
+                      <div style={{ height:1, background:'var(--border-color)' }}></div>
+                      {ships.map(ship => (
+                        <button key={ship.id} onClick={() => handleSelectShip(ship.id)}
+                          style={{ display:'flex', alignItems:'center', gap:'0.5rem', width:'100%', padding:'0.75rem 1rem', background: selectedShipId === ship.id ? 'rgba(5,150,105,0.06)' : 'transparent', border:'none', textAlign:'left', cursor:'pointer', fontSize:'0.88rem', fontWeight: selectedShipId === ship.id ? '600' : '400', color: selectedShipId === ship.id ? '#059669' : 'var(--text-primary)', fontFamily:"'Inter',sans-serif", transition:'background 0.1s' }}
+                          onMouseEnter={e => e.currentTarget.style.background = selectedShipId === ship.id ? 'rgba(5,150,105,0.06)' : 'var(--bg-surface)'}
+                          onMouseLeave={e => e.currentTarget.style.background = selectedShipId === ship.id ? 'rgba(5,150,105,0.06)' : 'transparent'}>
+                          🚢 {ship.ship_name}
+                          <span style={{ marginLeft:'auto', fontSize:'0.75rem', color:'var(--text-muted)', background:'var(--bg-surface)', padding:'0.15rem 0.45rem', borderRadius:'0.5rem', border:'1px solid var(--border-color)' }}>{ship.spec_count} specs</span>
+                          {selectedShipId === ship.id && <span style={{ color:'#059669' }}>✓</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             )}
