@@ -32,15 +32,17 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Role must be either "buyer" or "provider"' });
     }
 
-    // Additional validation for buyer
-    if (role === 'buyer') {
-      if (!email || !phone) {
+    // Additional validation for buyer and provider
+    if (role === 'buyer' || role === 'provider') {
+      if (role === 'buyer' && (!email || !phone)) {
         return res.status(400).json({ error: 'All buyer details (email, phone) are required' });
       }
 
-      const emailValidation = validateCompanyEmail(email);
-      if (!emailValidation.isValid) {
-        return res.status(400).json({ error: emailValidation.error });
+      if (email) {
+        const emailValidation = validateCompanyEmail(email);
+        if (!emailValidation.isValid) {
+          return res.status(400).json({ error: emailValidation.error });
+        }
       }
     }
 

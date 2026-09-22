@@ -512,8 +512,10 @@ export default function BuyerDashboard() {
       return;
     }
     setSelectedProduct(product);
-    const subject = `🚢 Purchase Inquiry: ${product.product_name} — Vortex Marketplace`;
-    const body = `Dear ${product.company_name} Team,\n\nI am interested in purchasing the following listed product:\n\n- Product: ${product.product_name}\n- Brand: ${product.brand || 'N/A'}\n- Model: ${product.model_number || 'N/A'}\n- Part Number: ${product.part_number || 'N/A'}\n\nDelivery Details:\n- Destination Port: ${inquiryMeta.destination.trim()}\n- ETA: ${inquiryMeta.eta.trim()}\n- ETD: ${inquiryMeta.etd ? inquiryMeta.etd.trim() : 'N/A'}\n- Vessel Name: ${inquiryMeta.vesselName.trim()}\n- Minimum Quantity Required: ${filters.minQty}\n\nPlease let me know if you can fulfill this request and provide a price quote.\n\nBest regards,\n${user?.username || 'Buyer'}`;
+    const vendorName = product.provider_username || product.company_name || 'Vendor';
+    const productName = product.product_name || product.category || 'N/A';
+    const subject = `🚢 Purchase Inquiry: ${productName} — Vortex Marketplace`;
+    const body = `Dear ${vendorName} Team,\n\nI am interested in purchasing the following listed product:\n\n- Product: ${productName}\n- Brand: ${product.brand || 'N/A'}\n- Model: ${product.model_number || 'N/A'}\n- Part Number: ${product.part_number || 'N/A'}\n\nDelivery Details:\n- Destination Port: ${inquiryMeta.destination.trim()}\n- ETA: ${inquiryMeta.eta.trim()}\n- ETD: ${inquiryMeta.etd ? inquiryMeta.etd.trim() : 'N/A'}\n- Vessel Name: ${inquiryMeta.vesselName.trim()}\n- Minimum Quantity Required: ${filters.minQty}\n\nPlease let me know if you can fulfill this request and provide a price quote.\n\nBest regards,\n${user?.username || 'Buyer'}`;
     
     setShowCc(false);
     setShowBcc(false);

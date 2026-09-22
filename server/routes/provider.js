@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { sql } from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { validateCompanyEmail } from '../utils/emailValidator.js';
 
 const router = Router();
 
@@ -23,6 +24,11 @@ router.post('/register', authenticateToken, async (req, res) => {
     // Validate required fields
     if (!companyName || !contactPerson || !email || !phone || !address) {
       return res.status(400).json({ error: 'All company details are required' });
+    }
+
+    const emailValidation = validateCompanyEmail(email);
+    if (!emailValidation.isValid) {
+      return res.status(400).json({ error: emailValidation.error });
     }
 
     // Check if provider already exists for this user
@@ -244,9 +250,10 @@ router.get('/products/search', async (req, res) => {
 router.get('/products', async (req, res) => {
   try {
     const products = await sql`
-      SELECT p.*, pr.company_name, pr.contact_person, pr.email as provider_email, COALESCE(p.payment_mode, pr.payment_mode) AS payment_mode
+      SELECT p.*, pr.company_name, pr.contact_person, pr.email as provider_email, COALESCE(p.payment_mode, pr.payment_mode) AS payment_mode, u.username as provider_username
       FROM products p
       JOIN providers pr ON p.provider_id = pr.id
+      JOIN users u ON pr.user_id = u.id
       ORDER BY p.created_at DESC
     `;
 
