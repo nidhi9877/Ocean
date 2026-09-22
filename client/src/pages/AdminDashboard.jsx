@@ -4,10 +4,11 @@ import axios from 'axios';
 const API = '/api';
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState({ totalUsers: 0, totalProviders: 0, totalProducts: 0 });
+  const [stats, setStats] = useState({ totalUsers: 0, totalProviders: 0, totalProducts: 0, totalInquiries: 0 });
   const [users, setUsers] = useState([]);
   const [providers, setProviders] = useState([]);
   const [buyers, setBuyers] = useState([]);
+  const [inquiries, setInquiries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('users');
@@ -19,17 +20,19 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [statsRes, usersRes, providersRes, buyersRes] = await Promise.all([
+      const [statsRes, usersRes, providersRes, buyersRes, inquiriesRes] = await Promise.all([
         axios.get(`${API}/admin/stats`),
         axios.get(`${API}/admin/users`),
         axios.get(`${API}/admin/providers`),
-        axios.get(`${API}/admin/buyers`)
+        axios.get(`${API}/admin/buyers`),
+        axios.get(`${API}/admin/inquiries`)
       ]);
       
       setStats(statsRes.data);
       setUsers(usersRes.data);
       setProviders(providersRes.data);
       setBuyers(buyersRes.data);
+      setInquiries(inquiriesRes.data);
     } catch (err) {
       setError('Failed to fetch admin data. Make sure backend is connected.');
       console.error(err);
@@ -72,6 +75,11 @@ export default function AdminDashboard() {
           <div className="stat-value">{stats.totalProducts}</div>
           <div className="stat-label">Parts Listed</div>
         </div>
+        <div className="stat-card">
+          <div className="stat-icon">✉️</div>
+          <div className="stat-value">{stats.totalInquiries}</div>
+          <div className="stat-label">Total Inquiries</div>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -93,6 +101,12 @@ export default function AdminDashboard() {
           onClick={() => setActiveTab('buyers')}
         >
           Buyers
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'inquiries' ? 'active' : ''}`}
+          onClick={() => setActiveTab('inquiries')}
+        >
+          Inquiries
         </button>
       </div>
 
@@ -200,6 +214,54 @@ export default function AdminDashboard() {
               </tbody>
             </table>
             {buyers.length === 0 && <div className="empty-state"><p>No buyers registered yet.</p></div>}
+          </div>
+        )}
+
+        {activeTab === 'inquiries' && (
+          <div>
+            <h2 style={{ marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif", background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Inquiries Directory</h2>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Product Details</th>
+                  <th>Buyer (Ship)</th>
+                  <th>Vendor</th>
+                  <th>Delivery Reqs</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inquiries.map(inquiry => (
+                  <tr key={inquiry.id}>
+                    <td style={{ fontSize: '0.85rem' }}>{new Date(inquiry.created_at).toLocaleDateString()}<br/>{new Date(inquiry.created_at).toLocaleTimeString()}</td>
+                    <td>
+                      <div style={{ fontWeight: 'bold' }}>{inquiry.product_name || inquiry.category || 'Unknown'}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Part #: {inquiry.part_number || 'N/A'}</div>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 'bold' }}>{inquiry.buyer_username}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{inquiry.buyer_email}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Ship: {inquiry.ship_name || 'N/A'}</div>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 'bold' }}>{inquiry.vendor_company || 'Unknown'}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>@{inquiry.vendor_username}</div>
+                    </td>
+                    <td style={{ fontSize: '0.85rem' }}>
+                      <div><strong>Dest:</strong> {inquiry.destination_location}</div>
+                      <div><strong>ETA:</strong> {inquiry.delivery_requirements?.eta || 'N/A'}</div>
+                    </td>
+                    <td>
+                      <span className={`nav-user-badge ${inquiry.status === 'pending' ? 'badge-buyer' : inquiry.status === 'accepted' ? 'badge-provider' : ''}`} style={{ background: inquiry.status === 'rejected' ? 'var(--danger-bg)' : undefined, color: inquiry.status === 'rejected' ? 'var(--danger)' : undefined, borderColor: inquiry.status === 'rejected' ? 'var(--danger-border)' : undefined }}>
+                        {inquiry.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {inquiries.length === 0 && <div className="empty-state"><p>No inquiries made yet.</p></div>}
           </div>
         )}
       </div>
