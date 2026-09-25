@@ -248,6 +248,43 @@ router.get('/ships', authenticateToken, async (req, res) => {
   }
 });
 
+// ─── PUT /ships/:shipId — Update ship details ──────────────────────────────────
+router.put('/ships/:shipId', authenticateToken, async (req, res) => {
+  try {
+    const { shipId } = req.params;
+    const { ship_name, imo_number, ship_type } = req.body;
+
+    if (!ship_name || !ship_name.trim()) {
+      return res.status(400).json({ error: 'Ship name is required.' });
+    }
+
+    const buyerProfile = await sql`SELECT id FROM buyers WHERE user_id = ${req.user.id}`;
+    if (buyerProfile.length === 0) {
+      return res.status(403).json({ error: 'Only registered buyers can update ships.' });
+    }
+    const buyer_id = buyerProfile[0].id;
+
+    const ship = await sql`SELECT id FROM buyer_ships WHERE id = ${shipId} AND buyer_id = ${buyer_id}`;
+    if (ship.length === 0) {
+      return res.status(404).json({ error: 'Ship not found.' });
+    }
+
+    const updated = await sql`
+      UPDATE buyer_ships
+      SET ship_name = ${ship_name.trim()},
+          imo_number = ${imo_number ? imo_number.trim() : null},
+          ship_type = ${ship_type ? ship_type.trim() : null}
+      WHERE id = ${shipId} AND buyer_id = ${buyer_id}
+      RETURNING id, ship_name, imo_number, ship_type, created_at
+    `;
+
+    res.json(updated[0]);
+  } catch (error) {
+    console.error('Error updating ship:', error);
+    res.status(500).json({ error: 'Internal server error while updating ship.' });
+  }
+});
+
 // ─── DELETE /ships/:shipId — Delete a ship and its specifications ─────────────
 router.delete('/ships/:shipId', authenticateToken, async (req, res) => {
   try {
@@ -275,11 +312,11 @@ router.delete('/ships/:shipId', authenticateToken, async (req, res) => {
   }
 });
 
-// ─── POST /ships/:shipId/specifications — Save specs for a specific ship ──────
+// ─── POST /ships/:shipId/specifications — Save specs for a specific ship (bulk)
 router.post('/ships/:shipId/specifications', authenticateToken, async (req, res) => {
   try {
     const { shipId } = req.params;
-    const { specifications } = req.body;
+    const { specifications, mode } = req.body;
 
     if (!specifications || !Array.isArray(specifications) || specifications.length === 0) {
       return res.status(400).json({ error: 'No specifications provided.' });
@@ -303,8 +340,10 @@ router.post('/ships/:shipId/specifications', authenticateToken, async (req, res)
       return res.status(404).json({ error: 'Ship not found.' });
     }
 
-    // Delete existing specs for this ship (full replace)
-    await sql`DELETE FROM buyer_specifications WHERE ship_id = ${shipId}`;
+    // If mode is not 'append', delete existing specs (replace mode by default)
+    if (mode !== 'append') {
+      await sql`DELETE FROM buyer_specifications WHERE ship_id = ${shipId}`;
+    }
 
     // Insert new specifications
     for (const spec of specifications) {
@@ -318,6 +357,111 @@ router.post('/ships/:shipId/specifications', authenticateToken, async (req, res)
   } catch (error) {
     console.error('Error saving ship specifications:', error);
     res.status(500).json({ error: 'Internal server error while saving specifications.' });
+  }
+});
+
+// ─── POST /ships/:shipId/specifications/item — Add a single specification manually
+router.post('/ships/:shipId/specifications/item', authenticateToken, async (req, res) => {
+  try {
+    const { shipId } = req.params;
+    const { equipment, manufacturer, model } = req.body;
+
+    if (!equipment || !equipment.trim()) {
+      return res.status(400).json({ error: 'Equipment name is required.' });
+    }
+
+    const buyerProfile = await sql`SELECT id FROM buyers WHERE user_id = ${req.user.id}`;
+    if (buyerProfile.length === 0) {
+      return res.status(403).json({ error: 'Only registered buyers can add specifications.' });
+    }
+    const buyer_id = buyerProfile[0].id;
+
+    const ship = await sql`SELECT id FROM buyer_ships WHERE id = ${shipId} AND buyer_id = ${buyer_id}`;
+    if (ship.length === 0) {
+      return res.status(404).json({ error: 'Ship not found.' });
+    }
+
+    const result = await sql`
+      INSERT INTO buyer_specifications (buyer_id, ship_id, equipment, manufacturer, model)
+      VALUES (${buyer_id}, ${shipId}, ${equipment.trim()}, ${manufacturer ? manufacturer.trim() : null}, ${model ? model.trim() : null})
+      RETURNING id, equipment, manufacturer, model, created_at
+    `;
+
+    res.status(201).json(result[0]);
+  } catch (error) {
+    console.error('Error adding specification item:', error);
+    res.status(500).json({ error: 'Internal server error while adding specification.' });
+  }
+});
+
+// ─── PUT /ships/:shipId/specifications/:specId — Update single specification manually
+router.put('/ships/:shipId/specifications/:specId', authenticateToken, async (req, res) => {
+  try {
+    const { shipId, specId } = req.params;
+    const { equipment, manufacturer, model } = req.body;
+
+    if (!equipment || !equipment.trim()) {
+      return res.status(400).json({ error: 'Equipment name is required.' });
+    }
+
+    const buyerProfile = await sql`SELECT id FROM buyers WHERE user_id = ${req.user.id}`;
+    if (buyerProfile.length === 0) {
+      return res.status(403).json({ error: 'Only registered buyers can update specifications.' });
+    }
+    const buyer_id = buyerProfile[0].id;
+
+    const spec = await sql`
+      SELECT id FROM buyer_specifications
+      WHERE id = ${specId} AND ship_id = ${shipId} AND buyer_id = ${buyer_id}
+    `;
+    if (spec.length === 0) {
+      return res.status(404).json({ error: 'Specification not found.' });
+    }
+
+    const updated = await sql`
+      UPDATE buyer_specifications
+      SET equipment = ${equipment.trim()},
+          manufacturer = ${manufacturer ? manufacturer.trim() : null},
+          model = ${model ? model.trim() : null}
+      WHERE id = ${specId} AND ship_id = ${shipId} AND buyer_id = ${buyer_id}
+      RETURNING id, equipment, manufacturer, model, created_at
+    `;
+
+    res.json(updated[0]);
+  } catch (error) {
+    console.error('Error updating specification item:', error);
+    res.status(500).json({ error: 'Internal server error while updating specification.' });
+  }
+});
+
+// ─── DELETE /ships/:shipId/specifications/:specId — Delete single specification
+router.delete('/ships/:shipId/specifications/:specId', authenticateToken, async (req, res) => {
+  try {
+    const { shipId, specId } = req.params;
+
+    const buyerProfile = await sql`SELECT id FROM buyers WHERE user_id = ${req.user.id}`;
+    if (buyerProfile.length === 0) {
+      return res.status(403).json({ error: 'Only registered buyers can delete specifications.' });
+    }
+    const buyer_id = buyerProfile[0].id;
+
+    const spec = await sql`
+      SELECT id FROM buyer_specifications
+      WHERE id = ${specId} AND ship_id = ${shipId} AND buyer_id = ${buyer_id}
+    `;
+    if (spec.length === 0) {
+      return res.status(404).json({ error: 'Specification not found.' });
+    }
+
+    await sql`
+      DELETE FROM buyer_specifications
+      WHERE id = ${specId} AND ship_id = ${shipId} AND buyer_id = ${buyer_id}
+    `;
+
+    res.json({ message: 'Specification deleted successfully.' });
+  } catch (error) {
+    console.error('Error deleting specification item:', error);
+    res.status(500).json({ error: 'Internal server error while deleting specification.' });
   }
 });
 
@@ -342,7 +486,7 @@ router.get('/ships/:shipId/specifications', authenticateToken, async (req, res) 
       SELECT id, equipment, manufacturer, model, created_at
       FROM buyer_specifications
       WHERE ship_id = ${shipId}
-      ORDER BY equipment ASC, manufacturer ASC
+      ORDER BY id ASC
     `;
 
     res.json(specs);
