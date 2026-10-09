@@ -202,7 +202,7 @@ export default function ProviderDashboard() {
       brand: '',
       model_number: '',
       part_number: '',
-      manufactured_at: '',
+      manufactured_at: 'No',
       location: '',
       quantity: 1,
       price: 0,
@@ -362,8 +362,8 @@ export default function ProviderDashboard() {
   const downloadCSV = () => {
     if (products.length === 0) return;
     
-    // Headers: Equipment, Manufacturer, Model number, year of manufacturer, Part Name, Part Numer, Stock location, Qunatity, Service Type
-    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type'];
+    // Headers: Equipment, Manufacturer, Model number, Authorization, Part Name, Part Numer, Stock location, Qunatity, Service Type
+    const headers = ['Equipment', 'Manufacturer', 'Model number', 'Authorization', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type'];
     
     const rows = products.map(p => [
       p.category || '',
@@ -416,7 +416,7 @@ export default function ProviderDashboard() {
 
   const downloadExcel = () => {
     if (products.length === 0) return;
-    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type'];
+    const headers = ['Equipment', 'Manufacturer', 'Model number', 'Authorization', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type'];
     const rows = products.map(p => [
       p.category || '',
       p.brand || '',
@@ -438,7 +438,7 @@ export default function ProviderDashboard() {
   const downloadPDF = () => {
     if (products.length === 0) return;
     const doc = new jsPDF();
-    const headers = [['Equipment', 'Manufacturer', 'Model', 'Year', 'Part Name', 'Part No.', 'Location', 'Qty', 'Service']];
+    const headers = [['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Part Name', 'Part No.', 'Location', 'Qty', 'Service']];
     const rows = products.map(p => [
       p.category || '',
       p.brand || '',
@@ -725,7 +725,7 @@ export default function ProviderDashboard() {
                           <th>Equipment</th>
                           <th>Manufacturer</th>
                           <th>Model Number</th>
-                          <th>Year of Mfg</th>
+                          <th>Authorization</th>
                           <th>Part Name</th>
                           <th>Part Number</th>
                           <th>Stock Location</th>
@@ -784,8 +784,66 @@ export default function ProviderDashboard() {
                                 <td>{editInput(product.id, 'category')}</td>
                                 <td>{editInput(product.id, 'brand')}</td>
                                 <td>{editInput(product.id, 'model_number')}</td>
-                                <td>{editInput(product.id, 'manufactured_at')}</td>
-                                <td>{editInput(product.id, 'product_name')}</td>
+                                <td>
+                                  <select
+                                    className="inline-edit-input"
+                                    value={
+                                      (() => {
+                                        const raw = editDataMap[product.id]?.manufactured_at;
+                                        if (!raw) return 'No';
+                                        const s = String(raw).trim().toLowerCase();
+                                        return (s === 'yes' || s === 'true' || s === 'y') ? 'Yes' : (s === 'no' || s === 'false' || s === 'n') ? 'No' : raw;
+                                      })()
+                                    }
+                                    onChange={(e) => handleBulkEditChange(product.id, 'manufactured_at', e.target.value)}
+                                  >
+                                    <option value="Yes">Yes</option>
+                                    <option value="No">No</option>
+                                  </select>
+                                </td>
+                                <td>
+                                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                    <input
+                                      className="inline-edit-input"
+                                      style={{ 
+                                        paddingRight: '24px',
+                                        backgroundColor: editDataMap[product.id]?.product_name === 'Complete Set' ? 'var(--bg-muted, #f1f5f9)' : 'transparent',
+                                        color: editDataMap[product.id]?.product_name === 'Complete Set' ? 'var(--text-muted, #64748b)' : 'inherit'
+                                      }}
+                                      placeholder="Enter part name"
+                                      value={editDataMap[product.id]?.product_name || ''}
+                                      onChange={(e) => handleBulkEditChange(product.id, 'product_name', e.target.value)}
+                                      readOnly={editDataMap[product.id]?.product_name === 'Complete Set'}
+                                      autoFocus
+                                    />
+                                    <select
+                                      style={{
+                                        position: 'absolute',
+                                        right: 0,
+                                        top: 0,
+                                        bottom: 0,
+                                        width: '24px',
+                                        opacity: 0,
+                                        cursor: 'pointer'
+                                      }}
+                                      value={editDataMap[product.id]?.product_name === 'Complete Set' ? 'Complete Set' : 'Custom'}
+                                      onChange={(e) => {
+                                        if (e.target.value === 'Complete Set') {
+                                          handleBulkEditChange(product.id, 'product_name', 'Complete Set');
+                                        } else {
+                                          if (editDataMap[product.id]?.product_name === 'Complete Set') {
+                                            handleBulkEditChange(product.id, 'product_name', '');
+                                          }
+                                        }
+                                      }}
+                                      title="Choose option"
+                                    >
+                                      <option value="Custom">Custom Part</option>
+                                      <option value="Complete Set">Complete Set</option>
+                                    </select>
+                                    <span style={{ position: 'absolute', right: '6px', pointerEvents: 'none', fontSize: '10px', color: '#64748b' }}>▼</span>
+                                  </div>
+                                </td>
                                 <td>{editInput(product.id, 'part_number')}</td>
                                 <td>{editInput(product.id, 'location')}</td>
                                 <td>{editInput(product.id, 'quantity', { width: '55px', textAlign: 'center' })}</td>
@@ -819,7 +877,21 @@ export default function ProviderDashboard() {
                                 <td>{highlightText(product.category, searchQuery)}</td>
                                 <td>{highlightText(product.brand, searchQuery)}</td>
                                 <td>{highlightText(product.model_number, searchQuery)}</td>
-                                <td>{highlightText(product.manufactured_at, searchQuery)}</td>
+                                <td>
+                                  {(() => {
+                                    const val = product.manufactured_at;
+                                    const s = String(val || '').trim().toLowerCase();
+                                    const isYes = s === 'yes' || s === 'true' || s === 'y';
+                                    const isNo = s === 'no' || s === 'false' || s === 'n';
+                                    if (isYes) {
+                                      return <span style={{ color: '#16a34a', fontWeight: 600, background: 'rgba(22,163,74,0.1)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>Yes</span>;
+                                    }
+                                    if (isNo || !val) {
+                                      return <span style={{ color: '#64748b', background: 'rgba(100,116,139,0.1)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>No</span>;
+                                    }
+                                    return highlightText(product.manufactured_at, searchQuery);
+                                  })()}
+                                </td>
                                 <td style={{ fontWeight: 600 }}>{highlightText(product.product_name, searchQuery)}</td>
                                 <td>{highlightText(product.part_number, searchQuery)}</td>
                                 <td><span className="location-cell" title={product.location || ''}>{highlightText(product.location, searchQuery)}</span></td>

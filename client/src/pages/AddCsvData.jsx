@@ -48,7 +48,7 @@ export default function AddCsvData() {
         const colEquipment = findCol(['equipment']);
         const colManufacturer = findCol(['manufacturer']);
         const colModelNumber = findCol(['modelnumber']);
-        const colYearOfManufacturer = findCol(['yearofmanufacturer']);
+        const colYearOfManufacturer = findCol(['authorization', 'authorized', 'yearofmanufacturer', 'year', 'manufacturedat']);
         const colPartName = findCol(['partname']);
         const colPartNumer = findCol(['partnumer', 'partnumber']);
         const colStockLocation = findCol(['stocklocation']);
@@ -144,7 +144,7 @@ export default function AddCsvData() {
             </p>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, textAlign: 'center' }}>
               Your file must contain the following columns (case-insensitive):<br/>
-              <strong>Equipment, Manufacturer, Model number, year of manufacturer, Part Name, Part Numer, Stock location, Qunatity, Mail</strong>
+              <strong>Equipment, Manufacturer, Model number, Authorization, Part Name, Part Numer, Stock location, Qunatity, Mail</strong>
             </p>
           </div>
 
@@ -152,8 +152,8 @@ export default function AddCsvData() {
              <h4 style={{ color: 'var(--text-primary)', fontSize: '0.95rem' }}>Need a template?</h4>
              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'center' }}>Download our reference Excel sheet to see the exact format required for bulk upload.</p>
              <a 
-               href="/vortex_inventory.xlsx" 
-               download="vortex_inventory.xlsx"
+               href="/marinestockhub_inventory.xlsx" 
+               download="marinestockhub_inventory.xlsx"
                className="btn btn-secondary" 
                style={{ marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}
              >

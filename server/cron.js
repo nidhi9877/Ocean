@@ -2,12 +2,12 @@ import cron from 'node-cron';
 import { sql } from './db.js';
 
 /**
- * Vortex Background Cron Jobs
+ * MarineStockHub Background Cron Jobs
  * 1. Automatically deletes inquiry records older than 1 week (7 days).
  * Runs every hour and also executes immediately upon server startup.
  */
 export function initCronJobs() {
-  console.log('⏳ Initializing Vortex Background Cron Jobs (Auto-delete inquiries older than 7 days)...');
+  console.log('⏳ Initializing MarineStockHub Background Cron Jobs (Auto-delete inquiries older than 7 days)...');
 
   // Helper function to clean up expired inquiries and searches
   const cleanupExpiredRecords = async (source = 'Scheduled') => {

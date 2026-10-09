@@ -49,7 +49,7 @@ export default function LoginPage() {
       <div className="login-brand-panel">
         <div className="login-brand-content">
           <span className="login-brand-icon">⚓</span>
-          <h1 className="login-brand-title">Vortex</h1>
+          <h1 className="login-brand-title">MarineStockHub</h1>
           <p className="login-brand-subtitle">
             The premier B2B marketplace connecting marine vessel operators with verified spare parts vendors worldwide.
           </p>
@@ -82,7 +82,7 @@ export default function LoginPage() {
             <div className="login-header">
               <span className="login-icon">🚢</span>
               <h1 className="login-title">Sign In</h1>
-              <p className="login-subtitle">Access your Vortex account</p>
+              <p className="login-subtitle">Access your MarineStockHub account</p>
             </div>
 
             {/* Login Form */}

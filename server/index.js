@@ -66,7 +66,7 @@ app.get('/api/deal/accept', async (req, res) => {
             <div style="background: #1e293b; padding: 40px; border-radius: 12px; max-width: 500px; margin: 0 auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid rgba(239,68,68,0.5);">
               <h1 style="color: #ef4444; margin-top: 0;">❌ Too Slow!</h1>
               <p style="color: #cbd5e1; font-size: 16px; line-height: 1.5;">Another vendor has already secured this contract.</p>
-              <p style="color: #94a3b8; font-size: 14px; margin-bottom: 30px;">In Vortex, the first vendor to accept the target price wins the deal. Keep an eye out for the next broadcast.</p>
+              <p style="color: #94a3b8; font-size: 14px; margin-bottom: 30px;">In MarineStockHub, the first vendor to accept the target price wins the deal. Keep an eye out for the next broadcast.</p>
               <a href="http://localhost:5174/provider/dashboard" style="display: inline-block; background: #0ea5e9; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold;">Go to Provider Dashboard</a>
             </div>
           </div>

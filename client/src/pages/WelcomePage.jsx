@@ -25,7 +25,7 @@ export default function WelcomePage() {
       </div>
 
       <h1 className="hero-title">
-        Welcome To <span className="hero-title-gradient">Vortex</span>
+        Welcome To <span className="hero-title-gradient">MarineStockHub</span>
       </h1>
 
       <p className="hero-subtitle">
@@ -34,33 +34,11 @@ export default function WelcomePage() {
 
       <div className="hero-cta">
         <Link to="/login" className="btn btn-primary btn-lg" style={{ borderRadius: 'var(--radius-xl)' }}>
-          Enter Vortex →
+          Enter MarineStockHub →
         </Link>
       </div>
 
-      <div className="hero-features">
-        <div className="hero-feature-card">
-          <div className="hero-feature-icon">🔍</div>
-          <h3 className="hero-feature-title">Smart Search</h3>
-          <p className="hero-feature-desc">
-            Fuzzy search with typo tolerance finds exactly what you need, even with misspellings.
-          </p>
-        </div>
-        <div className="hero-feature-card">
-          <div className="hero-feature-icon">📨</div>
-          <h3 className="hero-feature-title">Mass Inquiries</h3>
-          <p className="hero-feature-desc">
-            Send inquiries to multiple vendors simultaneously, saving time and effort.
-          </p>
-        </div>
-        <div className="hero-feature-card">
-          <div className="hero-feature-icon">⏱️</div>
-          <h3 className="hero-feature-title">24h Responses</h3>
-          <p className="hero-feature-desc">
-            Vendors must respond within 24 hours, ensuring you get timely quotes.
-          </p>
-        </div>
-      </div>
+
 
       <InstallPrompt />
     </div>

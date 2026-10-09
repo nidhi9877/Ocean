@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import CountrySelect from '../components/CountrySelect';
 
 const API = '/api';
 
@@ -14,6 +15,7 @@ export default function VendorRegister() {
     companyName: '',
     companyType: '',
     address: '',
+    country: '',
     password: '',
     confirmPassword: ''
   });
@@ -33,8 +35,8 @@ export default function VendorRegister() {
       return;
     }
 
-    if (!formData.username || !formData.email || !formData.phone || !formData.companyName || !formData.companyType || !formData.address || !formData.password) {
-      toast.error('Please fill in all required fields');
+    if (!formData.username || !formData.email || !formData.phone || !formData.companyName || !formData.companyType || !formData.address || !formData.country || !formData.password) {
+      toast.error('Please fill in all required fields including country');
       return;
     }
 
@@ -65,6 +67,7 @@ export default function VendorRegister() {
         companyName: formData.companyName,
         companyType: formData.companyType,
         address: formData.address,
+        country: formData.country,
         paymentMode: formData.paymentMode
       });
       
@@ -85,7 +88,7 @@ export default function VendorRegister() {
           <span className="login-brand-icon">🏭</span>
           <h2 className="login-brand-title" style={{ fontSize: '2rem' }}>Become a Vendor</h2>
           <p className="login-brand-subtitle">
-            Join Vortex to list your marine spare parts and reach buyers worldwide.
+            Join MarineStockHub to list your marine spare parts and reach buyers worldwide.
           </p>
           <div className="login-brand-features" style={{ marginTop: '2rem' }}>
             <div className="login-brand-feature">
@@ -140,9 +143,20 @@ export default function VendorRegister() {
                   <input className="form-input" type="text" name="companyType" value={formData.companyType} onChange={handleChange} placeholder="e.g. Manufacturer, Distributor" required />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Address</label>
-                  <input className="form-input" type="text" name="address" value={formData.address} onChange={handleChange} required />
+                  <label className="form-label">Country</label>
+                  <CountrySelect
+                    name="country"
+                    id="vendor-country"
+                    value={formData.country}
+                    onChange={handleChange}
+                    placeholder="Select country..."
+                    required
+                  />
                 </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Address</label>
+                <input className="form-input" type="text" name="address" value={formData.address} onChange={handleChange} placeholder="e.g. 123 Port Road, Suite 400" required />
               </div>
               <div className="form-row">
                 <div className="form-group">

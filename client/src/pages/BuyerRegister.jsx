@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { validateCompanyEmail } from '../utils/emailValidator';
+import CountrySelect from '../components/CountrySelect';
 
 const API = '/api';
 
@@ -12,6 +13,7 @@ export default function BuyerRegister() {
     username: '',
     email: '',
     phone: '',
+    country: '',
     password: '',
     confirmPassword: ''
   });
@@ -32,8 +34,8 @@ export default function BuyerRegister() {
       return;
     }
 
-    if (!formData.username || !formData.email || !formData.phone || !formData.password) {
-      toast.error('Please fill in all fields');
+    if (!formData.username || !formData.email || !formData.phone || !formData.country || !formData.password) {
+      toast.error('Please fill in all fields including country');
       return;
     }
 
@@ -67,7 +69,8 @@ export default function BuyerRegister() {
         password: formData.password, 
         role: 'buyer',
         email: formData.email.trim().toLowerCase(),
-        phone: formData.phone
+        phone: formData.phone,
+        country: formData.country
       });
       
       login(res.data.user, res.data.token);
@@ -148,12 +151,25 @@ export default function BuyerRegister() {
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label" htmlFor="phone">Phone Number</label>
-                  <input
-                    id="phone" name="phone" className="form-input" type="tel"
-                    placeholder="e.g. +91 9876543210" value={formData.phone} onChange={handleChange} required
-                  />
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="phone">Phone Number</label>
+                    <input
+                      id="phone" name="phone" className="form-input" type="tel"
+                      placeholder="e.g. +91 9876543210" value={formData.phone} onChange={handleChange} required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="country">Country</label>
+                    <CountrySelect
+                      id="country"
+                      name="country"
+                      value={formData.country}
+                      onChange={handleChange}
+                      placeholder="Select country..."
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div className="form-row">

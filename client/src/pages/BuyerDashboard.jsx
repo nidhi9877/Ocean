@@ -73,7 +73,6 @@ export default function BuyerDashboard() {
   const [specsSaving, setSpecsSaving] = useState(false);
   const [shipsLoading, setShipsLoading] = useState(true);
   const [dragOver, setDragOver] = useState(false);
-  const [showRelated, setShowRelated] = useState(false);
   const [newShipName, setNewShipName] = useState('');
   const [newShipImo, setNewShipImo] = useState('');
   const [newShipType, setNewShipType] = useState('');
@@ -97,6 +96,13 @@ export default function BuyerDashboard() {
   const [savingSpecId, setSavingSpecId] = useState(null);
   const [csvUploadMode, setCsvUploadMode] = useState('replace'); // 'replace' | 'append'
   const [specSearchQuery, setSpecSearchQuery] = useState('');
+
+  // ── Ship Market Export State ──
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportModalShip, setExportModalShip] = useState(null);
+  const [exportPreviewData, setExportPreviewData] = useState(null);
+  const [loadingExportPreview, setLoadingExportPreview] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
 
   const [filters, setFilters] = useState({
     equipment: [], manufacturer: [], modelNumber: '', partNumber: '',
@@ -474,10 +480,62 @@ Boiler,Aalborg,Mission OS`;
   const handleSelectShip = (shipId) => {
     setSelectedShipId(shipId);
     setShowShipDropdown(false);
-    setShowRelated(false);
     if (!shipId) {
       setSavedSpecs([]);
       setSpecsFilterActive(false);
+    }
+  };
+
+  // ── Export Ship Market Data to CSV ──
+  const handleExportShipCsv = async (ship, type = 'detailed') => {
+    if (!ship || !ship.id) {
+      toast.error('Please choose a valid ship to export.');
+      return;
+    }
+    setExportingCsv(true);
+    const toastId = toast.loading(`Preparing market CSV export for ${ship.ship_name}...`);
+    try {
+      const res = await axios.get(`${API}/buyer/ships/${ship.id}/market-availability?format=csv&type=${type}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const sanitizedName = (ship.ship_name || 'Ship').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `${sanitizedName}_market_${type === 'summary' ? 'summary' : 'inventory'}.csv`;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(`✅ Downloaded ${filename}!`, { id: toastId });
+    } catch (err) {
+      console.error('Failed to export ship market CSV:', err);
+      toast.error('Failed to export CSV. Please try again.', { id: toastId });
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
+  // ── Open Export Preview & Options Modal ──
+  const handleOpenExportModal = async (ship) => {
+    if (!ship || !ship.id) return;
+    setExportModalShip(ship);
+    setShowExportModal(true);
+    setLoadingExportPreview(true);
+    setExportPreviewData(null);
+    try {
+      const res = await axios.get(`${API}/buyer/ships/${ship.id}/market-availability`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setExportPreviewData(res.data);
+    } catch (err) {
+      console.error('Failed to load export preview data:', err);
+      toast.error('Failed to load market preview for this ship.');
+    } finally {
+      setLoadingExportPreview(false);
     }
   };
 
@@ -510,6 +568,84 @@ Boiler,Aalborg,Mission OS`;
     if (filters.serviceType) c++;
     return c;
   }, [filters]);
+
+  // ── Per-spec classification: classifies each spec as compatible/incompatible/not_available ──
+  const specClassification = useMemo(() => {
+    if (!specsFilterActive || !savedSpecs.length) return [];
+
+    const levenshtein = (a, b) => {
+      if(!a.length) return b.length;
+      if(!b.length) return a.length;
+      const m = [];
+      for(let i=0; i<=b.length; i++) m[i] = [i];
+      for(let j=0; j<=a.length; j++) m[0][j] = j;
+      for(let i=1; i<=b.length; i++){
+        for(let j=1; j<=a.length; j++){
+          if(b.charAt(i-1) === a.charAt(j-1)) m[i][j] = m[i-1][j-1];
+          else m[i][j] = Math.min(m[i-1][j-1]+1, Math.min(m[i][j-1]+1, m[i-1][j]+1));
+        }
+      }
+      return m[b.length][a.length];
+    };
+    const fuzzyMatch = (str, pattern) => {
+      if (!pattern) return true;
+      if (!str) return false;
+      const s = String(str).toLowerCase();
+      const p = pattern.toLowerCase().trim();
+      if (s.includes(p)) return true;
+      const sWords = s.split(/[\s-]+/);
+      const pWords = p.split(/[\s-]+/);
+      return pWords.every(pw => sWords.some(sw => {
+        if (sw.includes(pw) || pw.includes(sw)) return true;
+        return levenshtein(sw, pw) <= (pw.length <= 4 ? 1 : 2);
+      }));
+    };
+
+    const matchesEquipment = (p, spec) => {
+      if (!spec.equipment) return true;
+      return fuzzyMatch(p.category, spec.equipment) || fuzzyMatch(p.product_name, spec.equipment);
+    };
+    const matchesSpecFull = (p, spec) => {
+      if (!matchesEquipment(p, spec)) return false;
+      if (spec.manufacturer && spec.manufacturer.trim()) {
+        if (!fuzzyMatch(p.brand, spec.manufacturer) && !fuzzyMatch(p.product_name, spec.manufacturer)) return false;
+      }
+      if (spec.model && spec.model.trim()) {
+        if (!fuzzyMatch(p.model_number, spec.model) && !fuzzyMatch(p.product_name, spec.model)) return false;
+      }
+      return true;
+    };
+
+    return savedSpecs.map(spec => {
+      const compatibleProducts = allProducts.filter(p => matchesSpecFull(p, spec));
+      const equipmentOnlyProducts = allProducts.filter(p => {
+        if (!matchesEquipment(p, spec)) return false;
+        if (compatibleProducts.some(cp => cp.id === p.id)) return false;
+        return true;
+      });
+
+      let status;
+      let reason;
+      if (compatibleProducts.length > 0) {
+        status = 'compatible';
+        reason = 'Compatible match found';
+      } else if (equipmentOnlyProducts.length > 0) {
+        status = 'incompatible';
+        reason = 'Available in market but with different manufacturer/model';
+      } else {
+        status = 'not_available';
+        reason = 'Not available in the market from any manufacturer or model';
+      }
+
+      return {
+        spec,
+        status,
+        reason,
+        compatibleCount: compatibleProducts.length,
+        incompatibleCount: equipmentOnlyProducts.length,
+      };
+    });
+  }, [specsFilterActive, savedSpecs, allProducts]);
 
   const displayedProducts = useMemo(() => {
     if (!hasSearched) return [];
@@ -546,16 +682,27 @@ Boiler,Aalborg,Mission OS`;
       }));
     };
 
+    // Helper functions for spec matching
+    const matchesEquipment = (p, spec) => {
+      if (!spec.equipment) return true;
+      return fuzzyMatch(p.category, spec.equipment) || fuzzyMatch(p.product_name, spec.equipment);
+    };
+    const matchesSpecFull = (p, spec) => {
+      if (!matchesEquipment(p, spec)) return false;
+      if (spec.manufacturer && spec.manufacturer.trim()) {
+        if (!fuzzyMatch(p.brand, spec.manufacturer) && !fuzzyMatch(p.product_name, spec.manufacturer)) return false;
+      }
+      if (spec.model && spec.model.trim()) {
+        if (!fuzzyMatch(p.model_number, spec.model) && !fuzzyMatch(p.product_name, spec.model)) return false;
+      }
+      return true;
+    };
+
     return allProducts.filter(p => {
-      // ── My Specifications filter ──
+      // ── My Specifications filter: only show fully compatible products ──
       if (specsFilterActive && savedSpecs.length > 0) {
-        const matchesAnySpec = savedSpecs.some(spec => {
-          if (spec.equipment && !fuzzyMatch(p.category, spec.equipment)) return false;
-          if (spec.manufacturer && !fuzzyMatch(p.brand, spec.manufacturer)) return false;
-          if (spec.model && !fuzzyMatch(p.model_number, spec.model)) return false;
-          return true;
-        });
-        if (!matchesAnySpec) return false;
+        const matchesAnySpecFull = savedSpecs.some(spec => matchesSpecFull(p, spec));
+        if (!matchesAnySpecFull) return false;
       }
 
       if (q && !(fuzzyMatch(p.product_name, q) || fuzzyMatch(p.part_number, q) || fuzzyMatch(p.category, q) || fuzzyMatch(p.brand, q))) return false;
@@ -570,59 +717,6 @@ Boiler,Aalborg,Mission OS`;
       return true;
     });
   }, [hasSearched, searchQuery, filters, allProducts, specsFilterActive, savedSpecs]);
-
-  // ── Related products: same equipment type but different manufacturer/model ──
-  const relatedProducts = useMemo(() => {
-    if (!hasSearched || !specsFilterActive || !savedSpecs.length || displayedProducts.length > 0) return [];
-    const q = searchQuery.trim().toLowerCase();
-
-    const levenshtein = (a, b) => {
-      if(!a.length) return b.length;
-      if(!b.length) return a.length;
-      const m = [];
-      for(let i=0; i<=b.length; i++) m[i] = [i];
-      for(let j=0; j<=a.length; j++) m[0][j] = j;
-      for(let i=1; i<=b.length; i++){
-        for(let j=1; j<=a.length; j++){
-          if(b.charAt(i-1) === a.charAt(j-1)) m[i][j] = m[i-1][j-1];
-          else m[i][j] = Math.min(m[i-1][j-1]+1, Math.min(m[i][j-1]+1, m[i-1][j]+1));
-        }
-      }
-      return m[b.length][a.length];
-    };
-    const fuzzyMatch = (str, pattern) => {
-      if (!pattern) return true;
-      if (!str) return false;
-      const s = String(str).toLowerCase();
-      const p = pattern.toLowerCase().trim();
-      if (s.includes(p)) return true;
-      const sWords = s.split(/[\s-]+/);
-      const pWords = p.split(/[\s-]+/);
-      return pWords.every(pw => sWords.some(sw => {
-        if (sw.includes(pw) || pw.includes(sw)) return true;
-        return levenshtein(sw, pw) <= (pw.length <= 4 ? 1 : 2);
-      }));
-    };
-
-    // Match products that share the same equipment/category as any spec, but may differ in manufacturer/model
-    return allProducts.filter(p => {
-      const matchesEquipmentOnly = savedSpecs.some(spec => {
-        if (!spec.equipment) return false;
-        return fuzzyMatch(p.category, spec.equipment);
-      });
-      if (!matchesEquipmentOnly) return false;
-
-      // Apply text search if present
-      if (q && !(fuzzyMatch(p.product_name, q) || fuzzyMatch(p.part_number, q) || fuzzyMatch(p.category, q) || fuzzyMatch(p.brand, q))) return false;
-      // Apply other filters
-      if (filters.equipment.length && !filters.equipment.includes(p.category)) return false;
-      if (filters.stockLocation.length && !filters.stockLocation.includes(p.location)) return false;
-      if (filters.minQty > 1 && Number(p.quantity) < filters.minQty) return false;
-      const sType = p.service_type || 'Supply';
-      if (filters.serviceType && sType !== filters.serviceType) return false;
-      return true;
-    });
-  }, [hasSearched, searchQuery, filters, allProducts, specsFilterActive, savedSpecs, displayedProducts]);
 
   // Shared fuzzy match logic for option filtering
   const getFuzzyMatch = () => {
@@ -764,7 +858,7 @@ Boiler,Aalborg,Mission OS`;
     setSelectedProduct(product);
     const vendorName = product.provider_username || product.company_name || 'Vendor';
     const productName = product.product_name || product.category || 'N/A';
-    const subject = `🚢 Purchase Inquiry: ${productName} — Vortex Marketplace`;
+    const subject = `🚢 Purchase Inquiry: ${productName} — MarineStockHub Marketplace`;
     const body = `Dear ${vendorName} Team,\n\nI am interested in purchasing the following listed product:\n\n- Product: ${productName}\n- Brand: ${product.brand || 'N/A'}\n- Model: ${product.model_number || 'N/A'}\n- Part Number: ${product.part_number || 'N/A'}\n\nDelivery Details:\n- Destination Port: ${inquiryMeta.destination.trim()}\n- ETA: ${inquiryMeta.eta.trim()}\n- ETD: ${inquiryMeta.etd ? inquiryMeta.etd.trim() : 'N/A'}\n- Vessel Name: ${inquiryMeta.vesselName.trim()}\n- Minimum Quantity Required: ${filters.minQty}\n\nPlease let me know if you can fulfill this request and provide a price quote.\n\nBest regards,\n${user?.username || 'Buyer'}`;
     
     setShowCc(false);
@@ -832,17 +926,47 @@ Boiler,Aalborg,Mission OS`;
               {activeFilterCount > 0 && <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:20, height:20, borderRadius:'50%', background:'var(--accent-gradient)', color:'white', fontSize:'0.7rem', fontWeight:'700' }}>{activeFilterCount}</span>}
             </button>
             {ships.length > 0 && (
-              <div style={{ position:'relative' }}>
+              <div style={{ position:'relative', display:'inline-flex', alignItems:'center', gap:'0.5rem' }}>
                 <button type="button" onClick={() => setShowShipDropdown(v => !v)}
                   style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', padding:'0.8rem 1.4rem', background: selectedShipId ? 'rgba(5,150,105,0.08)' : 'var(--bg-surface)', border:`2px solid ${selectedShipId ? '#059669' : 'var(--border-color)'}`, borderRadius:'var(--radius-full)', color: selectedShipId ? '#059669' : 'var(--text-secondary)', fontWeight:'600', fontSize:'0.9rem', cursor:'pointer', transition:'all 0.2s', fontFamily:"'Inter',sans-serif" }}>
                   <span>🚢</span>
                   <span>Ship: <strong>{selectedShip ? selectedShip.ship_name : 'All Equipment'}</strong></span>
                   <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transition:'transform 0.2s', transform: showShipDropdown ? 'rotate(180deg)' : 'none' }}><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
+
+                {/* Direct Export Button right next to selector when a ship is chosen */}
+                {selectedShip && (
+                  <button
+                    type="button"
+                    onClick={() => handleExportShipCsv(selectedShip, 'detailed')}
+                    disabled={exportingCsv}
+                    className="btn btn-secondary"
+                    style={{
+                      display:'inline-flex',
+                      alignItems:'center',
+                      gap:'0.45rem',
+                      padding:'0.8rem 1.3rem',
+                      borderRadius:'var(--radius-full)',
+                      color:'#059669',
+                      borderColor:'rgba(5,150,105,0.4)',
+                      background:'rgba(5,150,105,0.08)',
+                      fontWeight:'600',
+                      fontSize:'0.88rem',
+                      cursor:'pointer',
+                      transition:'all 0.2s',
+                      fontFamily:"'Inter',sans-serif"
+                    }}
+                    title={`Export all available market spare parts & quantities for ${selectedShip.ship_name} to CSV`}
+                  >
+                    <span>📥</span>
+                    <span>{exportingCsv ? 'Exporting...' : `Export ${selectedShip.ship_name} (CSV)`}</span>
+                  </button>
+                )}
+
                 {showShipDropdown && (
                   <>
                     <div style={{ position:'fixed', inset:0, zIndex:99 }} onClick={() => setShowShipDropdown(false)} />
-                    <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, zIndex:100, background:'var(--bg-card)', border:'1px solid var(--border-color)', borderRadius:'var(--radius-md)', boxShadow:'0 12px 32px rgba(0,0,0,0.18)', minWidth:260, maxHeight:320, overflowY:'auto', animation:'fadeIn 0.15s' }}>
+                    <div style={{ position:'absolute', top:'calc(100% + 8px)', right:0, zIndex:100, background:'var(--bg-card)', border:'1px solid var(--border-color)', borderRadius:'var(--radius-md)', boxShadow:'0 12px 32px rgba(0,0,0,0.18)', minWidth:300, maxHeight:360, overflowY:'auto', animation:'fadeIn 0.15s' }}>
                       <div style={{ padding:'0.6rem 1rem', fontSize:'0.75rem', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.05em', color:'var(--text-muted)', borderBottom:'1px solid var(--border-color)', background:'var(--bg-surface)' }}>
                         Select Ship to Filter Parts
                       </div>
@@ -855,14 +979,66 @@ Boiler,Aalborg,Mission OS`;
                       </button>
                       <div style={{ height:1, background:'var(--border-color)' }}></div>
                       {ships.map(ship => (
-                        <button key={ship.id} onClick={() => handleSelectShip(ship.id)}
-                          style={{ display:'flex', alignItems:'center', gap:'0.5rem', width:'100%', padding:'0.75rem 1rem', background: selectedShipId === ship.id ? 'rgba(5,150,105,0.06)' : 'transparent', border:'none', textAlign:'left', cursor:'pointer', fontSize:'0.88rem', fontWeight: selectedShipId === ship.id ? '600' : '400', color: selectedShipId === ship.id ? '#059669' : 'var(--text-primary)', fontFamily:"'Inter',sans-serif", transition:'background 0.1s' }}
+                        <div
+                          key={ship.id}
+                          style={{
+                            display:'flex',
+                            alignItems:'center',
+                            justifyContent:'space-between',
+                            padding:'0.6rem 0.8rem',
+                            background: selectedShipId === ship.id ? 'rgba(5,150,105,0.06)' : 'transparent',
+                            transition:'background 0.1s',
+                            borderBottom:'1px solid rgba(0,0,0,0.04)'
+                          }}
                           onMouseEnter={e => e.currentTarget.style.background = selectedShipId === ship.id ? 'rgba(5,150,105,0.06)' : 'var(--bg-surface)'}
-                          onMouseLeave={e => e.currentTarget.style.background = selectedShipId === ship.id ? 'rgba(5,150,105,0.06)' : 'transparent'}>
-                          🚢 {ship.ship_name}
-                          <span style={{ marginLeft:'auto', fontSize:'0.75rem', color:'var(--text-muted)', background:'var(--bg-surface)', padding:'0.15rem 0.45rem', borderRadius:'0.5rem', border:'1px solid var(--border-color)' }}>{ship.spec_count} specs</span>
-                          {selectedShipId === ship.id && <span style={{ color:'#059669' }}>✓</span>}
-                        </button>
+                          onMouseLeave={e => e.currentTarget.style.background = selectedShipId === ship.id ? 'rgba(5,150,105,0.06)' : 'transparent'}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleSelectShip(ship.id)}
+                            style={{
+                              display:'flex',
+                              alignItems:'center',
+                              gap:'0.5rem',
+                              flex:1,
+                              background:'transparent',
+                              border:'none',
+                              textAlign:'left',
+                              cursor:'pointer',
+                              fontSize:'0.88rem',
+                              fontWeight: selectedShipId === ship.id ? '600' : '400',
+                              color: selectedShipId === ship.id ? '#059669' : 'var(--text-primary)',
+                              fontFamily:"'Inter',sans-serif"
+                            }}
+                          >
+                            <span>🚢 {ship.ship_name}</span>
+                            <span style={{ fontSize:'0.72rem', color:'var(--text-muted)', background:'var(--bg-surface)', padding:'0.15rem 0.45rem', borderRadius:'0.5rem', border:'1px solid var(--border-color)' }}>
+                              {ship.spec_count} specs
+                            </span>
+                            {selectedShipId === ship.id && <span style={{ color:'#059669', marginLeft:'0.25rem' }}>✓</span>}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setShowShipDropdown(false); handleOpenExportModal(ship); }}
+                            style={{
+                              background:'none',
+                              border:'1px solid rgba(5,150,105,0.3)',
+                              borderRadius:'var(--radius-sm)',
+                              color:'#059669',
+                              padding:'0.25rem 0.5rem',
+                              fontSize:'0.75rem',
+                              fontWeight:'600',
+                              cursor:'pointer',
+                              display:'inline-flex',
+                              alignItems:'center',
+                              gap:'0.25rem',
+                              marginLeft:'0.5rem'
+                            }}
+                            title={`Export market parts CSV for ${ship.ship_name}`}
+                          >
+                            <span>📥 CSV</span>
+                          </button>
+                        </div>
                       ))}
                     </div>
                   </>
@@ -885,6 +1061,76 @@ Boiler,Aalborg,Mission OS`;
             </div>
           )}
         </div>
+
+        {/* Active Ship Status & Market Export Bar */}
+        {selectedShip && (
+          <div className="glass-card" style={{
+            display:'flex',
+            alignItems:'center',
+            justifyContent:'space-between',
+            flexWrap:'wrap',
+            gap:'0.75rem',
+            padding:'1rem 1.5rem',
+            marginBottom:'1.25rem',
+            background:'linear-gradient(135deg, rgba(5,150,105,0.06), rgba(16,185,129,0.06))',
+            border:'1.5px solid rgba(5,150,105,0.3)',
+            borderRadius:'var(--radius-md)'
+          }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
+              <span style={{ fontSize:'1.6rem' }}>🚢</span>
+              <div>
+                <div style={{ fontWeight:'700', fontSize:'0.98rem', color:'#059669', display:'flex', alignItems:'center', gap:'0.6rem', flexWrap:'wrap' }}>
+                  <span>Active Ship: <strong>{selectedShip.ship_name}</strong></span>
+                  {selectedShip.imo_number && <span style={{ fontSize:'0.8rem', color:'var(--text-muted)', fontWeight:'normal' }}>IMO: {selectedShip.imo_number}</span>}
+                  {selectedShip.ship_type && <span style={{ fontSize:'0.8rem', color:'var(--text-muted)', fontWeight:'normal' }}>• {selectedShip.ship_type}</span>}
+                  <span style={{ fontSize:'0.75rem', background:'rgba(5,150,105,0.12)', color:'#059669', padding:'0.15rem 0.55rem', borderRadius:'1rem', fontWeight:'600' }}>
+                    {savedSpecs.length} Equipment Specifications
+                  </span>
+                </div>
+                <div style={{ fontSize:'0.82rem', color:'var(--text-secondary)', marginTop:'0.2rem' }}>
+                  Marketplace filtered to this ship. Export available equipment and spare parts data (with quantities and vendor details) to CSV.
+                </div>
+              </div>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', flexWrap:'wrap' }}>
+              <button
+                type="button"
+                onClick={() => handleExportShipCsv(selectedShip, 'detailed')}
+                disabled={exportingCsv}
+                className="btn btn-primary"
+                style={{
+                  padding:'0.55rem 1.15rem',
+                  fontSize:'0.85rem',
+                  background:'linear-gradient(135deg, #059669, #10b981)',
+                  display:'inline-flex',
+                  alignItems:'center',
+                  gap:'0.45rem',
+                  fontWeight:'600',
+                  boxShadow:'0 2px 8px rgba(5,150,105,0.25)'
+                }}
+              >
+                <span>📥</span> {exportingCsv ? 'Exporting CSV...' : `Export ${selectedShip.ship_name} Data (CSV)`}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenExportModal(selectedShip)}
+                className="btn btn-secondary"
+                style={{
+                  padding:'0.55rem 0.95rem',
+                  fontSize:'0.85rem',
+                  display:'inline-flex',
+                  alignItems:'center',
+                  gap:'0.4rem',
+                  color:'#059669',
+                  borderColor:'rgba(5,150,105,0.4)',
+                  fontWeight:'600'
+                }}
+              >
+                <span>📊</span> Preview & Options
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Inquiry Details (ETA/ETD/Vessel/Destination) */}
         <div className="glass-card" style={{ padding:'1.25rem 1.5rem', marginBottom:'1.25rem' }}>
@@ -911,114 +1157,18 @@ Boiler,Aalborg,Mission OS`;
           </div>
         </div>
 
-        {/* Results */}
+        {/* Results — Single unified table */}
         {!hasSearched ? (
           <div className="glass-card empty-state" style={{ padding:'4rem 2rem', textAlign:'center' }}>
             <span style={{ fontSize:'3.5rem', display:'block', marginBottom:'1rem', animation:'float 4s ease-in-out infinite' }}>⚓</span>
             <h3 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.3rem', fontWeight:'600', marginBottom:'0.5rem' }}>Search the Global Parts Database</h3>
             <p style={{ color:'var(--text-muted)', maxWidth:400, margin:'0 auto' }}>Use the search bar or apply filters to find the marine spare parts you need.</p>
           </div>
-        ) : displayedProducts.length === 0 ? (
-          <>
-            <div className="glass-card empty-state" style={{ padding:'3rem', textAlign:'center' }}>
-              {specsFilterActive && savedSpecs.length > 0 && relatedProducts.length > 0 ? (
-                <>
-                  <span style={{ fontSize:'3rem', display:'block', marginBottom:'1rem' }}>🔍</span>
-                  <h3 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.2rem', fontWeight:'700', color:'var(--text-primary)', marginBottom:'0.5rem' }}>
-                    Product Unavailable for Your Specifications
-                  </h3>
-                  <p style={{ color:'var(--text-secondary)', maxWidth:480, margin:'0 auto 1.25rem', lineHeight:'1.5' }}>
-                    We couldn't find an exact match for your ship's equipment specifications (manufacturer & model).
-                    However, we found <strong style={{ color:'var(--accent-primary)' }}>{relatedProducts.length}</strong> related product{relatedProducts.length !== 1 ? 's' : ''} with the same equipment type but from different manufacturers or models.
-                  </p>
-                  <p style={{ color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'1.25rem' }}>
-                    Would you like to see alternative products?
-                  </p>
-                  {!showRelated ? (
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => setShowRelated(true)}
-                      style={{
-                        padding:'0.85rem 2rem',
-                        fontSize:'0.95rem',
-                        borderRadius:'var(--radius-full)',
-                        background:'linear-gradient(135deg, #059669, #10b981)',
-                        display:'inline-flex',
-                        alignItems:'center',
-                        gap:'0.6rem',
-                        animation:'pulse 2s ease-in-out infinite'
-                      }}
-                    >
-                      ✅ Yes, Show Related Products
-                    </button>
-                  ) : (
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => setShowRelated(false)}
-                      style={{ padding:'0.7rem 1.5rem', fontSize:'0.9rem', borderRadius:'var(--radius-full)' }}
-                    >
-                      ✕ Hide Related Products
-                    </button>
-                  )}
-                </>
-              ) : (
-                <>
-                  <span className="empty-state-icon">🌊</span>
-                  <p style={{ color:'var(--text-secondary)' }}>No products found. Try broadening your search.</p>
-                </>
-              )}
-            </div>
-
-            {/* Related Products Table */}
-            {showRelated && relatedProducts.length > 0 && (
-              <div className="glass-card" style={{ padding:'1.25rem', overflowX:'auto', marginTop:'1rem' }}>
-                <p style={{ color:'var(--text-secondary)', fontSize:'0.95rem', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                  <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:24, height:24, borderRadius:'50%', background:'linear-gradient(135deg, #f59e0b, #f97316)', fontSize:'0.75rem' }}>⚡</span>
-                  <span>Showing <strong style={{ color:'var(--accent-primary)' }}>{relatedProducts.length}</strong> related product{relatedProducts.length !== 1 ? 's' : ''} <span style={{ color:'var(--text-muted)', fontSize:'0.85rem' }}>(same equipment type, different manufacturer/model)</span></span>
-                </p>
-                <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', fontSize:'0.9rem', minWidth:900 }}>
-                  <thead>
-                    <tr style={{ borderBottom:'2px solid var(--border-color)' }}>
-                      {['Equipment','Manufacturer','Model','Year','Part Name','Part #','Location','Qty','Service','Payment','Last Updated','Action'].map(h => (
-                        <th key={h} style={{ padding:'0.75rem', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {relatedProducts.map(p => {
-                      const sending = sendingIds.has(p.id);
-                      return (
-                        <tr key={p.id} style={{ borderBottom:'1px solid var(--border-color)', transition:'background 0.15s' }}
-                            onMouseEnter={e=>e.currentTarget.style.background='var(--bg-card-hover)'}
-                            onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                          <td style={{ padding:'0.75rem' }}>{p.category||'-'}</td>
-                          <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.brand||'-'}</td>
-                          <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.model_number||'-'}</td>
-                          <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.manufactured_at||'-'}</td>
-                          <td style={{ padding:'0.75rem', fontWeight:'500' }}>{p.product_name||'-'}</td>
-                          <td style={{ padding:'0.75rem', fontFamily:'monospace', color:'var(--text-secondary)' }}>{p.part_number||'-'}</td>
-                          <td style={{ padding:'0.75rem' }}>{p.location||'-'}</td>
-                          <td style={{ padding:'0.75rem', color:'var(--accent-primary)', fontWeight:'bold' }}>{p.quantity||'-'}</td>
-                          <td style={{ padding:'0.75rem' }}>{p.service_type || 'Supply'}</td>
-                          <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.payment_mode || 'pre-payment/credit'}</td>
-                          <td style={{ padding:'0.75rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                            {p.updated_at ? new Date(p.updated_at).toLocaleDateString() : p.created_at ? new Date(p.created_at).toLocaleDateString() : '-'}
-                          </td>
-                          <td style={{ padding:'0.75rem' }}>
-                            <button className="btn btn-primary" disabled={sending}
-                              style={{ padding:'0.4rem 0.8rem', fontSize:'0.85rem', display:'inline-flex', alignItems:'center', gap:'0.4rem', minWidth:130, opacity:sending?0.7:1, cursor:sending?'not-allowed':'pointer' }}
-                              onClick={() => openComposeModal(p)}>
-                              {sending ? (<><span className="spinner" style={{ width:14, height:14, borderWidth:2 }}/> Sending...</>) : (<>✉️ Send Inquiry</>)}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
+        ) : displayedProducts.length === 0 && !(specsFilterActive && specClassification.some(sc => sc.status !== 'compatible')) ? (
+          <div className="glass-card empty-state" style={{ padding:'3rem', textAlign:'center' }}>
+            <span className="empty-state-icon">🌊</span>
+            <p style={{ color:'var(--text-secondary)' }}>No products found. Try broadening your search.</p>
+          </div>
         ) : (
           <>
             <div className="glass-card" style={{ padding:'1.25rem', overflowX:'auto' }}>
@@ -1034,6 +1184,7 @@ Boiler,Aalborg,Mission OS`;
                   </tr>
                 </thead>
                 <tbody>
+                  {/* Compatible product rows (normal white rows) */}
                   {displayedProducts.map(p => {
                     const sending = sendingIds.has(p.id);
                     return (
@@ -1063,6 +1214,82 @@ Boiler,Aalborg,Mission OS`;
                       </tr>
                     );
                   })}
+
+                  {/* Incompatible spec rows (amber) — appended at bottom */}
+                  {specsFilterActive && savedSpecs.length > 0 && specClassification
+                    .filter(sc => sc.status === 'incompatible')
+                    .map((sc, i) => (
+                      <tr key={`incompat-${sc.spec.id || i}`} style={{ borderBottom:'1px solid rgba(245,158,11,0.25)', background:'rgba(245,158,11,0.08)' }}>
+                        <td style={{ padding:'0.75rem', fontWeight:'600' }}>{sc.spec.equipment}</td>
+                        <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{sc.spec.manufacturer || '-'}</td>
+                        <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{sc.spec.model || '-'}</td>
+                        <td colSpan={3} style={{ padding:'0.75rem' }}>
+                          <span style={{
+                            display:'inline-flex', alignItems:'center', gap:'0.3rem',
+                            padding:'0.2rem 0.6rem', borderRadius:'1rem', fontSize:'0.72rem', fontWeight:'600',
+                            background:'rgba(245,158,11,0.15)', color:'#d97706'
+                          }}>
+                            ⚠ Different Specs
+                          </span>
+                        </td>
+                        <td style={{ padding:'0.75rem', fontWeight:'bold', color:'var(--accent-primary)' }}>0</td>
+                        <td style={{ padding:'0.75rem', fontWeight:'bold', color:'#d97706' }}>{sc.incompatibleCount}</td>
+                        <td colSpan={4} style={{ padding:'0.75rem' }}>
+                          <button
+                            className="btn btn-primary"
+                            onClick={() => {
+                              setSearchQuery(sc.spec.equipment);
+                              setSpecsFilterActive(false);
+                              setHasSearched(true);
+                              toast.success(`🔍 Searching compatible options for "${sc.spec.equipment}"...`);
+                            }}
+                            style={{
+                              padding:'0.45rem 1rem',
+                              fontSize:'0.82rem',
+                              borderRadius:'var(--radius-full)',
+                              background:'linear-gradient(135deg, #f59e0b, #f97316)',
+                              display:'inline-flex',
+                              alignItems:'center',
+                              gap:'0.4rem',
+                              fontWeight:'600',
+                              whiteSpace:'nowrap',
+                              boxShadow:'0 2px 6px rgba(245,158,11,0.25)'
+                            }}
+                          >
+                            🔍 Explore Compatible Options
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  }
+
+                  {/* Not available spec rows (red/pink) — appended at very bottom */}
+                  {specsFilterActive && savedSpecs.length > 0 && specClassification
+                    .filter(sc => sc.status === 'not_available')
+                    .map((sc, i) => (
+                      <tr key={`unavail-${sc.spec.id || i}`} style={{ borderBottom:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)' }}>
+                        <td style={{ padding:'0.75rem', fontWeight:'600' }}>{sc.spec.equipment}</td>
+                        <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{sc.spec.manufacturer || '-'}</td>
+                        <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{sc.spec.model || '-'}</td>
+                        <td colSpan={3} style={{ padding:'0.75rem' }}>
+                          <span style={{
+                            display:'inline-flex', alignItems:'center', gap:'0.3rem',
+                            padding:'0.2rem 0.6rem', borderRadius:'1rem', fontSize:'0.72rem', fontWeight:'600',
+                            background:'rgba(239,68,68,0.12)', color:'#dc2626'
+                          }}>
+                            ✗ Not Available
+                          </span>
+                        </td>
+                        <td style={{ padding:'0.75rem', fontWeight:'bold', color:'var(--accent-primary)' }}>0</td>
+                        <td style={{ padding:'0.75rem', fontWeight:'bold', color:'var(--accent-primary)' }}>0</td>
+                        <td colSpan={4} style={{ padding:'0.75rem' }}>
+                          <span style={{ fontSize:'0.78rem', color:'#dc2626', fontStyle:'italic', lineHeight:'1.3', whiteSpace:'nowrap' }}>
+                            {sc.reason || 'Not available in the market from any manufacturer or model'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  }
                 </tbody>
               </table>
             </div>
@@ -1639,7 +1866,26 @@ Boiler,Aalborg,Mission OS`;
                             {ship.ship_type && <span>Type: {ship.ship_type}</span>}
                           </div>
                         </div>
-                        <div style={{ display:'flex', alignItems:'center', gap:'1rem' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleOpenExportModal(ship); }}
+                            className="btn btn-secondary"
+                            style={{
+                              padding:'0.25rem 0.65rem',
+                              fontSize:'0.75rem',
+                              fontWeight:'600',
+                              color:'#059669',
+                              borderColor:'rgba(5,150,105,0.3)',
+                              background:'rgba(5,150,105,0.06)',
+                              display:'inline-flex',
+                              alignItems:'center',
+                              gap:'0.3rem'
+                            }}
+                            title={`Export Market Inventory for ${ship.ship_name}`}
+                          >
+                            <span>📥</span> Export CSV
+                          </button>
                           <span style={{ display:'inline-flex', alignItems:'center', gap:'0.35rem', padding:'0.25rem 0.6rem', borderRadius:'1rem', fontSize:'0.75rem', fontWeight:'600', background: ship.spec_count > 0 ? 'rgba(5,150,105,0.1)' : 'rgba(100,100,100,0.1)', color: ship.spec_count > 0 ? '#059669' : 'var(--text-secondary)' }}>
                             {ship.spec_count || 0} Specifications
                           </span>
@@ -1688,6 +1934,14 @@ Boiler,Aalborg,Mission OS`;
                                 <span><strong>Type:</strong> {ship.ship_type || '—'}</span>
                               </div>
                               <div style={{ display:'flex', gap:'0.5rem' }}>
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary"
+                                  onClick={() => handleOpenExportModal(ship)}
+                                  style={{ padding:'0.35rem 0.75rem', fontSize:'0.78rem', display:'inline-flex', alignItems:'center', gap:'0.35rem', color:'#059669', borderColor:'rgba(5,150,105,0.4)', background:'rgba(5,150,105,0.06)', fontWeight:'600' }}
+                                >
+                                  📥 Export Market CSV
+                                </button>
                                 <button
                                   type="button"
                                   className="btn btn-secondary"
@@ -2133,6 +2387,341 @@ Boiler,Aalborg,Mission OS`;
           </div>
         </div>
       )}
+
+      {/* ═══ SHIP MARKET AVAILABILITY EXPORT MODAL ═══ */}
+      {showExportModal && exportModalShip && (
+        <div
+          style={{
+            position:'fixed',
+            inset:0,
+            zIndex:1100,
+            background:'rgba(0,0,0,0.6)',
+            backdropFilter:'blur(5px)',
+            display:'flex',
+            alignItems:'center',
+            justifyContent:'center',
+            animation:'fadeIn 0.2s',
+            padding:'1rem'
+          }}
+          onClick={() => setShowExportModal(false)}
+        >
+          <div
+            style={{
+              background:'var(--bg-card)',
+              borderRadius:'var(--radius-lg)',
+              boxShadow:'0 25px 60px rgba(0,0,0,0.35)',
+              width:880,
+              maxWidth:'95vw',
+              maxHeight:'90vh',
+              display:'flex',
+              flexDirection:'column',
+              overflow:'hidden',
+              animation:'scaleIn 0.25s',
+              border:'1px solid var(--border-color)'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              padding:'1.25rem 1.5rem',
+              borderBottom:'1px solid var(--border-color)',
+              display:'flex',
+              justifyContent:'space-between',
+              alignItems:'center',
+              background:'linear-gradient(135deg, rgba(5,150,105,0.08), rgba(16,185,129,0.08))'
+            }}>
+              <div>
+                <h3 style={{
+                  fontFamily:"'Outfit',sans-serif",
+                  fontSize:'1.3rem',
+                  fontWeight:'700',
+                  margin:0,
+                  display:'flex',
+                  alignItems:'center',
+                  gap:'0.5rem',
+                  color:'var(--text-primary)'
+                }}>
+                  <span>📥</span> Export Market Data — {exportModalShip.ship_name}
+                </h3>
+                <p style={{ fontSize:'0.82rem', color:'var(--text-muted)', margin:'0.25rem 0 0' }}>
+                  Market availability of equipment and spare parts for <strong>{exportModalShip.ship_name}</strong>
+                  {exportModalShip.imo_number && ` (IMO: ${exportModalShip.imo_number})`}
+                  {exportModalShip.ship_type && ` • ${exportModalShip.ship_type}`}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowExportModal(false)}
+                style={{
+                  background:'none',
+                  border:'none',
+                  fontSize:'1.3rem',
+                  cursor:'pointer',
+                  color:'var(--text-muted)',
+                  padding:'0.25rem'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ flex:1, padding:'1.5rem', overflowY:'auto', background:'var(--bg-body)' }}>
+              {loadingExportPreview ? (
+                <div style={{ textAlign:'center', padding:'3rem 1rem', color:'var(--text-muted)' }}>
+                  <div style={{ fontSize:'2.5rem', marginBottom:'1rem' }}>⏳</div>
+                  <h4 style={{ fontSize:'1.1rem', fontWeight:'600', color:'var(--text-primary)', marginBottom:'0.5rem' }}>
+                    Analyzing Market Availability...
+                  </h4>
+                  <p style={{ fontSize:'0.85rem' }}>Matching equipment specifications for {exportModalShip.ship_name} against live market inventory...</p>
+                </div>
+              ) : exportPreviewData ? (
+                <>
+                  {/* Summary Metric Cards */}
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:'0.85rem', marginBottom:'1.5rem' }}>
+                    <div className="glass-card" style={{ padding:'1rem', background:'var(--bg-surface)', border:'1px solid var(--border-color)', borderRadius:'var(--radius-md)' }}>
+                      <span style={{ fontSize:'0.75rem', fontWeight:'600', textTransform:'uppercase', color:'var(--text-muted)', letterSpacing:'0.5px' }}>
+                        Ship Equipment Specs
+                      </span>
+                      <div style={{ fontSize:'1.6rem', fontWeight:'700', color:'var(--text-primary)', marginTop:'0.25rem' }}>
+                        {exportPreviewData.summary.total_equipment}
+                      </div>
+                      <span style={{ fontSize:'0.75rem', color:'var(--text-secondary)' }}>Configured specifications</span>
+                    </div>
+
+                    <div className="glass-card" style={{ padding:'1rem', background:'var(--bg-surface)', border:'1px solid rgba(5,150,105,0.3)', borderRadius:'var(--radius-md)' }}>
+                      <span style={{ fontSize:'0.75rem', fontWeight:'600', textTransform:'uppercase', color:'#059669', letterSpacing:'0.5px' }}>
+                        Available In Market
+                      </span>
+                      <div style={{ fontSize:'1.6rem', fontWeight:'700', color:'#059669', marginTop:'0.25rem' }}>
+                        {exportPreviewData.summary.equipment_with_stock} <span style={{ fontSize:'0.9rem', fontWeight:'500', color:'var(--text-muted)' }}>/ {exportPreviewData.summary.total_equipment}</span>
+                      </div>
+                      <span style={{ fontSize:'0.75rem', color:'var(--text-secondary)' }}>
+                        {exportPreviewData.summary.equipment_out_of_stock > 0 ? `${exportPreviewData.summary.equipment_out_of_stock} out of stock` : '100% in stock'}
+                      </span>
+                    </div>
+
+                    <div className="glass-card" style={{ padding:'1rem', background:'var(--bg-surface)', border:'1px solid rgba(37,99,235,0.3)', borderRadius:'var(--radius-md)' }}>
+                      <span style={{ fontSize:'0.75rem', fontWeight:'600', textTransform:'uppercase', color:'var(--accent-primary)', letterSpacing:'0.5px' }}>
+                        Matching Market Parts
+                      </span>
+                      <div style={{ fontSize:'1.6rem', fontWeight:'700', color:'var(--accent-primary)', marginTop:'0.25rem' }}>
+                        {exportPreviewData.summary.total_market_listings}
+                      </div>
+                      <span style={{ fontSize:'0.75rem', color:'var(--text-secondary)' }}>Live market listings</span>
+                    </div>
+
+                    <div className="glass-card" style={{ padding:'1rem', background:'var(--bg-surface)', border:'1px solid var(--border-color)', borderRadius:'var(--radius-md)' }}>
+                      <span style={{ fontSize:'0.75rem', fontWeight:'600', textTransform:'uppercase', color:'var(--text-muted)', letterSpacing:'0.5px' }}>
+                        Total Quantity Available
+                      </span>
+                      <div style={{ fontSize:'1.6rem', fontWeight:'700', color:'var(--text-primary)', marginTop:'0.25rem' }}>
+                        {exportPreviewData.summary.total_market_quantity}
+                      </div>
+                      <span style={{ fontSize:'0.75rem', color:'var(--text-secondary)' }}>Units in supplier inventory</span>
+                    </div>
+                  </div>
+
+                  {/* Export Options Banner */}
+                  <div style={{
+                    padding:'1.25rem',
+                    background:'var(--bg-surface)',
+                    borderRadius:'var(--radius-md)',
+                    border:'1px solid var(--border-color)',
+                    marginBottom:'1.5rem',
+                    display:'flex',
+                    flexDirection:'column',
+                    gap:'1rem'
+                  }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'0.75rem' }}>
+                      <div>
+                        <h4 style={{ margin:0, fontSize:'0.95rem', fontWeight:'600', color:'var(--text-primary)', display:'flex', alignItems:'center', gap:'0.4rem' }}>
+                          📄 Export Format Options
+                        </h4>
+                        <p style={{ margin:'0.25rem 0 0', fontSize:'0.8rem', color:'var(--text-muted)' }}>
+                          Choose between a detailed spare parts inventory or an equipment availability summary.
+                        </p>
+                      </div>
+                      <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleExportShipCsv(exportModalShip, 'detailed')}
+                          disabled={exportingCsv}
+                          className="btn btn-primary"
+                          style={{
+                            padding:'0.55rem 1.15rem',
+                            fontSize:'0.85rem',
+                            background:'linear-gradient(135deg, #059669, #10b981)',
+                            display:'inline-flex',
+                            alignItems:'center',
+                            gap:'0.4rem',
+                            fontWeight:'600'
+                          }}
+                        >
+                          <span>📥</span> {exportingCsv ? 'Exporting...' : 'Detailed Parts CSV'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleExportShipCsv(exportModalShip, 'summary')}
+                          disabled={exportingCsv}
+                          className="btn btn-secondary"
+                          style={{
+                            padding:'0.55rem 1rem',
+                            fontSize:'0.85rem',
+                            display:'inline-flex',
+                            alignItems:'center',
+                            gap:'0.4rem',
+                            color:'#059669',
+                            borderColor:'rgba(5,150,105,0.3)',
+                            fontWeight:'600'
+                          }}
+                        >
+                          <span>📊</span> Equipment Summary CSV
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Equipment Specifications & Market Breakdown Table */}
+                  <h4 style={{ fontSize:'0.95rem', fontWeight:'600', marginBottom:'0.75rem', color:'var(--text-primary)', display:'flex', alignItems:'center', gap:'0.4rem' }}>
+                    <span>📋</span> Equipment & Market Availability Breakdown ({exportPreviewData.equipment?.length || 0})
+                  </h4>
+
+                  {exportPreviewData.equipment?.length === 0 ? (
+                    <div style={{ textAlign:'center', padding:'2.5rem', background:'var(--bg-surface)', borderRadius:'var(--radius-md)', border:'1px dashed var(--border-color)', color:'var(--text-muted)' }}>
+                      <span style={{ fontSize:'2rem', display:'block', marginBottom:'0.5rem' }}>⚙️</span>
+                      <p style={{ fontWeight:'500', color:'var(--text-secondary)', marginBottom:'0.25rem' }}>No equipment specifications configured</p>
+                      <p style={{ fontSize:'0.82rem' }}>Add specifications to this ship to see available market spare parts and stock quantities.</p>
+                    </div>
+                  ) : (
+                    <div style={{ maxHeight:'320px', overflowY:'auto', border:'1px solid var(--border-color)', borderRadius:'var(--radius-md)' }}>
+                      <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.82rem' }}>
+                        <thead>
+                          <tr style={{ background:'var(--bg-surface)', borderBottom:'2px solid var(--border-color)', position:'sticky', top:0, zIndex:2 }}>
+                            <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)', width:'40px' }}>#</th>
+                            <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Equipment</th>
+                            <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Manufacturer / Model</th>
+                            <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Market Status</th>
+                            <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Listings</th>
+                            <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Total Qty</th>
+                            <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Available Parts Preview</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {exportPreviewData.equipment.map((eq, i) => {
+                            const rowBg = eq.compatibility_status === 'not_available'
+                              ? 'rgba(239,68,68,0.06)'
+                              : eq.compatibility_status === 'incompatible'
+                                ? 'rgba(245,158,11,0.06)'
+                                : 'transparent';
+                            return (
+                            <tr key={eq.id || i} style={{ borderBottom:'1px solid var(--border-color)', background: rowBg }}>
+                              <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-muted)' }}>{i + 1}</td>
+                              <td style={{ padding:'0.55rem 0.75rem', fontWeight:'600', color:'var(--text-primary)' }}>{eq.equipment}</td>
+                              <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-secondary)' }}>
+                                {eq.manufacturer || '—'} {eq.model ? `(${eq.model})` : ''}
+                              </td>
+                              <td style={{ padding:'0.55rem 0.75rem', textAlign:'center' }}>
+                                <span style={{
+                                  display:'inline-flex',
+                                  alignItems:'center',
+                                  gap:'0.3rem',
+                                  padding:'0.2rem 0.6rem',
+                                  borderRadius:'1rem',
+                                  fontSize:'0.72rem',
+                                  fontWeight:'600',
+                                  background: eq.compatibility_status === 'compatible' ? 'rgba(5,150,105,0.1)' : eq.compatibility_status === 'incompatible' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
+                                  color: eq.compatibility_status === 'compatible' ? '#059669' : eq.compatibility_status === 'incompatible' ? '#d97706' : '#dc2626'
+                                }}>
+                                  {eq.compatibility_status === 'compatible' ? '✓ Compatible' : eq.compatibility_status === 'incompatible' ? '⚠ Different Specs' : '✗ Not Available'}
+                                </span>
+                              </td>
+                              <td style={{ padding:'0.55rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-primary)' }}>
+                                {eq.available_listings_count}
+                                {eq.equipment_only_listings_count > 0 && (
+                                  <span style={{ fontSize:'0.68rem', color:'#d97706', display:'block' }}>+{eq.equipment_only_listings_count} alt</span>
+                                )}
+                              </td>
+                              <td style={{ padding:'0.55rem 0.75rem', textAlign:'center', fontWeight:'700', color: eq.total_available_quantity > 0 ? '#059669' : (eq.equipment_only_total_quantity > 0 ? '#d97706' : 'var(--text-muted)') }}>
+                                {eq.total_available_quantity}
+                                {eq.equipment_only_total_quantity > 0 && (
+                                  <span style={{ fontSize:'0.68rem', color:'#d97706', display:'block' }}>+{eq.equipment_only_total_quantity} alt</span>
+                                )}
+                              </td>
+                              <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-secondary)', fontSize:'0.78rem' }}>
+                                {eq.products.length > 0 ? (
+                                  <span>
+                                    {eq.products.slice(0, 3).map(p => `${p.product_name} (${p.quantity} units)`).join(', ')}
+                                    {eq.products.length > 3 && ` + ${eq.products.length - 3} more`}
+                                  </span>
+                                ) : eq.equipment_only_products && eq.equipment_only_products.length > 0 ? (
+                                  <span style={{ color:'#d97706', fontStyle:'italic' }}>
+                                    {eq.equipment_only_products.length} alternative{eq.equipment_only_products.length !== 1 ? 's' : ''} (different specs)
+                                  </span>
+                                ) : (
+                                  <span style={{ color:'var(--danger)', fontStyle:'italic' }}>{eq.compatibility_reason || 'Not available in market'}</span>
+                                )}
+                              </td>
+                            </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ textAlign:'center', padding:'2.5rem', color:'var(--text-muted)' }}>
+                  Failed to load preview data.
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding:'1rem 1.5rem',
+              borderTop:'1px solid var(--border-color)',
+              display:'flex',
+              justifyContent:'space-between',
+              alignItems:'center',
+              background:'var(--bg-card)',
+              flexWrap:'wrap',
+              gap:'0.75rem'
+            }}>
+              <span style={{ fontSize:'0.78rem', color:'var(--text-muted)', display:'flex', alignItems:'center', gap:'0.35rem' }}>
+                <span>💡</span> CSV contains all equipment specs, market parts, part numbers, stock quantities, prices, and vendor contacts.
+              </span>
+              <div style={{ display:'flex', gap:'0.6rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowExportModal(false)}
+                  style={{ padding:'0.5rem 1.25rem', fontSize:'0.85rem' }}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => handleExportShipCsv(exportModalShip, 'detailed')}
+                  disabled={exportingCsv}
+                  style={{
+                    padding:'0.5rem 1.35rem',
+                    fontSize:'0.85rem',
+                    background:'linear-gradient(135deg, #059669, #10b981)',
+                    display:'inline-flex',
+                    alignItems:'center',
+                    gap:'0.4rem',
+                    fontWeight:'600'
+                  }}
+                >
+                  <span>📥</span> {exportingCsv ? 'Exporting...' : 'Download Detailed CSV'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </>
   );
 }

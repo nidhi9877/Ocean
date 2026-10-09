@@ -95,7 +95,7 @@ export default function BuyerInquiries() {
       });
     } else {
       // Searched product initial inquiry email
-      const subject = `🚢 Purchase Inquiry: ${item.product_name} — Vortex Marketplace`;
+      const subject = `🚢 Purchase Inquiry: ${item.product_name} — MarineStockHub Marketplace`;
       const body = `Dear ${item.company_name} Team,\n\nI am interested in purchasing the following listed product:\n\n- Product: ${item.product_name}\n- Brand: ${item.brand || 'N/A'}\n- Model: ${item.model_number || 'N/A'}\n- Part Number: ${item.part_number || 'N/A'}\n\nPlease let me know if you can fulfill this request and provide a price quote.\n\nBest regards,\n${user?.username || 'Buyer'}`;
       
       setShowCc(false);

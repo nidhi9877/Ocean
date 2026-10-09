@@ -194,6 +194,7 @@ export default function AdminDashboard() {
                   <th>Ship Name</th>
                   <th>IMO Number</th>
                   <th>Ship Type</th>
+                  <th>Country</th>
                   <th>Email / Phone</th>
                   <th>Username</th>
                 </tr>
@@ -204,6 +205,7 @@ export default function AdminDashboard() {
                     <td style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{buyer.ship_name}</td>
                     <td>{buyer.imo_number}</td>
                     <td>{buyer.ship_type}</td>
+                    <td>{buyer.country ? `🌍 ${buyer.country}` : 'N/A'}</td>
                     <td style={{ fontSize: '0.85rem' }}>
                       <div>✉️ {buyer.email}</div>
                       <div>📞 {buyer.phone}</div>

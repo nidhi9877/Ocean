@@ -45,6 +45,7 @@ export async function initDatabase() {
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         email VARCHAR(255) NOT NULL,
         phone VARCHAR(50) NOT NULL,
+        country VARCHAR(100),
         imo_number VARCHAR(100) NOT NULL,
         ship_name VARCHAR(255) NOT NULL,
         ship_type VARCHAR(100) NOT NULL,
@@ -159,6 +160,8 @@ export async function initDatabase() {
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS vessel_name VARCHAR(255)`,
         sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT 'pre-payment/credit'`,
         sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'approved'`,
+        sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS country VARCHAR(100)`,
+        sql`ALTER TABLE buyers ADD COLUMN IF NOT EXISTS country VARCHAR(100)`,
         sql`ALTER TABLE buyer_specifications ADD COLUMN IF NOT EXISTS ship_id INTEGER REFERENCES buyer_ships(id) ON DELETE CASCADE`
       ]);
     } catch (e) {

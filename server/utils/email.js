@@ -9,10 +9,10 @@ dotenv.config();
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // System sender — must be a verified domain in Resend, or use onboarding@resend.dev for testing
-const SYSTEM_FROM = process.env.SYSTEM_EMAIL_FROM || 'Vortex Marketplace <onboarding@resend.dev>';
+const SYSTEM_FROM = process.env.SYSTEM_EMAIL_FROM || 'MarineStockHub Marketplace <onboarding@resend.dev>';
 
 // Base URL for CTA links (e.g., accept inquiry buttons in emails)
-const BASE_URL = process.env.BASE_URL || 'https://vortex.com';
+const BASE_URL = process.env.BASE_URL || 'https://marinestockhub.com';
 
 
 // ─── Professional HTML Email Template ────────────────────────────────────────────
@@ -39,7 +39,7 @@ function buildInquiryEmailHTML({
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Inquiry from Vortex</title>
+  <title>New Inquiry from MarineStockHub</title>
 </head>
 <body style="margin:0;padding:0;background-color:#0f172a;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
   
@@ -58,7 +58,7 @@ function buildInquiryEmailHTML({
                 <tr>
                   <td align="center">
                     <div style="font-size:36px;margin-bottom:8px;">⚓</div>
-                    <h1 style="margin:0;font-size:28px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">VORTEX</h1>
+                    <h1 style="margin:0;font-size:28px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">MARINESTOCKHUB</h1>
                     <p style="margin:6px 0 0 0;font-size:13px;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:2px;">Maritime Spare Parts Marketplace</p>
                   </td>
                 </tr>
@@ -86,7 +86,7 @@ function buildInquiryEmailHTML({
                 Dear <strong style="color:#ffffff;">${vendorName}</strong>,
               </p>
               <p style="margin:12px 0 0 0;font-size:15px;color:#94a3b8;line-height:1.7;">
-                A verified buyer on Vortex has expressed interest in one of your listed products. Please review the inquiry details below and respond at your earliest convenience.
+                A verified buyer on MarineStockHub has expressed interest in one of your listed products. Please review the inquiry details below and respond at your earliest convenience.
               </p>
             </td>
           </tr>
@@ -217,7 +217,7 @@ function buildInquiryEmailHTML({
                       ⚡ RUTHLESS EXECUTION MODEL
                     </p>
                     <p style="margin:8px 0 0 0;font-size:13px;color:#fca5a5;line-height:1.6;">
-                      Vortex operates on a First-to-Accept basis to maximize speed. <strong>No counter-offers. No negotiations.</strong> If you can fulfill the order, click Accept immediately before another vendor takes the deal.
+                      MarineStockHub operates on a First-to-Accept basis to maximize speed. <strong>No counter-offers. No negotiations.</strong> If you can fulfill the order, click Accept immediately before another vendor takes the deal.
                     </p>
                   </td>
                 </tr>
@@ -229,13 +229,13 @@ function buildInquiryEmailHTML({
           <tr>
             <td style="background:rgba(15,23,42,0.5);padding:24px 40px;text-align:center;border-top:1px solid rgba(148,163,184,0.08);">
               <p style="margin:0 0 4px 0;font-size:12px;color:#475569;">
-                This email was sent by <strong style="color:#64748b;">Vortex Maritime Marketplace</strong>
+                This email was sent by <strong style="color:#64748b;">MarineStockHub Maritime Marketplace</strong>
               </p>
               <p style="margin:0 0 4px 0;font-size:12px;color:#475569;">
                 You can reply directly to this email to contact the buyer.
               </p>
               <p style="margin:12px 0 0 0;font-size:11px;color:#334155;">
-                © ${currentYear} Vortex. All rights reserved.
+                © ${currentYear} MarineStockHub. All rights reserved.
               </p>
             </td>
           </tr>
@@ -287,7 +287,7 @@ export async function sendInquiryEmail({
     from: SYSTEM_FROM,
     to: vendorEmail,
     replyTo: buyerEmail,  // CRITICAL: vendor replies go directly to the buyer
-    subject: `🚢 New Inquiry: ${productName} — Vortex Marketplace`,
+    subject: `🚢 New Inquiry: ${productName} — MarineStockHub Marketplace`,
     html,
   };
 
@@ -324,7 +324,7 @@ export async function sendProviderNotification(providerEmail, buyerName, product
           </div>
           <p>Please log in to your Provider Dashboard to view the details and respond to the buyer.</p>
           <br/>
-          <p>Best regards,<br/><strong>Vortex Team</strong></p>
+          <p>Best regards,<br/><strong>MarineStockHub Team</strong></p>
         </div>
       `,
     };

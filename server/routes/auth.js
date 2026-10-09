@@ -13,7 +13,7 @@ const router = Router();
 // Register a new user
 router.post('/register', async (req, res) => {
   try {
-    const { username, password, role, email, phone, imo_number, ship_name, ship_type } = req.body;
+    const { username, password, role, email, phone, imo_number, ship_name, ship_type, country } = req.body;
 
     if (!username || !password || !role) {
       return res.status(400).json({ error: 'Username, password, and role are required' });
@@ -48,12 +48,17 @@ router.post('/register', async (req, res) => {
 
     // Check if username already exists (with retry logic for database cold starts)
     let existingUser;
-    try {
-      existingUser = await sql`SELECT id FROM users WHERE username = ${username}`;
-    } catch (dbError) {
-      console.log('Database cold start, retrying register query...', dbError.message);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      existingUser = await sql`SELECT id FROM users WHERE username = ${username}`;
+    let registerRetries = 3;
+    while (registerRetries > 0) {
+      try {
+        existingUser = await sql`SELECT id FROM users WHERE username = ${username}`;
+        break;
+      } catch (dbError) {
+        registerRetries--;
+        console.log(`Database cold start, retrying register query... (${registerRetries} attempts left)`, dbError.message);
+        if (registerRetries === 0) throw dbError;
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
     }
 
     if (existingUser.length > 0) {
@@ -86,17 +91,18 @@ router.post('/register', async (req, res) => {
     // If buyer, insert buyer details
     if (role === 'buyer') {
       await sql`
-        INSERT INTO buyers (user_id, email, phone)
-        VALUES (${user.id}, ${email}, ${phone})
+        INSERT INTO buyers (user_id, email, phone, country)
+        VALUES (${user.id}, ${email}, ${phone}, ${country || null})
       `;
     }
 
     // If provider, insert basic provider details
     if (role === 'provider') {
-      const { companyName, companyType, address, paymentMode } = req.body;
+      const { companyName, companyType, address, paymentMode, country: providerCountry } = req.body;
+      const finalCountry = providerCountry || country || null;
       await sql`
-        INSERT INTO providers (user_id, company_name, contact_person, email, phone, address, description, payment_mode, status)
-        VALUES (${user.id}, ${companyName || username}, ${username}, ${email}, ${phone}, ${address || 'Not specified'}, ${companyType || ''}, ${paymentMode || 'pre-payment/credit'}, 'approved')
+        INSERT INTO providers (user_id, company_name, contact_person, email, phone, address, description, payment_mode, country, status)
+        VALUES (${user.id}, ${companyName || username}, ${username}, ${email}, ${phone}, ${address || 'Not specified'}, ${companyType || ''}, ${paymentMode || 'pre-payment/credit'}, ${finalCountry}, 'approved')
       `;
     }
 
@@ -145,12 +151,17 @@ router.post('/login', async (req, res) => {
 
     // Find user (with retry logic for database cold starts)
     let users;
-    try {
-      users = await sql`SELECT * FROM users WHERE username = ${username}`;
-    } catch (dbError) {
-      console.log('Database cold start, retrying login query...', dbError.message);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      users = await sql`SELECT * FROM users WHERE username = ${username}`;
+    let loginRetries = 3;
+    while (loginRetries > 0) {
+      try {
+        users = await sql`SELECT * FROM users WHERE username = ${username}`;
+        break;
+      } catch (dbError) {
+        loginRetries--;
+        console.log(`Database cold start, retrying login query... (${loginRetries} attempts left)`, dbError.message);
+        if (loginRetries === 0) throw dbError;
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
     }
 
     if (users.length === 0) {

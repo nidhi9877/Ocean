@@ -496,5 +496,368 @@ router.get('/ships/:shipId/specifications', authenticateToken, async (req, res) 
   }
 });
 
+// ─── GET /ships/:shipId/market-availability — Get market equipment & spare parts availability for a ship (JSON or CSV export)
+router.get('/ships/:shipId/market-availability', authenticateToken, async (req, res) => {
+  try {
+    const { shipId } = req.params;
+    const { format, type } = req.query; // format='csv' or default JSON; type='detailed' | 'summary'
+
+    const buyerProfile = await sql`SELECT id FROM buyers WHERE user_id = ${req.user.id}`;
+    if (buyerProfile.length === 0) {
+      return res.status(403).json({ error: 'Only registered buyers can access ship market data.' });
+    }
+    const buyer_id = buyerProfile[0].id;
+
+    // Verify ship belongs to this buyer
+    const shipRows = await sql`
+      SELECT id, ship_name, imo_number, ship_type, created_at
+      FROM buyer_ships
+      WHERE id = ${shipId} AND buyer_id = ${buyer_id}
+    `;
+    if (shipRows.length === 0) {
+      return res.status(404).json({ error: 'Ship not found.' });
+    }
+    const ship = shipRows[0];
+
+    // Fetch ship specifications
+    const specs = await sql`
+      SELECT id, equipment, manufacturer, model, created_at
+      FROM buyer_specifications
+      WHERE ship_id = ${shipId}
+      ORDER BY id ASC
+    `;
+
+    // Fetch all market products from approved providers with stock > 0
+    const marketProducts = await sql`
+      SELECT p.*, pr.company_name, pr.contact_person, pr.email as provider_email, pr.phone as provider_phone
+      FROM products p
+      JOIN providers pr ON p.provider_id = pr.id
+      ORDER BY p.category, p.product_name
+    `;
+
+    // Levenshtein & fuzzy match helpers
+    const levenshtein = (a, b) => {
+      if (!a.length) return b.length;
+      if (!b.length) return a.length;
+      const m = [];
+      for (let i = 0; i <= b.length; i++) m[i] = [i];
+      for (let j = 0; j <= a.length; j++) m[0][j] = j;
+      for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+          if (b.charAt(i - 1) === a.charAt(j - 1)) m[i][j] = m[i - 1][j - 1];
+          else m[i][j] = Math.min(m[i - 1][j - 1] + 1, Math.min(m[i][j - 1] + 1, m[i - 1][j] + 1));
+        }
+      }
+      return m[b.length][a.length];
+    };
+
+    const fuzzyMatch = (str, pattern) => {
+      if (!pattern) return true;
+      if (!str) return false;
+      const s = String(str).toLowerCase();
+      const p = pattern.toLowerCase().trim();
+      if (s.includes(p) || p.includes(s)) return true;
+      const sWords = s.split(/[\s-]+/);
+      const pWords = p.split(/[\s-]+/);
+      return pWords.every(pw => sWords.some(sw => {
+        if (sw.includes(pw) || pw.includes(sw)) return true;
+        const maxDist = pw.length <= 4 ? 1 : 2;
+        return levenshtein(sw, pw) <= maxDist;
+      }));
+    };
+
+    // Check if a product matches equipment type (category/product_name)
+    const matchesEquipment = (p, spec) => {
+      if (!spec.equipment) return true;
+      return fuzzyMatch(p.category, spec.equipment) || fuzzyMatch(p.product_name, spec.equipment);
+    };
+
+    // Check if a product fully matches spec (equipment + manufacturer + model)
+    const matchesSpecFull = (p, spec) => {
+      if (!matchesEquipment(p, spec)) return false;
+      if (spec.manufacturer && spec.manufacturer.trim()) {
+        const brandMatch = fuzzyMatch(p.brand, spec.manufacturer) || fuzzyMatch(p.product_name, spec.manufacturer);
+        if (!brandMatch) return false;
+      }
+      if (spec.model && spec.model.trim()) {
+        const modelMatch = fuzzyMatch(p.model_number, spec.model) || fuzzyMatch(p.product_name, spec.model);
+        if (!modelMatch) return false;
+      }
+      return true;
+    };
+
+    // Calculate matches per specification with 3-tier classification
+    let totalMarketListings = 0;
+    let totalMarketQuantity = 0;
+    let equipmentWithStockCount = 0;
+
+    const equipmentBreakdown = specs.map(spec => {
+      // Tier 1: Fully compatible products (equipment + manufacturer + model match)
+      const compatibleProducts = marketProducts.filter(p => matchesSpecFull(p, spec));
+      // Tier 2: Equipment type matches but different manufacturer/model
+      const equipmentOnlyProducts = marketProducts.filter(p => {
+        if (!matchesEquipment(p, spec)) return false;
+        // Exclude products already in compatible list
+        if (compatibleProducts.some(cp => cp.id === p.id)) return false;
+        return true;
+      });
+
+      const compatibleQty = compatibleProducts.reduce((acc, curr) => acc + (Number(curr.quantity) || 0), 0);
+      const equipmentOnlyQty = equipmentOnlyProducts.reduce((acc, curr) => acc + (Number(curr.quantity) || 0), 0);
+
+      // Determine compatibility status
+      let compatibility_status;
+      let compatibility_reason;
+      if (compatibleProducts.length > 0) {
+        compatibility_status = 'compatible';
+        compatibility_reason = 'Compatible match found for your specifications';
+        equipmentWithStockCount++;
+      } else if (equipmentOnlyProducts.length > 0) {
+        compatibility_status = 'incompatible';
+        compatibility_reason = 'Equipment available in market but with different manufacturer/model than your ship specifications';
+      } else {
+        compatibility_status = 'not_available';
+        compatibility_reason = 'This equipment is not available in the market from any manufacturer or model';
+      }
+
+      totalMarketListings += compatibleProducts.length;
+      totalMarketQuantity += compatibleQty;
+
+      const formatProduct = (m) => ({
+        id: m.id,
+        product_name: m.product_name || m.category,
+        part_number: m.part_number || '',
+        brand: m.brand || '',
+        model_number: m.model_number || '',
+        category: m.category,
+        quantity: Number(m.quantity) || 0,
+        price: m.price || '0.00',
+        location: m.location || '',
+        service_type: m.service_type || 'Supply',
+        department: m.department || '',
+        company_name: m.company_name || '',
+        contact_person: m.contact_person || '',
+        provider_email: m.provider_email || '',
+        provider_phone: m.provider_phone || ''
+      });
+
+      return {
+        id: spec.id,
+        equipment: spec.equipment,
+        manufacturer: spec.manufacturer || '',
+        model: spec.model || '',
+        compatibility_status,
+        compatibility_reason,
+        available_listings_count: compatibleProducts.length,
+        total_available_quantity: compatibleQty,
+        equipment_only_listings_count: equipmentOnlyProducts.length,
+        equipment_only_total_quantity: equipmentOnlyQty,
+        status: compatibleQty > 0 ? 'In Stock' : (equipmentOnlyQty > 0 ? 'Available (Different Specs)' : 'Not Available in Market'),
+        products: compatibleProducts.map(formatProduct),
+        equipment_only_products: equipmentOnlyProducts.map(formatProduct)
+      };
+    });
+
+    // Check if CSV export is requested
+    if (format === 'csv') {
+      const escapeCell = (val) => {
+        if (val === null || val === undefined) return '""';
+        return `"${String(val).replace(/"/g, '""')}"`;
+      };
+
+      let csvRows = [];
+      const sanitizedShipName = (ship.ship_name || 'Ship').replace(/[^a-zA-Z0-9_-]/g, '_');
+
+      if (type === 'summary') {
+        const headers = [
+          'Ship Name',
+          'Ship IMO',
+          'Ship Type',
+          'Ship Equipment',
+          'Specified Manufacturer',
+          'Specified Model',
+          'Compatibility Status',
+          'Compatibility Reason',
+          'Compatible Listings Count',
+          'Compatible Total Quantity (Units)',
+          'Alternative Listings Count (Different Specs)',
+          'Alternative Total Quantity (Units)',
+          'Market Availability Status'
+        ];
+        csvRows.push(headers.map(escapeCell).join(','));
+
+        for (const eq of equipmentBreakdown) {
+          csvRows.push([
+            ship.ship_name,
+            ship.imo_number || 'N/A',
+            ship.ship_type || 'N/A',
+            eq.equipment,
+            eq.manufacturer || 'N/A',
+            eq.model || 'N/A',
+            eq.compatibility_status === 'compatible' ? 'COMPATIBLE' : (eq.compatibility_status === 'incompatible' ? 'DIFFERENT SPECS IN MARKET' : 'NOT AVAILABLE IN MARKET'),
+            eq.compatibility_reason,
+            eq.available_listings_count,
+            eq.total_available_quantity,
+            eq.equipment_only_listings_count,
+            eq.equipment_only_total_quantity,
+            eq.status
+          ].map(escapeCell).join(','));
+        }
+      } else {
+        // Detailed inventory CSV (default)
+        const headers = [
+          'Ship Name',
+          'Ship IMO',
+          'Ship Type',
+          'Ship Equipment',
+          'Specified Manufacturer',
+          'Specified Model',
+          'Compatibility Status',
+          'Compatibility Reason',
+          'Match Type',
+          'Equipment Market Listings Count',
+          'Equipment Total Units Available',
+          'Market Part / Product Name',
+          'Part Number',
+          'Market Brand',
+          'Market Model Number',
+          'Available Quantity in Market',
+          'Unit Price (USD)',
+          'Stock Location',
+          'Service Type',
+          'Supplier Company',
+          'Supplier Contact Person',
+          'Supplier Email',
+          'Supplier Phone',
+          'Market Availability Status'
+        ];
+        csvRows.push(headers.map(escapeCell).join(','));
+
+        for (const eq of equipmentBreakdown) {
+          const compatStatusLabel = eq.compatibility_status === 'compatible' ? 'COMPATIBLE' : (eq.compatibility_status === 'incompatible' ? 'DIFFERENT SPECS IN MARKET' : 'NOT AVAILABLE IN MARKET');
+
+          if (eq.products.length > 0) {
+            // Compatible products
+            for (const p of eq.products) {
+              csvRows.push([
+                ship.ship_name,
+                ship.imo_number || 'N/A',
+                ship.ship_type || 'N/A',
+                eq.equipment,
+                eq.manufacturer || 'N/A',
+                eq.model || 'N/A',
+                compatStatusLabel,
+                eq.compatibility_reason,
+                'Exact Compatible Match',
+                eq.available_listings_count,
+                eq.total_available_quantity,
+                p.product_name,
+                p.part_number || 'N/A',
+                p.brand || 'N/A',
+                p.model_number || 'N/A',
+                p.quantity,
+                p.price,
+                p.location || 'N/A',
+                p.service_type || 'Supply',
+                p.company_name || 'N/A',
+                p.contact_person || 'N/A',
+                p.provider_email || 'N/A',
+                p.provider_phone || 'N/A',
+                'Compatible - Available in Market'
+              ].map(escapeCell).join(','));
+            }
+          }
+
+          if (eq.equipment_only_products.length > 0) {
+            // Equipment-only products (different manufacturer/model)
+            for (const p of eq.equipment_only_products) {
+              csvRows.push([
+                ship.ship_name,
+                ship.imo_number || 'N/A',
+                ship.ship_type || 'N/A',
+                eq.equipment,
+                eq.manufacturer || 'N/A',
+                eq.model || 'N/A',
+                compatStatusLabel,
+                eq.compatibility_reason,
+                'Alternative (Different Manufacturer/Model)',
+                eq.equipment_only_listings_count,
+                eq.equipment_only_total_quantity,
+                p.product_name,
+                p.part_number || 'N/A',
+                p.brand || 'N/A',
+                p.model_number || 'N/A',
+                p.quantity,
+                p.price,
+                p.location || 'N/A',
+                p.service_type || 'Supply',
+                p.company_name || 'N/A',
+                p.contact_person || 'N/A',
+                p.provider_email || 'N/A',
+                p.provider_phone || 'N/A',
+                'Alternative - Different Specs Available'
+              ].map(escapeCell).join(','));
+            }
+          }
+
+          if (eq.products.length === 0 && eq.equipment_only_products.length === 0) {
+            // Equipment has no listings at all in market
+            csvRows.push([
+              ship.ship_name,
+              ship.imo_number || 'N/A',
+              ship.ship_type || 'N/A',
+              eq.equipment,
+              eq.manufacturer || 'N/A',
+              eq.model || 'N/A',
+              'NOT AVAILABLE IN MARKET',
+              'This equipment is not available in the market from any manufacturer or model',
+              'No Match',
+              0,
+              0,
+              'No spare parts currently listed in market',
+              'N/A',
+              'N/A',
+              'N/A',
+              0,
+              'N/A',
+              'N/A',
+              'N/A',
+              'N/A',
+              'N/A',
+              'N/A',
+              'N/A',
+              'Not Available in Market'
+            ].map(escapeCell).join(','));
+          }
+        }
+      }
+
+      const csvContent = csvRows.join('\r\n');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${sanitizedShipName}_market_inventory.csv"`);
+      return res.status(200).send(csvContent);
+    }
+
+    // Return structured JSON
+    res.json({
+      ship,
+      summary: {
+        total_equipment: specs.length,
+        equipment_with_stock: equipmentWithStockCount,
+        equipment_incompatible: equipmentBreakdown.filter(e => e.compatibility_status === 'incompatible').length,
+        equipment_not_available: equipmentBreakdown.filter(e => e.compatibility_status === 'not_available').length,
+        equipment_out_of_stock: specs.length - equipmentWithStockCount,
+        total_market_listings: totalMarketListings,
+        total_market_quantity: totalMarketQuantity
+      },
+      equipment: equipmentBreakdown
+    });
+  } catch (error) {
+    console.error('Error fetching ship market availability:', error);
+    res.status(500).json({ error: 'Internal server error while fetching ship market data.' });
+  }
+});
+
 export default router;
+
 

@@ -14,7 +14,7 @@ export default function Navbar() {
     <nav className="navbar">
       <Link to={user?.role === 'provider' ? '/provider/dashboard' : user?.role === 'management' ? '/management/dashboard' : '/buyer/dashboard'} className="navbar-brand">
         <span className="navbar-logo">⚓</span>
-        <span className="navbar-title">Vortex</span>
+        <span className="navbar-title">MarineStockHub</span>
       </Link>
 
       <div className="navbar-links">

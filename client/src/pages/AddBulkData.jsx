@@ -50,7 +50,7 @@ export default function AddBulkData() {
     equipment: '',
     manufacturer: '',
     modelNumber: '',
-    yearOfManufacturer: '',
+    yearOfManufacturer: 'No',
     partName: '',
     partNumer: '',
     stockLocation: '',
@@ -146,7 +146,7 @@ export default function AddBulkData() {
   const downloadCSV = () => {
     const data = getExportData();
     if (data.length === 0) return alert('No data to download');
-    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type', 'Mail'];
+    const headers = ['Equipment', 'Manufacturer', 'Model number', 'Authorization', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type', 'Mail'];
     const csvContent = [
       headers.join(','),
       ...data.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
@@ -164,7 +164,7 @@ export default function AddBulkData() {
   const downloadExcel = () => {
     const data = getExportData();
     if (data.length === 0) return alert('No data to download');
-    const headers = ['Equipment', 'Manufacturer', 'Model number', 'year of manufacturer', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type', 'Mail'];
+    const headers = ['Equipment', 'Manufacturer', 'Model number', 'Authorization', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type', 'Mail'];
     const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Manual Entry");
@@ -175,7 +175,7 @@ export default function AddBulkData() {
     const data = getExportData();
     if (data.length === 0) return alert('No data to download');
     const doc = new jsPDF();
-    const headers = [['Equipment', 'Manufacturer', 'Model', 'Year', 'Part Name', 'Part No.', 'Location', 'Qty', 'Service', 'Mail']];
+    const headers = [['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Part Name', 'Part No.', 'Location', 'Qty', 'Service', 'Mail']];
     doc.autoTable({
       head: headers,
       body: data,
@@ -237,7 +237,7 @@ export default function AddBulkData() {
                       <th style={tdStyle}>Equipment</th>
                       <th style={tdStyle}>Manufacturer</th>
                       <th style={tdStyle}>Model number</th>
-                      <th style={tdStyle}>year of manufacturer</th>
+                      <th style={tdStyle}>Authorization</th>
                       <th style={tdStyle}>Part Name</th>
                       <th style={tdStyle}>Part Numer</th>
                       <th style={tdStyle}>Stock location</th>
@@ -260,7 +260,21 @@ export default function AddBulkData() {
                           <input style={inputStyle} value={row.modelNumber} onChange={e => handleRowChange(index, 'modelNumber', e.target.value)} />
                         </td>
                         <td style={tdStyle}>
-                          <input style={inputStyle} value={row.yearOfManufacturer} onChange={e => handleRowChange(index, 'yearOfManufacturer', e.target.value)} />
+                          <select
+                            style={inputStyle}
+                            value={
+                              (() => {
+                                const v = row.yearOfManufacturer;
+                                if (!v) return 'No';
+                                const s = String(v).trim().toLowerCase();
+                                return (s === 'yes' || s === 'true' || s === 'y') ? 'Yes' : (s === 'no' || s === 'false' || s === 'n') ? 'No' : v;
+                              })()
+                            }
+                            onChange={e => handleRowChange(index, 'yearOfManufacturer', e.target.value)}
+                          >
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                          </select>
                         </td>
                         <td style={tdStyle}>
                           <input style={inputStyle} value={row.partName} onChange={e => handleRowChange(index, 'partName', e.target.value)} />

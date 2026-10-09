@@ -108,6 +108,7 @@ export function AuthProvider({ children }) {
     setToken(null);
     localStorage.removeItem('marine_token');
     localStorage.removeItem('marine_user');
+    toast.dismiss(); // Clear all notifications on logout
   };
 
   return (

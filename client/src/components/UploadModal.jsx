@@ -50,7 +50,7 @@ export default function UploadModal({ onClose, onSuccess }) {
     const colEquipment = findCol(firstRow, ['equipment', 'category']);
     const colManufacturer = findCol(firstRow, ['manufacturer', 'brand']);
     const colModelNumber = findCol(firstRow, ['modelnumber', 'model']);
-    const colYearOfManufacturer = findCol(firstRow, ['yearofmanufacturer', 'year', 'manufacturedat']);
+    const colYearOfManufacturer = findCol(firstRow, ['authorization', 'authorized', 'yearofmanufacturer', 'year', 'manufacturedat']);
     const colPartName = findCol(firstRow, ['partname', 'productname', 'item']);
     const colPartNumer = findCol(firstRow, ['partnumer', 'partnumber', 'pn']);
     const colStockLocation = findCol(firstRow, ['stocklocation', 'location']);
@@ -163,16 +163,16 @@ export default function UploadModal({ onClose, onSuccess }) {
   };
 
   const downloadSampleExcel = () => {
-    const headers = ['Equipment', 'Manufacturer', 'Model Number', 'Year of Manufacturer', 'Part Name', 'Part Number', 'Stock Location', 'Quantity', 'Service Type', 'Payment Mode'];
+    const headers = ['Equipment', 'Manufacturer', 'Model Number', 'Authorization', 'Part Name', 'Part Number', 'Stock Location', 'Quantity', 'Service Type', 'Payment Mode'];
     const rows = [
-      ['Navigation', 'Raymarine', 'Axiom 9', '2022', 'GPS Chartplotter', 'E70366', 'Miami, FL', 5, 'Supply', 'pre-payment/credit'],
-      ['Engine', 'Caterpillar', 'C32', '2020', 'Fuel Injector', '10R-1273', 'Houston, TX', 12, 'Supply and Service', 'pre-payment']
+      ['Navigation', 'Raymarine', 'Axiom 9', 'Yes', 'GPS Chartplotter', 'E70366', 'Miami, FL', 5, 'Supply', 'pre-payment/credit'],
+      ['Engine', 'Caterpillar', 'C32', 'No', 'Fuel Injector', '10R-1273', 'Houston, TX', 12, 'Supply and Service', 'pre-payment']
     ];
     
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Sample");
-    XLSX.writeFile(wb, "Vortex_Inventory_Sample.xlsx");
+    XLSX.writeFile(wb, "MarineStockHub_Inventory_Sample.xlsx");
   };
 
   return (
