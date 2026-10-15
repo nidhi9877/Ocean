@@ -33,7 +33,7 @@ export async function initDatabase() {
         city VARCHAR(100),
         country VARCHAR(100),
         description TEXT,
-        payment_mode VARCHAR(50) DEFAULT 'pre-payment/credit',
+        payment_mode VARCHAR(50) DEFAULT 'pre-payment',
         status VARCHAR(50) DEFAULT 'approved',
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
@@ -71,7 +71,7 @@ export async function initDatabase() {
         media_link TEXT,
         equipment_condition VARCHAR(50) DEFAULT 'New',
         service_type VARCHAR(50) DEFAULT 'Supply',
-        payment_mode VARCHAR(50) DEFAULT 'pre-payment/credit',
+        payment_mode VARCHAR(50) DEFAULT 'pre-payment',
         department VARCHAR(255),
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -149,7 +149,7 @@ export async function initDatabase() {
         sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS media_link TEXT`,
         sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS equipment_condition VARCHAR(50) DEFAULT 'New'`,
         sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS service_type VARCHAR(50) DEFAULT 'Supply'`,
-        sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT 'pre-payment/credit'`,
+        sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT 'pre-payment'`,
         sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS department VARCHAR(255)`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS target_price DECIMAL(10,2)`,
@@ -160,7 +160,7 @@ export async function initDatabase() {
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS eta VARCHAR(100)`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS etd VARCHAR(100)`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS vessel_name VARCHAR(255)`,
-        sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT 'pre-payment/credit'`,
+        sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT 'pre-payment'`,
         sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'approved'`,
         sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS country VARCHAR(100)`,
         sql`ALTER TABLE buyers ADD COLUMN IF NOT EXISTS country VARCHAR(100)`,

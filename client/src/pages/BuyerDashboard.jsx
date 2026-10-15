@@ -1456,7 +1456,7 @@ export default function BuyerDashboard() {
                         <td style={{ padding:'0.75rem' }}>{p.location||'-'}</td>
                         <td style={{ padding:'0.75rem', color:'var(--accent-primary)', fontWeight:'bold' }}>{p.quantity||'-'}</td>
                         <td style={{ padding:'0.75rem' }}>{p.service_type || 'Supply'}</td>
-                        <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.payment_mode || 'pre-payment/credit'}</td>
+                        <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.payment_mode || 'pre-payment'}</td>
                         <td style={{ padding:'0.75rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                           {p.updated_at ? new Date(p.updated_at).toLocaleDateString() : p.created_at ? new Date(p.created_at).toLocaleDateString() : '-'}
                         </td>

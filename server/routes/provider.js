@@ -42,7 +42,7 @@ router.post('/register', authenticateToken, async (req, res) => {
     // Insert provider
     const providerResult = await sql`
       INSERT INTO providers (user_id, company_name, contact_person, email, phone, address, city, country, description, payment_mode)
-      VALUES (${req.user.id}, ${companyName}, ${contactPerson}, ${email}, ${phone}, ${address}, ${city || null}, ${country || null}, ${description || null}, ${paymentMode || 'pre-payment/credit'})
+      VALUES (${req.user.id}, ${companyName}, ${contactPerson}, ${email}, ${phone}, ${address}, ${city || null}, ${country || null}, ${description || null}, ${paymentMode || 'pre-payment'})
       RETURNING id
     `;
 
@@ -73,7 +73,7 @@ router.post('/register', authenticateToken, async (req, res) => {
               ${product.mediaLink || null},
               ${product.equipmentCondition || product.equipment_condition || 'New'},
               ${product.serviceType || 'Supply'},
-              ${product.payment_mode || 'pre-payment/credit'}
+              ${product.payment_mode || 'pre-payment'}
             )
           `;
         }
@@ -139,7 +139,7 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
             ${p.mediaLink || null},
             ${p.equipmentCondition || p.equipment_condition || 'New'},
             ${p.serviceType || 'Supply'},
-            ${p.payment_mode || 'pre-payment/credit'},
+            ${p.payment_mode || 'pre-payment'},
             ${department || null}
           )
         `;
@@ -383,7 +383,7 @@ router.put('/products/:id', authenticateToken, async (req, res) => {
         media_link = ${media_link || null},
         equipment_condition = ${req.body.equipment_condition || req.body.equipmentCondition || 'New'},
         service_type = ${req.body.service_type || 'Supply'},
-        payment_mode = ${req.body.payment_mode || 'pre-payment/credit'},
+        payment_mode = ${req.body.payment_mode || 'pre-payment'},
         updated_at = NOW()
       WHERE id = ${productId}
     `;
@@ -431,6 +431,44 @@ router.post('/products/bulk-update-service-type', authenticateToken, async (req,
     res.json({ message: 'Products updated successfully' });
   } catch (error) {
     console.error('Bulk update error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Bulk update payment mode
+router.post('/products/bulk-update-payment-mode', authenticateToken, async (req, res) => {
+  try {
+    const { ids, paymentMode } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'No product IDs provided' });
+    if (!paymentMode) return res.status(400).json({ error: 'Payment mode is required' });
+
+    const existingProvider = await sql`SELECT id FROM providers WHERE user_id = ${req.user.id}`;
+    if (existingProvider.length === 0) return res.status(404).json({ error: 'Seller profile not found' });
+    const providerId = existingProvider[0].id;
+
+    await sql`UPDATE products SET payment_mode = ${paymentMode}, updated_at = NOW() WHERE id = ANY(${ids}) AND provider_id = ${providerId}`;
+    res.json({ message: 'Products updated successfully' });
+  } catch (error) {
+    console.error('Bulk update payment mode error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Bulk update equipment condition
+router.post('/products/bulk-update-condition', authenticateToken, async (req, res) => {
+  try {
+    const { ids, condition } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'No product IDs provided' });
+    if (!condition) return res.status(400).json({ error: 'Equipment condition is required' });
+
+    const existingProvider = await sql`SELECT id FROM providers WHERE user_id = ${req.user.id}`;
+    if (existingProvider.length === 0) return res.status(404).json({ error: 'Seller profile not found' });
+    const providerId = existingProvider[0].id;
+
+    await sql`UPDATE products SET equipment_condition = ${condition}, updated_at = NOW() WHERE id = ANY(${ids}) AND provider_id = ${providerId}`;
+    res.json({ message: 'Products updated successfully' });
+  } catch (error) {
+    console.error('Bulk update condition error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -485,7 +523,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
             ${p.media_link || null},
             ${p.equipment_condition || 'New'},
             ${p.service_type || 'Supply'},
-            ${p.payment_mode || 'pre-payment/credit'}
+            ${p.payment_mode || 'pre-payment'}
           )
         `;
       } else {
@@ -505,7 +543,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
             media_link = ${p.media_link || null},
             equipment_condition = ${p.equipment_condition || 'New'},
             service_type = ${p.service_type || 'Supply'},
-            payment_mode = ${p.payment_mode || 'pre-payment/credit'},
+            payment_mode = ${p.payment_mode || 'pre-payment'},
             updated_at = NOW()
           WHERE id = ${p.id} AND provider_id = ${providerId}
         `;

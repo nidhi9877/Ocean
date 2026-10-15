@@ -1364,6 +1364,119 @@ select.inline-edit-input {
   margin-left: auto;
 }
 
+/* ===== Bulk Setting Toolbar Row & Groups ===== */
+.bulk-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bulk-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.bulk-selection-group {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  gap: 6px;
+}
+
+.bulk-selection-pill {
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 0.73rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+}
+
+.bulk-group-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.bulk-btn-cluster {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.bulk-action-pill {
+  font-size: 0.72rem !important;
+  padding: 2px 7px !important;
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+  transition: all 0.15s ease !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.bulk-action-pill:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+.bulk-pill-new:hover {
+  border-color: #16a34a !important;
+  color: #16a34a !important;
+  background: #f0fdf4 !important;
+}
+
+.bulk-pill-refurb:hover {
+  border-color: #d97706 !important;
+  color: #d97706 !important;
+  background: #fffbeb !important;
+}
+
+.bulk-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 3px;
+}
+
+.dot-new {
+  background-color: #16a34a;
+}
+
+.dot-refurb {
+  background-color: #d97706;
+}
+
+.toolbar-btn-subtle {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #64748b !important;
+  font-size: 0.72rem !important;
+  padding: 3px 7px !important;
+}
+
+.toolbar-btn-subtle:hover {
+  background: #e2e8f0 !important;
+  color: #1e293b !important;
+  border-color: #94a3b8 !important;
+}
+
 /* Status bar at bottom like Excel */
 .spreadsheet-statusbar {
   display: flex;

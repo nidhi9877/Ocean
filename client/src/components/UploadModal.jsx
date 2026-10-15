@@ -90,7 +90,7 @@ export default function UploadModal({ onClose, onSuccess }) {
         price: '0',
         email: user?.email || '',
         additionalInfo: '',
-        payment_mode: colPaymentMode ? (row[colPaymentMode] || 'pre-payment/credit') : 'pre-payment/credit',
+        payment_mode: colPaymentMode ? (row[colPaymentMode] || 'pre-payment') : 'pre-payment',
         equipment_condition: colCondition && row[colCondition] ? (String(row[colCondition]).trim().toLowerCase().includes('refurb') ? 'Refurbished' : 'New') : 'New'
       });
     }

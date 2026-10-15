@@ -49,7 +49,7 @@ export default function ProviderForm() {
     city: '',
     country: '',
     description: '',
-    paymentMode: 'pre-payment/credit',
+    paymentMode: 'pre-payment',
   });
 
   const [products, setProducts] = useState([emptyProduct()]);
@@ -253,7 +253,6 @@ export default function ProviderForm() {
                     >
                       <option value="pre-payment">pre-payment</option>
                       <option value="credit">credit</option>
-                      <option value="pre-payment/credit">pre-payment/credit</option>
                     </select>
                   </div>
                 </div>

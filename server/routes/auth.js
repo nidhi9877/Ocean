@@ -105,7 +105,7 @@ router.post('/register', async (req, res) => {
       const finalCountry = providerCountry || country || null;
       await sql`
         INSERT INTO providers (user_id, company_name, contact_person, email, phone, address, description, payment_mode, country, status)
-        VALUES (${user.id}, ${companyName || username}, ${username}, ${email}, ${phone}, ${address || 'Not specified'}, ${companyType || ''}, ${paymentMode || 'pre-payment/credit'}, ${finalCountry}, 'approved')
+        VALUES (${user.id}, ${companyName || username}, ${username}, ${email}, ${phone}, ${address || 'Not specified'}, ${companyType || ''}, ${paymentMode || 'pre-payment'}, ${finalCountry}, 'approved')
       `;
     }
 

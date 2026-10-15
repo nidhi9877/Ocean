@@ -111,7 +111,7 @@ export default function ProviderDashboard() {
         additional_info: p.additional_info || '',
         equipment_condition: p.equipment_condition || 'New',
         service_type: p.service_type || 'Supply',
-        payment_mode: p.payment_mode || 'pre-payment/credit',
+        payment_mode: p.payment_mode || 'pre-payment',
         id: p.id
       };
     });
@@ -139,7 +139,7 @@ export default function ProviderDashboard() {
           additional_info: p.additional_info || '',
           equipment_condition: p.equipment_condition || 'New',
           service_type: p.service_type || 'Supply',
-          payment_mode: p.payment_mode || 'pre-payment/credit',
+          payment_mode: p.payment_mode || 'pre-payment',
           id: p.id
         };
       }
@@ -179,7 +179,7 @@ export default function ProviderDashboard() {
           additional_info: product.additional_info || '',
           equipment_condition: product.equipment_condition || 'New',
           service_type: product.service_type || 'Supply',
-          payment_mode: product.payment_mode || 'pre-payment/credit',
+          payment_mode: product.payment_mode || 'pre-payment',
           id: product.id
         }
       });
@@ -211,7 +211,7 @@ export default function ProviderDashboard() {
       additional_info: '',
       equipment_condition: 'New',
       service_type: 'Supply',
-      payment_mode: 'pre-payment/credit'
+      payment_mode: 'pre-payment'
     };
     
     // Add to products
@@ -333,10 +333,54 @@ export default function ProviderDashboard() {
         });
       }
       setProducts(prev => prev.map(p => selectedIds.includes(p.id) ? { ...p, service_type: serviceType } : p));
-      setSelectedIds([]);
+      toast.success(`Service Type set to "${serviceType}" for ${selectedIds.length} items`);
     } catch (err) {
       console.error(err);
-      alert('Failed to update service type');
+      toast.error('Failed to update service type');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const bulkUpdatePaymentMode = async (paymentMode) => {
+    if (selectedIds.length === 0) return;
+    
+    const realIds = selectedIds.filter(id => !String(id).startsWith('temp_'));
+    
+    setSaving(true);
+    try {
+      if (realIds.length > 0) {
+        await axios.post(`${API}/seller/products/bulk-update-payment-mode`, { ids: realIds, paymentMode }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
+      setProducts(prev => prev.map(p => selectedIds.includes(p.id) ? { ...p, payment_mode: paymentMode } : p));
+      toast.success(`Payment Mode set to "${paymentMode}" for ${selectedIds.length} items`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update payment mode');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const bulkUpdateCondition = async (condition) => {
+    if (selectedIds.length === 0) return;
+    
+    const realIds = selectedIds.filter(id => !String(id).startsWith('temp_'));
+    
+    setSaving(true);
+    try {
+      if (realIds.length > 0) {
+        await axios.post(`${API}/seller/products/bulk-update-condition`, { ids: realIds, condition }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
+      setProducts(prev => prev.map(p => selectedIds.includes(p.id) ? { ...p, equipment_condition: condition } : p));
+      toast.success(`Equipment Condition set to "${condition}" for ${selectedIds.length} items`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update equipment condition');
     } finally {
       setSaving(false);
     }
@@ -376,7 +420,7 @@ export default function ProviderDashboard() {
       p.location || '',
       p.quantity || 0,
       p.service_type || 'Supply',
-      p.payment_mode || 'pre-payment/credit',
+      p.payment_mode || 'pre-payment',
       p.equipment_condition || 'New'
     ]);
     
@@ -430,7 +474,7 @@ export default function ProviderDashboard() {
       p.location || '',
       p.quantity || 0,
       p.service_type || 'Supply',
-      p.payment_mode || 'pre-payment/credit',
+      p.payment_mode || 'pre-payment',
       p.equipment_condition || 'New'
     ]);
     
@@ -454,7 +498,7 @@ export default function ProviderDashboard() {
       p.location || '',
       p.quantity || 0,
       p.service_type || 'Supply',
-      p.payment_mode || 'pre-payment/credit',
+      p.payment_mode || 'pre-payment',
       p.equipment_condition || 'New'
     ]);
     
@@ -679,7 +723,138 @@ export default function ProviderDashboard() {
                       </>
                     ) : (
                       <>
-                        {selectedIds.length === 0 && (
+                        {selectedIds.length > 0 ? (
+                          <div className="bulk-toolbar-row">
+                            {/* Selection count and clear/all */}
+                            <div className="bulk-group bulk-selection-group">
+                              <span className="bulk-selection-pill">
+                                ✓ {selectedIds.length} Selected
+                              </span>
+                              <button 
+                                type="button" 
+                                className="toolbar-btn toolbar-btn-subtle" 
+                                onClick={() => setSelectedIds([])}
+                                title="Clear selection"
+                              >
+                                Clear
+                              </button>
+                              {selectedIds.length < products.length && (
+                                <button 
+                                  type="button" 
+                                  className="toolbar-btn toolbar-btn-subtle" 
+                                  onClick={() => setSelectedIds(products.map(p => p.id))}
+                                  title="Select all products"
+                                >
+                                  Select All ({products.length})
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="toolbar-separator" />
+
+                            {/* Service Type Group */}
+                            <div className="bulk-group">
+                              <span className="bulk-group-title">Service:</span>
+                              <div className="bulk-btn-cluster">
+                                <button 
+                                  type="button" 
+                                  className="toolbar-btn bulk-action-pill" 
+                                  onClick={() => bulkUpdateServiceType('Supply')} 
+                                  disabled={saving}
+                                  title="Set Service Type to 'Supply' for all selected products"
+                                >
+                                  Supply
+                                </button>
+                                <button 
+                                  type="button" 
+                                  className="toolbar-btn bulk-action-pill" 
+                                  onClick={() => bulkUpdateServiceType('Supply and Service')} 
+                                  disabled={saving}
+                                  title="Set Service Type to 'Supply and Service' for all selected products"
+                                >
+                                  Supply & Svc
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="toolbar-separator" />
+
+                            {/* Payment Mode Group */}
+                            <div className="bulk-group">
+                              <span className="bulk-group-title">Payment:</span>
+                              <div className="bulk-btn-cluster">
+                                <button 
+                                  type="button" 
+                                  className="toolbar-btn bulk-action-pill" 
+                                  onClick={() => bulkUpdatePaymentMode('pre-payment')} 
+                                  disabled={saving}
+                                  title="Set Payment Mode to 'pre-payment' for all selected products"
+                                >
+                                  Pre-payment
+                                </button>
+                                <button 
+                                  type="button" 
+                                  className="toolbar-btn bulk-action-pill" 
+                                  onClick={() => bulkUpdatePaymentMode('credit')} 
+                                  disabled={saving}
+                                  title="Set Payment Mode to 'credit' for all selected products"
+                                >
+                                  Credit
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="toolbar-separator" />
+
+                            {/* Equipment Condition Group */}
+                            <div className="bulk-group">
+                              <span className="bulk-group-title">Condition:</span>
+                              <div className="bulk-btn-cluster">
+                                <button 
+                                  type="button" 
+                                  className="toolbar-btn bulk-action-pill bulk-pill-new" 
+                                  onClick={() => bulkUpdateCondition('New')} 
+                                  disabled={saving}
+                                  title="Set Condition to 'New' for all selected products"
+                                >
+                                  <span className="bulk-dot dot-new" /> New
+                                </button>
+                                <button 
+                                  type="button" 
+                                  className="toolbar-btn bulk-action-pill bulk-pill-refurb" 
+                                  onClick={() => bulkUpdateCondition('Refurbished')} 
+                                  disabled={saving}
+                                  title="Set Condition to 'Refurbished' for all selected products"
+                                >
+                                  <span className="bulk-dot dot-refurb" /> Refurbished
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="toolbar-separator" />
+
+                            {/* Actions Group */}
+                            <div className="bulk-group bulk-actions-group">
+                              <button 
+                                type="button" 
+                                className="toolbar-btn toolbar-btn-primary" 
+                                onClick={startEditSelected}
+                                title="Edit selected rows inline"
+                              >
+                                ✏️ Edit
+                              </button>
+                              <button 
+                                type="button" 
+                                className="toolbar-btn toolbar-btn-danger" 
+                                onClick={bulkDelete} 
+                                disabled={deleting}
+                                title="Delete selected products"
+                              >
+                                🗑️ Delete
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
                           <>
                             <button className="toolbar-btn toolbar-btn-primary" onClick={startBulkEdit}>
                               ✏️ Edit All
@@ -687,35 +862,11 @@ export default function ProviderDashboard() {
                             <button className="toolbar-btn" onClick={addNewRow}>
                               ➕ Add Row
                             </button>
-                          </>
-                        )}
-
-                        {selectedIds.length > 0 && (
-                          <>
-                            <button className="toolbar-btn toolbar-btn-primary" onClick={startEditSelected}>
-                              ✏️ Edit Selected
-                            </button>
                             <div className="toolbar-separator" />
-                            <button className="toolbar-btn" onClick={() => bulkUpdateServiceType('Supply')} disabled={saving}>
-                              Supply
-                            </button>
-                            <button className="toolbar-btn" onClick={() => bulkUpdateServiceType('Supply and Service')} disabled={saving}>
-                              Supply & Svc
-                            </button>
-                            <button className="toolbar-btn toolbar-btn-danger" onClick={bulkDelete} disabled={deleting}>
-                              🗑️ Delete
+                            <button className="toolbar-btn" onClick={() => setSelectedIds(products.map(p => p.id))}>
+                              ☑ Select All
                             </button>
                           </>
-                        )}
-
-                        <div className="toolbar-separator" />
-
-                        {selectedIds.length < products.length && (
-                          <button className="toolbar-btn" onClick={() => {
-                            setSelectedIds(products.map(p => p.id));
-                          }}>
-                            ☑ Select All
-                          </button>
                         )}
                       </>
                     )}
@@ -864,8 +1015,7 @@ export default function ProviderDashboard() {
                                   </select>
                                 </td>
                                 <td>
-                                  <select className="inline-edit-input" value={editDataMap[product.id]?.payment_mode || 'pre-payment/credit'} onChange={(e) => handleBulkEditChange(product.id, 'payment_mode', e.target.value)}>
-                                    <option value="pre-payment/credit">pre-payment/credit</option>
+                                  <select className="inline-edit-input" value={editDataMap[product.id]?.payment_mode || 'pre-payment'} onChange={(e) => handleBulkEditChange(product.id, 'payment_mode', e.target.value)}>
                                     <option value="pre-payment">pre-payment</option>
                                     <option value="credit">credit</option>
                                   </select>
@@ -918,7 +1068,7 @@ export default function ProviderDashboard() {
                                   {highlightText(product.quantity, searchQuery)}
                                 </td>
                                 <td>{highlightText(product.service_type || 'Supply', searchQuery)}</td>
-                                <td>{highlightText(product.payment_mode || 'pre-payment/credit', searchQuery)}</td>
+                                <td>{highlightText(product.payment_mode || 'pre-payment', searchQuery)}</td>
                                 <td>
                                   <span style={{
                                     display: 'inline-block',
