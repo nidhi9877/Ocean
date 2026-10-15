@@ -604,13 +604,17 @@ Boiler,Aalborg,Mission OS`;
     const fuzzyMatch = (str, pattern) => {
       if (!pattern) return true;
       if (!str) return false;
-      const s = String(str).toLowerCase();
+      const s = String(str).toLowerCase().trim();
       const p = pattern.toLowerCase().trim();
-      if (s.includes(p)) return true;
-      const sWords = s.split(/[\s-]+/);
-      const pWords = p.split(/[\s-]+/);
+      if (!s || !p) return false;
+      if (s === p) return true;
+      if (s.includes(p) || p.includes(s)) return true;
+      const sWords = s.split(/[\s-]+/).filter(Boolean);
+      const pWords = p.split(/[\s-]+/).filter(Boolean);
+      if (!sWords.length || !pWords.length) return false;
       return pWords.every(pw => sWords.some(sw => {
-        if (sw.includes(pw) || pw.includes(sw)) return true;
+        if (sw === pw) return true;
+        if (sw.length >= 3 && pw.length >= 3 && (sw.includes(pw) || pw.includes(sw))) return true;
         return levenshtein(sw, pw) <= (pw.length <= 4 ? 1 : 2);
       }));
     };
@@ -684,15 +688,18 @@ Boiler,Aalborg,Mission OS`;
     const fuzzyMatch = (str, pattern) => {
       if (!pattern) return true;
       if (!str) return false;
-      const s = String(str).toLowerCase();
+      const s = String(str).toLowerCase().trim();
       const p = pattern.toLowerCase().trim();
-      if (s.includes(p)) return true;
-      const sWords = s.split(/[\s-]+/);
-      const pWords = p.split(/[\s-]+/);
+      if (!s || !p) return false;
+      if (s === p) return true;
+      if (s.includes(p) || p.includes(s)) return true;
+      const sWords = s.split(/[\s-]+/).filter(Boolean);
+      const pWords = p.split(/[\s-]+/).filter(Boolean);
+      if (!sWords.length || !pWords.length) return false;
       return pWords.every(pw => sWords.some(sw => {
-        if (sw.includes(pw) || pw.includes(sw)) return true;
-        const maxDist = pw.length <= 4 ? 1 : 2;
-        return levenshtein(sw, pw) <= maxDist;
+        if (sw === pw) return true;
+        if (sw.length >= 3 && pw.length >= 3 && (sw.includes(pw) || pw.includes(sw))) return true;
+        return levenshtein(sw, pw) <= (pw.length <= 4 ? 1 : 2);
       }));
     };
 
