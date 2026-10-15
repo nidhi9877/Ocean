@@ -105,10 +105,9 @@ export default function MarineNewsTicker() {
 
   return (
     <div className="marine-ticker-banner" role="region" aria-label="Marine and Ocean News Ticker">
-      {/* Static Left Brand / Live Badge */}
-      <div className="marine-ticker-badge">
+      {/* Minimal Live Pulse Indicator (no 'OCEAN RADAR' text) */}
+      <div className="marine-ticker-indicator" title="Live Marine Stream">
         <span className="ticker-pulse-dot" />
-        <span className="ticker-badge-text">OCEAN RADAR</span>
       </div>
 
       {/* Scrolling Track Area */}

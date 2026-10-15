@@ -1994,52 +1994,40 @@ select.inline-edit-input {
 .marine-ticker-banner {
   display: flex;
   align-items: center;
-  background: linear-gradient(135deg, #091e3a 0%, #0c2d48 50%, #145da0 100%);
-  border: 1px solid rgba(56, 189, 248, 0.32);
-  box-shadow: 0 4px 20px rgba(10, 37, 64, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  height: 46px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  box-shadow: none;
+  border-radius: 10px;
+  height: 42px;
   margin-bottom: 1.5rem;
   overflow: hidden;
   position: relative;
   user-select: none;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 }
 
-.marine-ticker-badge {
+.marine-ticker-indicator {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  padding: 0 1.1rem;
-  background: linear-gradient(135deg, rgba(2, 132, 199, 0.9), rgba(14, 165, 233, 0.95));
+  justify-content: center;
+  padding: 0 0.85rem;
   height: 100%;
-  color: #ffffff;
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-family: 'Outfit', sans-serif;
-  white-space: nowrap;
-  position: relative;
-  z-index: 5;
-  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.25);
   flex-shrink: 0;
+  border-right: 1px solid var(--border-color);
 }
 
 .ticker-pulse-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: #4ade80;
-  box-shadow: 0 0 10px #4ade80;
+  background-color: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
   animation: tickerPulse 1.8s infinite;
 }
 
 @keyframes tickerPulse {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
-  70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+  70% { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
 .marine-ticker-track-wrapper {
@@ -2057,7 +2045,7 @@ select.inline-edit-input {
   display: flex;
   align-items: center;
   white-space: nowrap;
-  animation: marineTickerScroll 75s linear infinite;
+  animation: marineTickerScroll 90s linear infinite;
   will-change: transform;
 }
 
@@ -2077,7 +2065,7 @@ select.inline-edit-input {
   align-items: center;
   gap: 0.6rem;
   padding: 0 1.25rem;
-  color: #e2e8f0;
+  color: var(--text-primary);
   font-size: 0.88rem;
   font-weight: 500;
   flex-shrink: 0;
@@ -2085,49 +2073,50 @@ select.inline-edit-input {
 
 .ticker-icon {
   font-size: 1rem;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
 
 .ticker-category-tag {
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.05em;
-  padding: 0.2rem 0.5rem;
+  padding: 0.18rem 0.5rem;
   border-radius: 4px;
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: rgba(2, 132, 199, 0.08);
+  color: #0284c7;
+  border: 1px solid rgba(2, 132, 199, 0.25);
   white-space: nowrap;
   text-transform: uppercase;
 }
 
 .ticker-item-fact .ticker-category-tag {
-  background: rgba(45, 212, 191, 0.15);
-  color: #2dd4bf;
-  border-color: rgba(45, 212, 191, 0.35);
+  background: rgba(13, 148, 136, 0.08);
+  color: #0d9488;
+  border-color: rgba(13, 148, 136, 0.25);
 }
 
 .ticker-text {
-  color: #f1f5f9;
-  max-width: 650px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--text-primary);
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
   font-family: 'Inter', sans-serif;
+  font-weight: 500;
 }
 
 .ticker-link {
-  color: #ffffff;
+  color: var(--accent-primary);
   text-decoration: none;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
   transition: color 0.15s ease, text-decoration 0.15s ease;
   cursor: pointer;
+  font-weight: 600;
 }
 
 .ticker-link:hover {
-  color: #38bdf8;
+  color: var(--accent-hover);
   text-decoration: underline;
 }
 
@@ -2137,36 +2126,36 @@ select.inline-edit-input {
 }
 
 .ticker-source-tag {
-  font-size: 0.72rem;
-  color: #94a3b8;
+  font-size: 0.74rem;
+  color: var(--text-muted);
   font-style: italic;
   white-space: nowrap;
 }
 
 .ticker-separator {
-  color: #38bdf8;
-  opacity: 0.45;
+  color: var(--border-color);
+  opacity: 0.8;
   margin-left: 0.8rem;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
 }
 
 .marine-ticker-controls {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0 0.75rem;
-  background: rgba(10, 30, 60, 0.88);
+  padding: 0 0.6rem;
+  background: transparent;
   height: 100%;
   z-index: 5;
-  border-left: 1px solid rgba(56, 189, 248, 0.2);
+  border-left: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
 .ticker-control-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
-  color: #cbd5e1;
+  color: var(--text-secondary);
   font-size: 0.75rem;
   width: 26px;
   height: 26px;
@@ -2178,9 +2167,9 @@ select.inline-edit-input {
 }
 
 .ticker-control-btn:hover {
-  background: rgba(56, 189, 248, 0.25);
-  border-color: #38bdf8;
-  color: #ffffff;
+  background: rgba(2, 132, 199, 0.08);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
   transform: scale(1.05);
 }
 
@@ -2195,12 +2184,8 @@ select.inline-edit-input {
 
 @media (max-width: 768px) {
   .marine-ticker-banner {
-    height: 42px;
+    height: 38px;
     margin-bottom: 1rem;
-  }
-  .marine-ticker-badge {
-    padding: 0 0.6rem;
-    font-size: 0.68rem;
   }
   .ticker-source-tag {
     display: none;
@@ -2209,4 +2194,5 @@ select.inline-edit-input {
     display: none;
   }
 }
+
 
