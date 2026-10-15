@@ -728,18 +728,18 @@ export default function ProviderDashboard() {
                       <thead>
                         <tr>
                           <th>#</th>
-                          <th>Equipment</th>
-                          <th>Manufacturer</th>
-                          <th>Model Number</th>
-                          <th>Authorization</th>
-                          <th>Part Name</th>
-                          <th>Part Number</th>
-                          <th>Stock Location</th>
-                          <th>Quantity</th>
-                          <th>Service Type</th>
-                          <th>Payment Mode</th>
-                          <th>Equipment Condition</th>
-                          <th style={{ width: '65px', minWidth: '65px', textAlign: 'center', color: 'var(--danger)' }}>Delete</th>
+                          <th style={{ fontSize: '0.62rem' }}>Equipment</th>
+                          <th style={{ fontSize: '0.56rem' }}>Manufacturer</th>
+                          <th style={{ fontSize: '0.56rem' }}>Model Number</th>
+                          <th style={{ fontSize: '0.54rem' }}>Authorization</th>
+                          <th style={{ fontSize: '0.62rem' }}>Part Name</th>
+                          <th style={{ fontSize: '0.58rem' }}>Part Number</th>
+                          <th style={{ fontSize: '0.52rem' }}>Stock Location</th>
+                          <th style={{ fontSize: '0.62rem' }}>Quantity</th>
+                          <th style={{ fontSize: '0.58rem' }}>Service Type</th>
+                          <th style={{ fontSize: '0.56rem' }}>Payment Mode</th>
+                          <th style={{ fontSize: '0.45rem', letterSpacing: '-0.2px', paddingLeft: '2px', paddingRight: '2px' }}>Equipment Condition</th>
+                          <th style={{ width: '65px', minWidth: '65px', textAlign: 'center', color: 'var(--danger)', fontSize: '0.64rem' }}>Delete</th>
                         </tr>
                       </thead>
                       <tbody>

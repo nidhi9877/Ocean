@@ -1115,13 +1115,14 @@ body {
   z-index: 3;
 }
 
+.seller-products-table th,
 .provider-products-table th {
-  padding: 6px 10px;
-  font-size: 0.72rem;
+  padding: 6px 4px;
+  font-size: 0.60rem;
   font-weight: 700;
   white-space: nowrap;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: normal;
   color: #333;
   background: linear-gradient(180deg, #e8ecf1 0%, #dce1e8 100%);
   border: 1px solid #b0b8c8;
