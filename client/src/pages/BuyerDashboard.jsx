@@ -154,6 +154,9 @@ export default function BuyerDashboard() {
         const specs = r.data || [];
         setSavedSpecs(specs);
         setSpecsFilterActive(specs.length > 0);
+        if (specs.length > 0) {
+          setHasSearched(true);
+        }
       } catch (e) { console.error('Failed to load ship specs:', e); setSavedSpecs([]); setSpecsFilterActive(false); }
     })();
   }, [token, selectedShipId]);
@@ -488,15 +491,28 @@ Boiler,Aalborg,Mission OS`;
   };
 
   // ── Select a ship (or "All Equipment") ──
-  const handleSelectShip = (shipId) => {
+  const handleSelectShip = async (shipId) => {
     setSelectedShipId(shipId);
     setShowShipDropdown(false);
+    setSearchQuery('');
     if (!shipId) {
       setHasManuallyClearedShip(true);
       setSavedSpecs([]);
       setSpecsFilterActive(false);
     } else {
       setHasManuallyClearedShip(false);
+      setSpecsFilterActive(true);
+      setHasSearched(true);
+      if (token) {
+        try {
+          const r = await axios.get(`${API}/buyer/ships/${shipId}/specifications`, { headers: { Authorization: `Bearer ${token}` } });
+          const specs = r.data || [];
+          setSavedSpecs(specs);
+          setSpecsFilterActive(specs.length > 0);
+        } catch (e) {
+          console.error('Failed to load ship specs on select:', e);
+        }
+      }
     }
   };
 
@@ -806,7 +822,10 @@ Boiler,Aalborg,Mission OS`;
 
   const handleSearch = (e) => {
     e?.preventDefault();
-    if (!searchQuery.trim() && activeFilterCount === 0) { toast.error('Enter a search term or apply filters.'); return; }
+    if (!searchQuery.trim() && activeFilterCount === 0 && !selectedShipId) {
+      toast.error('Enter a search term or apply filters.');
+      return;
+    }
     setHasSearched(true);
     setShowRelated(false);
     setTimeout(() => {
@@ -935,7 +954,14 @@ Boiler,Aalborg,Mission OS`;
               <input
                 style={{ width:'100%', padding:'0.9rem 1.2rem 0.9rem 3rem', background:'var(--bg-surface)', border:'2px solid var(--border-color)', borderRadius:'var(--radius-full)', color:'var(--text-primary)', fontFamily:"'Inter',sans-serif", fontSize:'0.95rem', outline:'none', transition:'all 0.2s' }}
                 placeholder="Search by Part Name, Number, Equipment, or Manufacturer..."
-                value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                value={searchQuery}
+                onChange={e => {
+                  const val = e.target.value;
+                  setSearchQuery(val);
+                  if (!val.trim() && selectedShipId && savedSpecs.length > 0 && !specsFilterActive) {
+                    setSpecsFilterActive(true);
+                  }
+                }}
                 onFocus={e => { e.target.style.borderColor='var(--accent-primary)'; e.target.style.boxShadow='0 0 0 3px rgba(37,99,235,0.1)'; }}
                 onBlur={e => { e.target.style.borderColor='var(--border-color)'; e.target.style.boxShadow='none'; }}
               />
@@ -1213,13 +1239,13 @@ Boiler,Aalborg,Mission OS`;
         </div>
 
         {/* Results — Single unified table */}
-        {!hasSearched ? (
+        {(!hasSearched && !selectedShipId) ? (
           <div className="glass-card empty-state" style={{ padding:'4rem 2rem', textAlign:'center' }}>
             <span style={{ fontSize:'3.5rem', display:'block', marginBottom:'1rem', animation:'float 4s ease-in-out infinite' }}>⚓</span>
             <h3 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.3rem', fontWeight:'600', marginBottom:'0.5rem' }}>Search the Global Parts Database</h3>
-            <p style={{ color:'var(--text-muted)', maxWidth:400, margin:'0 auto' }}>Use the search bar or apply filters to find the marine spare parts you need.</p>
+            <p style={{ color:'var(--text-muted)', maxWidth:400, margin:'0 auto' }}>Use the search bar, select a ship, or apply filters to find the marine spare parts you need.</p>
           </div>
-        ) : displayedProducts.length === 0 && !(specsFilterActive && specClassification.some(sc => sc.status !== 'compatible')) ? (
+        ) : displayedProducts.length === 0 && !(specsFilterActive && specClassification.length > 0) ? (
           <div className="glass-card empty-state" style={{ padding:'3rem', textAlign:'center' }}>
             <span className="empty-state-icon">🌊</span>
             <p style={{ color:'var(--text-secondary)' }}>No products found. Try broadening your search.</p>
@@ -1227,9 +1253,45 @@ Boiler,Aalborg,Mission OS`;
         ) : (
           <>
             <div className="glass-card" style={{ padding:'1.25rem', overflowX:'auto' }}>
-              <p style={{ color:'var(--text-secondary)', fontSize:'0.95rem', marginBottom:'1rem' }}>
-                Found <strong style={{ color:'var(--accent-primary)' }}>{displayedProducts.length}</strong> result{displayedProducts.length!==1?'s':''}
-              </p>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'0.75rem', marginBottom:'1rem' }}>
+                <p style={{ color:'var(--text-secondary)', fontSize:'0.95rem', margin:0 }}>
+                  {selectedShip && specsFilterActive ? (
+                    <>
+                      Showing equipment for <strong style={{ color:'var(--text-primary)' }}>{selectedShip.ship_name}</strong>: {' '}
+                      <strong style={{ color:'#059669' }}>{displayedProducts.length}</strong> compatible product listings, {' '}
+                      <strong style={{ color:'#d97706' }}>{specClassification.filter(sc => sc.status === 'incompatible').length}</strong> with different specs, {' '}
+                      <strong style={{ color:'#dc2626' }}>{specClassification.filter(sc => sc.status === 'not_available').length}</strong> not in market
+                    </>
+                  ) : (
+                    <>Found <strong style={{ color:'var(--accent-primary)' }}>{displayedProducts.length}</strong> result{displayedProducts.length!==1?'s':''}</>
+                  )}
+                </p>
+                {selectedShip && !specsFilterActive && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSpecsFilterActive(true);
+                      setSearchQuery('');
+                      toast.success(`⚡ Restored full equipment view for ${selectedShip.ship_name}!`);
+                    }}
+                    style={{
+                      background:'rgba(5,150,105,0.1)',
+                      border:'1px solid rgba(5,150,105,0.3)',
+                      color:'#059669',
+                      padding:'0.3rem 0.85rem',
+                      borderRadius:'1rem',
+                      fontSize:'0.82rem',
+                      fontWeight:'600',
+                      cursor:'pointer',
+                      display:'inline-flex',
+                      alignItems:'center',
+                      gap:'0.35rem'
+                    }}
+                  >
+                    ⚡ Show All {selectedShip.ship_name} Equipment
+                  </button>
+                )}
+              </div>
               <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', fontSize:'0.9rem', minWidth:900 }}>
                 <thead>
                   <tr style={{ borderBottom:'2px solid var(--border-color)' }}>
@@ -1318,11 +1380,11 @@ Boiler,Aalborg,Mission OS`;
                     ))
                   }
 
-                  {/* Not available spec rows (red/pink) — appended at very bottom */}
+                  {/* Not available spec rows (red) — displayed in prominent red */}
                   {specsFilterActive && savedSpecs.length > 0 && specClassification
                     .filter(sc => sc.status === 'not_available')
                     .map((sc, i) => (
-                      <tr key={`unavail-${sc.spec.id || i}`} style={{ borderBottom:'1px solid rgba(239,68,68,0.2)', background:'rgba(239,68,68,0.06)' }}>
+                      <tr key={`unavail-${sc.spec.id || i}`} style={{ borderBottom:'1px solid rgba(239,68,68,0.25)', background:'rgba(239,68,68,0.08)' }}>
                         <td style={{ padding:'0.75rem', fontWeight:'600' }}>{sc.spec.equipment}</td>
                         <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{sc.spec.manufacturer || '-'}</td>
                         <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{sc.spec.model || '-'}</td>
@@ -1330,17 +1392,34 @@ Boiler,Aalborg,Mission OS`;
                           <span style={{
                             display:'inline-flex', alignItems:'center', gap:'0.3rem',
                             padding:'0.2rem 0.6rem', borderRadius:'1rem', fontSize:'0.72rem', fontWeight:'600',
-                            background:'rgba(239,68,68,0.12)', color:'#dc2626'
+                            background:'rgba(239,68,68,0.15)', color:'#dc2626'
                           }}>
                             ✗ Not Available
                           </span>
                         </td>
                         <td style={{ padding:'0.75rem', fontWeight:'bold', color:'var(--accent-primary)' }}>0</td>
-                        <td style={{ padding:'0.75rem', fontWeight:'bold', color:'var(--accent-primary)' }}>0</td>
+                        <td style={{ padding:'0.75rem', fontWeight:'bold', color:'#dc2626' }}>0</td>
                         <td colSpan={4} style={{ padding:'0.75rem' }}>
-                          <span style={{ fontSize:'0.78rem', color:'#dc2626', fontStyle:'italic', lineHeight:'1.3', whiteSpace:'nowrap' }}>
-                            {sc.reason || 'Not available in the market from any manufacturer or model'}
-                          </span>
+                          <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', flexWrap:'nowrap' }}>
+                            <span style={{
+                              padding:'0.35rem 0.8rem',
+                              fontSize:'0.78rem',
+                              borderRadius:'var(--radius-full)',
+                              background:'rgba(239,68,68,0.12)',
+                              color:'#dc2626',
+                              border:'1px solid rgba(239,68,68,0.25)',
+                              display:'inline-flex',
+                              alignItems:'center',
+                              gap:'0.35rem',
+                              fontWeight:'600',
+                              whiteSpace:'nowrap'
+                            }}>
+                              🚫 Not in Market
+                            </span>
+                            <span style={{ fontSize:'0.78rem', color:'#dc2626', fontStyle:'italic', lineHeight:'1.3', whiteSpace:'nowrap' }}>
+                              {sc.reason || 'Not available in the market from any manufacturer or model'}
+                            </span>
+                          </div>
                         </td>
                       </tr>
                     ))
