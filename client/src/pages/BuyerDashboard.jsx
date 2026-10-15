@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
+import MarineNewsTicker from '../components/MarineNewsTicker';
 
 const API = '/api';
 
@@ -1066,6 +1067,9 @@ export default function BuyerDashboard() {
     <>
       <Navbar />
       <div className="dashboard-container">
+        {/* Ocean & Marine News Ticker Banner */}
+        <MarineNewsTicker />
+
         {/* Header */}
         <div className="dashboard-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'1rem' }}>
           <div>

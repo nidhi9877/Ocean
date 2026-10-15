@@ -10,6 +10,7 @@ import providerRoutes from './routes/provider.js';
 import adminRoutes from './routes/admin.js';
 import buyerRoutes from './routes/buyer.js';
 import managementRoutes from './routes/management.js';
+import newsRoutes from './routes/news.js';
 import { initCronJobs } from './cron.js';
 
 dotenv.config();
@@ -31,6 +32,8 @@ app.use('/api/provider', providerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/buyer', buyerRoutes);
 app.use('/api/management', managementRoutes);
+app.use('/api/news', newsRoutes);
+app.use('/api/marine-news', newsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

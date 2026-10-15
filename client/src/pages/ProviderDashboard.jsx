@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
+import MarineNewsTicker from '../components/MarineNewsTicker';
 import UploadModal from '../components/UploadModal';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
@@ -485,6 +486,9 @@ export default function ProviderDashboard() {
       <Navbar />
 
       <div className="dashboard-container">
+        {/* Ocean & Marine News Ticker Banner */}
+        <MarineNewsTicker />
+
         <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <button 

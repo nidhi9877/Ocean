@@ -1989,3 +1989,224 @@ select.inline-edit-input {
   gap: 1rem;
 }
 .badge-management { background: #8b5cf6; color: white; }
+
+/* ===== Marine & Ocean Live News Ticker ===== */
+.marine-ticker-banner {
+  display: flex;
+  align-items: center;
+  background: linear-gradient(135deg, #091e3a 0%, #0c2d48 50%, #145da0 100%);
+  border: 1px solid rgba(56, 189, 248, 0.32);
+  box-shadow: 0 4px 20px rgba(10, 37, 64, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  height: 46px;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  position: relative;
+  user-select: none;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.marine-ticker-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0 1.1rem;
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.9), rgba(14, 165, 233, 0.95));
+  height: 100%;
+  color: #ffffff;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: 'Outfit', sans-serif;
+  white-space: nowrap;
+  position: relative;
+  z-index: 5;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+
+.ticker-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #4ade80;
+  box-shadow: 0 0 10px #4ade80;
+  animation: tickerPulse 1.8s infinite;
+}
+
+@keyframes tickerPulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+}
+
+.marine-ticker-track-wrapper {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  mask-image: linear-gradient(to right, transparent, black 25px, black calc(100% - 25px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 25px, black calc(100% - 25px), transparent 100%);
+}
+
+.marine-ticker-track {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  animation: marineTickerScroll 75s linear infinite;
+  will-change: transform;
+}
+
+.marine-ticker-track:hover,
+.marine-ticker-track.paused,
+.marine-ticker-track-wrapper.is-paused .marine-ticker-track {
+  animation-play-state: paused;
+}
+
+@keyframes marineTickerScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0 1.25rem;
+  color: #e2e8f0;
+  font-size: 0.88rem;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.ticker-icon {
+  font-size: 1rem;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.ticker-category-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.ticker-item-fact .ticker-category-tag {
+  background: rgba(45, 212, 191, 0.15);
+  color: #2dd4bf;
+  border-color: rgba(45, 212, 191, 0.35);
+}
+
+.ticker-text {
+  color: #f1f5f9;
+  max-width: 650px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+}
+
+.ticker-link {
+  color: #ffffff;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: color 0.15s ease, text-decoration 0.15s ease;
+  cursor: pointer;
+}
+
+.ticker-link:hover {
+  color: #38bdf8;
+  text-decoration: underline;
+}
+
+.ticker-external-icon {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.ticker-source-tag {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  font-style: italic;
+  white-space: nowrap;
+}
+
+.ticker-separator {
+  color: #38bdf8;
+  opacity: 0.45;
+  margin-left: 0.8rem;
+  font-size: 0.8rem;
+}
+
+.marine-ticker-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.75rem;
+  background: rgba(10, 30, 60, 0.88);
+  height: 100%;
+  z-index: 5;
+  border-left: 1px solid rgba(56, 189, 248, 0.2);
+  flex-shrink: 0;
+}
+
+.ticker-control-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ticker-control-btn:hover {
+  background: rgba(56, 189, 248, 0.25);
+  border-color: #38bdf8;
+  color: #ffffff;
+  transform: scale(1.05);
+}
+
+.ticker-control-btn.spinning {
+  animation: tickerSpin 1s linear infinite;
+}
+
+@keyframes tickerSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .marine-ticker-banner {
+    height: 42px;
+    margin-bottom: 1rem;
+  }
+  .marine-ticker-badge {
+    padding: 0 0.6rem;
+    font-size: 0.68rem;
+  }
+  .ticker-source-tag {
+    display: none;
+  }
+  .ticker-category-tag {
+    display: none;
+  }
+}
+
