@@ -108,7 +108,7 @@ export default function ProviderDashboard() {
         description: p.description || '',
         manufactured_at: p.manufactured_at || '',
         additional_info: p.additional_info || '',
-        media_link: p.media_link || '',
+        equipment_condition: p.equipment_condition || 'New',
         service_type: p.service_type || 'Supply',
         payment_mode: p.payment_mode || 'pre-payment/credit',
         id: p.id
@@ -136,7 +136,7 @@ export default function ProviderDashboard() {
           description: p.description || '',
           manufactured_at: p.manufactured_at || '',
           additional_info: p.additional_info || '',
-          media_link: p.media_link || '',
+          equipment_condition: p.equipment_condition || 'New',
           service_type: p.service_type || 'Supply',
           payment_mode: p.payment_mode || 'pre-payment/credit',
           id: p.id
@@ -176,7 +176,7 @@ export default function ProviderDashboard() {
           description: product.description || '',
           manufactured_at: product.manufactured_at || '',
           additional_info: product.additional_info || '',
-          media_link: product.media_link || '',
+          equipment_condition: product.equipment_condition || 'New',
           service_type: product.service_type || 'Supply',
           payment_mode: product.payment_mode || 'pre-payment/credit',
           id: product.id
@@ -208,7 +208,7 @@ export default function ProviderDashboard() {
       price: 0,
       description: '',
       additional_info: '',
-      media_link: '',
+      equipment_condition: 'New',
       service_type: 'Supply',
       payment_mode: 'pre-payment/credit'
     };
@@ -363,7 +363,7 @@ export default function ProviderDashboard() {
     if (products.length === 0) return;
     
     // Headers: Equipment, Manufacturer, Model number, Authorization, Part Name, Part Numer, Stock location, Qunatity, Service Type
-    const headers = ['Equipment', 'Manufacturer', 'Model number', 'Authorization', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type'];
+    const headers = ['Equipment', 'Manufacturer', 'Model number', 'Authorization', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type', 'Payment Mode', 'Equipment Condition'];
     
     const rows = products.map(p => [
       p.category || '',
@@ -374,7 +374,9 @@ export default function ProviderDashboard() {
       p.part_number || '',
       p.location || '',
       p.quantity || 0,
-      p.service_type || 'Supply'
+      p.service_type || 'Supply',
+      p.payment_mode || 'pre-payment/credit',
+      p.equipment_condition || 'New'
     ]);
     
     const csvContent = [
@@ -416,7 +418,7 @@ export default function ProviderDashboard() {
 
   const downloadExcel = () => {
     if (products.length === 0) return;
-    const headers = ['Equipment', 'Manufacturer', 'Model number', 'Authorization', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type'];
+    const headers = ['Equipment', 'Manufacturer', 'Model number', 'Authorization', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type', 'Payment Mode', 'Equipment Condition'];
     const rows = products.map(p => [
       p.category || '',
       p.brand || '',
@@ -426,7 +428,9 @@ export default function ProviderDashboard() {
       p.part_number || '',
       p.location || '',
       p.quantity || 0,
-      p.service_type || 'Supply'
+      p.service_type || 'Supply',
+      p.payment_mode || 'pre-payment/credit',
+      p.equipment_condition || 'New'
     ]);
     
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -438,7 +442,7 @@ export default function ProviderDashboard() {
   const downloadPDF = () => {
     if (products.length === 0) return;
     const doc = new jsPDF();
-    const headers = [['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Part Name', 'Part No.', 'Location', 'Qty', 'Service']];
+    const headers = [['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Part Name', 'Part No.', 'Location', 'Qty', 'Service', 'Payment', 'Condition']];
     const rows = products.map(p => [
       p.category || '',
       p.brand || '',
@@ -448,7 +452,9 @@ export default function ProviderDashboard() {
       p.part_number || '',
       p.location || '',
       p.quantity || 0,
-      p.service_type || 'Supply'
+      p.service_type || 'Supply',
+      p.payment_mode || 'pre-payment/credit',
+      p.equipment_condition || 'New'
     ]);
     
     doc.autoTable({
@@ -732,8 +738,8 @@ export default function ProviderDashboard() {
                           <th>Quantity</th>
                           <th>Service Type</th>
                           <th>Payment Mode</th>
-                          <th>Media Link</th>
-                          <th style={{ width: '65px', minWidth: '65px', textAlign: 'center', color: 'var(--danger)' }}>Remove</th>
+                          <th>Equipment Condition</th>
+                          <th style={{ width: '65px', minWidth: '65px', textAlign: 'center', color: 'var(--danger)' }}>Delete</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -750,7 +756,7 @@ export default function ProviderDashboard() {
                             (p.location && p.location.toLowerCase().includes(q)) ||
                             (p.manufactured_at && String(p.manufactured_at).toLowerCase().includes(q)) ||
                             (p.service_type && p.service_type.toLowerCase().includes(q)) ||
-                            (p.media_link && p.media_link.toLowerCase().includes(q)) ||
+                            (p.equipment_condition && p.equipment_condition.toLowerCase().includes(q)) ||
                             (p.quantity !== undefined && p.quantity !== null && String(p.quantity).includes(q))
                           );
                         }).sort((a, b) => {
@@ -860,7 +866,16 @@ export default function ProviderDashboard() {
                                     <option value="credit">credit</option>
                                   </select>
                                 </td>
-                                <td>{editInput(product.id, 'media_link')}</td>
+                                <td>
+                                  <select
+                                    className="inline-edit-input"
+                                    value={editDataMap[product.id]?.equipment_condition || 'New'}
+                                    onChange={(e) => handleBulkEditChange(product.id, 'equipment_condition', e.target.value)}
+                                  >
+                                    <option value="New">New</option>
+                                    <option value="Refurbished">Refurbished</option>
+                                  </select>
+                                </td>
                                 <td style={{ textAlign: 'center', backgroundColor: '#fee2e2' }}>
                                   <button
                                     className="table-action-btn delete-btn"
@@ -901,9 +916,17 @@ export default function ProviderDashboard() {
                                 <td>{highlightText(product.service_type || 'Supply', searchQuery)}</td>
                                 <td>{highlightText(product.payment_mode || 'pre-payment/credit', searchQuery)}</td>
                                 <td>
-                                  {product.media_link ? (
-                                    <a href={product.media_link.startsWith('http') ? product.media_link : `https://${product.media_link}`} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'underline' }}>View</a>
-                                  ) : '-'}
+                                  <span style={{
+                                    display: 'inline-block',
+                                    padding: '0.2rem 0.55rem',
+                                    borderRadius: '4px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    background: (product.equipment_condition === 'Refurbished') ? 'rgba(234, 179, 8, 0.15)' : 'rgba(34, 197, 94, 0.15)',
+                                    color: (product.equipment_condition === 'Refurbished') ? '#b45309' : '#15803d'
+                                  }}>
+                                    {highlightText(product.equipment_condition || 'New', searchQuery)}
+                                  </span>
                                 </td>
                                 <td style={{ textAlign: 'center', backgroundColor: '#fee2e2' }}>
                                   <button

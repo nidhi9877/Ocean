@@ -54,6 +54,7 @@ export default function AddCsvData() {
         const colStockLocation = findCol(['stocklocation']);
         const colQunatity = findCol(['qunatity', 'quantity']);
         const colMail = findCol(['mail', 'email']);
+        const colCondition = findCol(['equipmentcondition', 'condition', 'equipment_condition']);
 
         // Build products from CSV rows — no mandatory column requirement
         const validProducts = [];
@@ -89,7 +90,8 @@ export default function AddCsvData() {
             quantity: qty,
             price: '0',
             email: (colMail && row[colMail]) ? row[colMail] : (user?.email || ''),
-            additionalInfo: ''
+            additionalInfo: '',
+            equipment_condition: colCondition && row[colCondition] ? (String(row[colCondition]).trim().toLowerCase().includes('refurb') ? 'Refurbished' : 'New') : 'New'
           });
         }
 

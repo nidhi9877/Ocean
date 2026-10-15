@@ -56,6 +56,7 @@ export default function UploadModal({ onClose, onSuccess }) {
     const colStockLocation = findCol(firstRow, ['stocklocation', 'location']);
     const colQunatity = findCol(firstRow, ['qunatity', 'quantity', 'qty', 'quantiy']);
     const colPaymentMode = findCol(firstRow, ['paymentmode', 'payment', 'paymode']);
+    const colCondition = findCol(firstRow, ['equipmentcondition', 'condition', 'equipment_condition']);
 
     const validProducts = [];
     let skippedRows = 0;
@@ -89,7 +90,8 @@ export default function UploadModal({ onClose, onSuccess }) {
         price: '0',
         email: user?.email || '',
         additionalInfo: '',
-        payment_mode: colPaymentMode ? (row[colPaymentMode] || 'pre-payment/credit') : 'pre-payment/credit'
+        payment_mode: colPaymentMode ? (row[colPaymentMode] || 'pre-payment/credit') : 'pre-payment/credit',
+        equipment_condition: colCondition && row[colCondition] ? (String(row[colCondition]).trim().toLowerCase().includes('refurb') ? 'Refurbished' : 'New') : 'New'
       });
     }
 

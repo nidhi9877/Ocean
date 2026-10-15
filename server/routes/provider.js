@@ -55,7 +55,7 @@ router.post('/register', authenticateToken, async (req, res) => {
         if (qty > 0) {
           await sql`
             INSERT INTO products (
-              provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, service_type, payment_mode
+              provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode
             )
             VALUES (
               ${providerId}, 
@@ -71,6 +71,7 @@ router.post('/register', authenticateToken, async (req, res) => {
               ${product.description || null},
               ${product.additionalInfo || null},
               ${product.mediaLink || null},
+              ${product.equipmentCondition || product.equipment_condition || 'New'},
               ${product.serviceType || 'Supply'},
               ${product.payment_mode || 'pre-payment/credit'}
             )
@@ -120,7 +121,7 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
       if (qty > 0) {
         await sql`
           INSERT INTO products (
-            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, service_type, payment_mode, department
+            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode, department
           )
           VALUES (
             ${providerId}, 
@@ -136,6 +137,7 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
             ${p.description || null},
             ${p.additionalInfo || null},
             ${p.mediaLink || null},
+            ${p.equipmentCondition || p.equipment_condition || 'New'},
             ${p.serviceType || 'Supply'},
             ${p.payment_mode || 'pre-payment/credit'},
             ${department || null}
@@ -379,6 +381,7 @@ router.put('/products/:id', authenticateToken, async (req, res) => {
         description = ${description || null},
         additional_info = ${additional_info || null},
         media_link = ${media_link || null},
+        equipment_condition = ${req.body.equipment_condition || req.body.equipmentCondition || 'New'},
         service_type = ${req.body.service_type || 'Supply'},
         payment_mode = ${req.body.payment_mode || 'pre-payment/credit'},
         updated_at = NOW()
@@ -464,7 +467,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
       if (!p.id || String(p.id).startsWith('temp_')) {
         await sql`
           INSERT INTO products (
-            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, service_type, payment_mode
+            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode
           )
           VALUES (
             ${providerId}, 
@@ -480,6 +483,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
             ${p.description || null},
             ${p.additional_info || null},
             ${p.media_link || null},
+            ${p.equipment_condition || 'New'},
             ${p.service_type || 'Supply'},
             ${p.payment_mode || 'pre-payment/credit'}
           )
@@ -499,6 +503,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
             description = ${p.description || null},
             additional_info = ${p.additional_info || null},
             media_link = ${p.media_link || null},
+            equipment_condition = ${p.equipment_condition || 'New'},
             service_type = ${p.service_type || 'Supply'},
             payment_mode = ${p.payment_mode || 'pre-payment/credit'},
             updated_at = NOW()
