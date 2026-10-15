@@ -28,10 +28,10 @@ export default function AddBulkData() {
 
   const fetchProfile = async () => {
     try {
-      const res = await axios.get(`${API}/provider/profile`, {
+      const res = await axios.get(`${API}/seller/profile`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const p = res.data.provider;
+      const p = res.data.seller || res.data.provider;
       setProvider(p);
       
       // Initialize rows with provider defaults
@@ -115,12 +115,12 @@ export default function AddBulkData() {
     setSubmitting(true);
     try {
       await axios.post(
-        `${API}/provider/bulk-products`,
+        `${API}/seller/bulk-products`,
         { products: validRows },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setSuccess(`Successfully added ${validRows.length} products!`);
-      setTimeout(() => navigate('/provider/dashboard'), 2000);
+      setTimeout(() => navigate('/seller/dashboard'), 2000);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to add products.');
     } finally {

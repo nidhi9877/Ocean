@@ -101,7 +101,7 @@ export default function AddCsvData() {
 
         try {
           await axios.post(
-            `${API}/provider/bulk-products`,
+            `${API}/seller/bulk-products`,
             { products: validProducts },
             { headers: { Authorization: `Bearer ${token}` } }
           );
@@ -112,7 +112,7 @@ export default function AddCsvData() {
             setSuccess(`Success! Uploaded ${validProducts.length} products successfully.`);
           }
 
-          setTimeout(() => navigate('/provider/dashboard'), 2500);
+          setTimeout(() => navigate('/seller/dashboard'), 2500);
         } catch (err) {
           setError(err.response?.data?.error || 'Failed to upload products from CSV.');
         } finally {
@@ -180,7 +180,7 @@ export default function AddCsvData() {
             </div>
 
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <button type="button" className="btn btn-secondary" onClick={() => navigate('/provider/add-options')} style={{ flex: 1 }}>
+              <button type="button" className="btn btn-secondary" onClick={() => navigate('/seller/add-options')} style={{ flex: 1 }}>
                 ← Back
               </button>
               <button type="submit" className="btn btn-primary" disabled={!file || loading} style={{ flex: 1 }}>

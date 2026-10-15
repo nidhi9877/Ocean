@@ -248,6 +248,7 @@ body {
   letter-spacing: 0.5px;
 }
 
+.badge-seller,
 .badge-provider {
   background: var(--success-bg);
   color: var(--success);
@@ -711,7 +712,8 @@ body {
   color: var(--text-muted);
 }
 
-/* ===== Provider Form ===== */
+/* ===== Seller / Provider Form ===== */
+.seller-form-card,
 .provider-form-card {
   padding: 2.5rem;
 }

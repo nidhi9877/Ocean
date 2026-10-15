@@ -12,7 +12,7 @@ export default function Navbar() {
 
   return (
     <nav className="navbar">
-      <Link to={user?.role === 'provider' ? '/provider/dashboard' : user?.role === 'management' ? '/management/dashboard' : '/buyer/dashboard'} className="navbar-brand">
+      <Link to={user?.role === 'seller' || user?.role === 'provider' ? '/seller/dashboard' : user?.role === 'management' ? '/management/dashboard' : '/buyer/dashboard'} className="navbar-brand">
         <span className="navbar-logo">⚓</span>
         <span className="navbar-title">MarineStockHub</span>
       </Link>
@@ -21,8 +21,8 @@ export default function Navbar() {
         {user && (
           <span className="nav-user">
             <span>{user.username}</span>
-            <span className={`nav-user-badge ${user.role === 'provider' ? 'badge-provider' : user.role === 'management' ? 'badge-management' : 'badge-buyer'}`}>
-              {user.role}
+            <span className={`nav-user-badge ${user.role === 'seller' || user.role === 'provider' ? 'badge-seller' : user.role === 'management' ? 'badge-management' : 'badge-buyer'}`}>
+              {user.role === 'provider' ? 'seller' : user.role}
             </span>
           </span>
         )}

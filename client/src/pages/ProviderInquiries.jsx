@@ -57,7 +57,7 @@ export default function ProviderInquiries() {
     setSelectedInquiry(inquiry);
     
     const subject = `Regarding your inquiry for ${inquiry.product_name}`;
-    const body = `Dear ${inquiry.buyer_username},\n\nThank you for your inquiry regarding our product.\n\n--- INQUIRY DETAILS ---\nProduct: ${inquiry.product_name}\nPart Number: ${inquiry.part_number || 'N/A'}\nDestination: ${inquiry.destination_location}\n\n--- VESSEL DETAILS ---\nShip Name: ${inquiry.ship_name} (${inquiry.ship_type})\nIMO Number: ${inquiry.imo_number}\n\nWe would love to discuss this further. Please reply to this email so we can coordinate the details.\n\nBest regards,\nVendor Team`;
+    const body = `Dear ${inquiry.buyer_username},\n\nThank you for your inquiry regarding our product.\n\n--- INQUIRY DETAILS ---\nProduct: ${inquiry.product_name}\nPart Number: ${inquiry.part_number || 'N/A'}\nDestination: ${inquiry.destination_location}\n\n--- VESSEL DETAILS ---\nShip Name: ${inquiry.ship_name} (${inquiry.ship_type})\nIMO Number: ${inquiry.imo_number}\n\nWe would love to discuss this further. Please reply to this email so we can coordinate the details.\n\nBest regards,\nSeller Team`;
     
     setShowCc(!!inquiry.cc);
     setShowBcc(!!inquiry.bcc);
@@ -93,7 +93,7 @@ export default function ProviderInquiries() {
 
   const fetchInquiries = async () => {
     try {
-      const res = await axios.get(`${API}/provider/inquiries`, {
+      const res = await axios.get(`${API}/seller/inquiries`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setInquiries(res.data);
@@ -114,7 +114,7 @@ export default function ProviderInquiries() {
             <h1>Incoming Inquiries 📨</h1>
             <p>Review and respond to messages from interested buyers.</p>
           </div>
-          <Link to="/provider/dashboard" className="btn btn-secondary">
+          <Link to="/seller/dashboard" className="btn btn-secondary">
             ← Back to Dashboard
           </Link>
         </div>

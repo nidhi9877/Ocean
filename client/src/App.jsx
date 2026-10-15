@@ -33,10 +33,16 @@ function ProtectedRoute({ children, allowedRole }) {
     return <Navigate to="/" replace />;
   }
 
-  if (allowedRole && user.role !== allowedRole) {
-    if (user.role === 'provider') return <Navigate to="/provider/dashboard" replace />;
-    if (user.role === 'management') return <Navigate to="/management/dashboard" replace />;
-    return <Navigate to="/dashboard" replace />;
+  const isUserSeller = user.role === 'seller' || user.role === 'provider';
+
+  if (allowedRole) {
+    const isAllowedSeller = (allowedRole === 'seller' || allowedRole === 'provider') && isUserSeller;
+    const isAllowedExact = user.role === allowedRole;
+    if (!isAllowedSeller && !isAllowedExact) {
+      if (isUserSeller) return <Navigate to="/seller/dashboard" replace />;
+      if (user.role === 'management') return <Navigate to="/management/dashboard" replace />;
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   return children;
@@ -53,6 +59,8 @@ function AppRoutes() {
     );
   }
 
+  const isUserSeller = user?.role === 'seller' || user?.role === 'provider';
+
   return (
     <Routes>
       <Route
@@ -63,11 +71,15 @@ function AppRoutes() {
         path="/login"
         element={
           user ? (
-             <Navigate to={user.role === 'provider' ? '/provider/dashboard' : user.role === 'management' ? '/management/dashboard' : '/dashboard'} replace />
+             <Navigate to={isUserSeller ? '/seller/dashboard' : user.role === 'management' ? '/management/dashboard' : '/dashboard'} replace />
           ) : (
             <LoginPage />
           )
         }
+      />
+      <Route
+        path="/seller/register"
+        element={<VendorRegister />}
       />
       <Route
         path="/vendor/register"
@@ -82,7 +94,7 @@ function AppRoutes() {
         element={<AdminDashboard />}
       />
       <Route
-        path="/provider/register"
+        path="/seller/register-details"
         element={
           <ProtectedRoute>
             <ProviderForm />
@@ -90,50 +102,69 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/provider/dashboard"
+        path="/provider/register"
         element={
-          <ProtectedRoute allowedRole="provider">
+          <ProtectedRoute>
+            <ProviderForm />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ── Seller Dashboard & Features ── */}
+      <Route
+        path="/seller/dashboard"
+        element={
+          <ProtectedRoute allowedRole="seller">
             <ProviderDashboard />
           </ProtectedRoute>
         }
       />
       <Route
-        path="/management/dashboard"
+        path="/seller/inquiries"
         element={
-          <ProtectedRoute allowedRole="management">
-            <ManagementDashboard />
+          <ProtectedRoute allowedRole="seller">
+            <ProviderInquiries />
           </ProtectedRoute>
         }
       />
       <Route
-        path="/provider/add-options"
+        path="/seller/add-options"
         element={
-          <ProtectedRoute allowedRole="provider">
+          <ProtectedRoute allowedRole="seller">
             <AddDataOptions />
           </ProtectedRoute>
         }
       />
       <Route
-        path="/provider/add-csv"
+        path="/seller/add-csv"
         element={
-          <ProtectedRoute allowedRole="provider">
+          <ProtectedRoute allowedRole="seller">
             <AddCsvData />
           </ProtectedRoute>
         }
       />
       <Route
-        path="/provider/add-data"
+        path="/seller/add-data"
         element={
-          <ProtectedRoute allowedRole="provider">
+          <ProtectedRoute allowedRole="seller">
             <AddBulkData />
           </ProtectedRoute>
         }
       />
+
+      {/* ── Backward-compatible Provider Routes (Redirects) ── */}
+      <Route path="/provider/dashboard" element={<Navigate to="/seller/dashboard" replace />} />
+      <Route path="/provider/inquiries" element={<Navigate to="/seller/inquiries" replace />} />
+      <Route path="/provider/add-options" element={<Navigate to="/seller/add-options" replace />} />
+      <Route path="/provider/add-csv" element={<Navigate to="/seller/add-csv" replace />} />
+      <Route path="/provider/add-data" element={<Navigate to="/seller/add-data" replace />} />
+
+      {/* ── Management & Buyer Routes ── */}
       <Route
-        path="/provider/inquiries"
+        path="/management/dashboard"
         element={
-          <ProtectedRoute allowedRole="provider">
-            <ProviderInquiries />
+          <ProtectedRoute allowedRole="management">
+            <ManagementDashboard />
           </ProtectedRoute>
         }
       />

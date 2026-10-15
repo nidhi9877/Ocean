@@ -26,6 +26,7 @@ app.use(express.json());
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/seller', providerRoutes);
 app.use('/api/provider', providerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/buyer', buyerRoutes);
@@ -65,16 +66,16 @@ app.get('/api/deal/accept', async (req, res) => {
           <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 50px; text-align: center; background: #0f172a; height: 100vh; color: white;">
             <div style="background: #1e293b; padding: 40px; border-radius: 12px; max-width: 500px; margin: 0 auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid rgba(239,68,68,0.5);">
               <h1 style="color: #ef4444; margin-top: 0;">❌ Too Slow!</h1>
-              <p style="color: #cbd5e1; font-size: 16px; line-height: 1.5;">Another vendor has already secured this contract.</p>
-              <p style="color: #94a3b8; font-size: 14px; margin-bottom: 30px;">In MarineStockHub, the first vendor to accept the target price wins the deal. Keep an eye out for the next broadcast.</p>
-              <a href="http://localhost:5174/provider/dashboard" style="display: inline-block; background: #0ea5e9; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold;">Go to Provider Dashboard</a>
+              <p style="color: #cbd5e1; font-size: 16px; line-height: 1.5;">Another seller has already secured this contract.</p>
+              <p style="color: #94a3b8; font-size: 14px; margin-bottom: 30px;">In MarineStockHub, the first seller to accept the target price wins the deal. Keep an eye out for the next broadcast.</p>
+              <a href="/seller/dashboard" style="display: inline-block; background: #0ea5e9; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold;">Go to Seller Dashboard</a>
             </div>
           </div>
         `);
       }
     }
 
-    // 3. Mark this vendor as the winner
+    // 3. Mark this seller as the winner
     await sql`UPDATE inquiries SET status = 'accepted' WHERE id = ${dealId}`;
 
     // 4. Mark all other competing inquiries in this broadcast as missed
@@ -92,7 +93,7 @@ app.get('/api/deal/accept', async (req, res) => {
           <h1 style="color: #22c55e; margin-top: 0;">✅ Deal Secured!</h1>
           <p style="color: #cbd5e1; font-size: 16px; line-height: 1.5;">You were the first to accept. The contract is yours.</p>
           <p style="color: #94a3b8; font-size: 14px; margin-bottom: 30px;">The buyer has been notified. You can reply directly to the email to contact the buyer.</p>
-          <a href="http://localhost:5174/provider/dashboard" style="display: inline-block; background: #0ea5e9; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold;">Go to Provider Dashboard</a>
+          <a href="/seller/dashboard" style="display: inline-block; background: #0ea5e9; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold;">Go to Seller Dashboard</a>
         </div>
       </div>
     `);

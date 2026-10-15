@@ -55,10 +55,10 @@ export default function ProviderDashboard() {
 
   const fetchProfile = async () => {
     try {
-      const res = await axios.get(`${API}/provider/profile`, {
+      const res = await axios.get(`${API}/seller/profile`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setProvider(res.data.provider);
+      setProvider(res.data.seller || res.data.provider);
       const fetchedProducts = res.data.products || [];
       setProducts(fetchedProducts);
       
@@ -235,7 +235,7 @@ export default function ProviderDashboard() {
     setSaving(true);
     try {
       const updatedProducts = editingIds.map(id => editDataMap[id]);
-      await axios.post(`${API}/provider/products/bulk-update`, { products: updatedProducts }, {
+      await axios.post(`${API}/seller/products/bulk-update`, { products: updatedProducts }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       // Refetch profile to get the real database IDs for any newly inserted rows
@@ -283,7 +283,7 @@ export default function ProviderDashboard() {
 
     setDeleting(true);
     try {
-      await axios.delete(`${API}/provider/products/${id}`, {
+      await axios.delete(`${API}/seller/products/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setProducts(prev => prev.filter(p => p.id !== id));
@@ -305,7 +305,7 @@ export default function ProviderDashboard() {
     setDeleting(true);
     try {
       if (realIds.length > 0) {
-        await axios.post(`${API}/provider/products/bulk-delete`, { ids: realIds }, {
+        await axios.post(`${API}/seller/products/bulk-delete`, { ids: realIds }, {
           headers: { Authorization: `Bearer ${token}` }
         });
       }
@@ -327,7 +327,7 @@ export default function ProviderDashboard() {
     setSaving(true);
     try {
       if (realIds.length > 0) {
-        await axios.post(`${API}/provider/products/bulk-update-service-type`, { ids: realIds, serviceType }, {
+        await axios.post(`${API}/seller/products/bulk-update-service-type`, { ids: realIds, serviceType }, {
           headers: { Authorization: `Bearer ${token}` }
         });
       }
@@ -346,7 +346,7 @@ export default function ProviderDashboard() {
     if (!window.confirm('WARNING: Are you sure you want to delete ALL your products? This action cannot be undone.')) return;
     setDeleting(true);
     try {
-      await axios.delete(`${API}/provider/products`, {
+      await axios.delete(`${API}/seller/products`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setProducts([]);
@@ -386,7 +386,7 @@ export default function ProviderDashboard() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'provider_products.csv');
+    link.setAttribute('download', 'seller_products.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -432,7 +432,7 @@ export default function ProviderDashboard() {
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Products");
-    XLSX.writeFile(wb, "provider_products.xlsx");
+    XLSX.writeFile(wb, "seller_products.xlsx");
   };
 
   const downloadPDF = () => {
@@ -459,7 +459,7 @@ export default function ProviderDashboard() {
       headStyles: { fillColor: [59, 130, 246] }
     });
     
-    doc.save('provider_products.pdf');
+    doc.save('seller_products.pdf');
   };
 
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
@@ -489,7 +489,7 @@ export default function ProviderDashboard() {
               ☰
             </button>
             <div>
-              <h1>Provider Dashboard 🏭</h1>
+              <h1>Seller Dashboard 🏭</h1>
               <p>Manage your company profile and product listings</p>
             </div>
           </div>
@@ -547,7 +547,7 @@ export default function ProviderDashboard() {
 
             <button 
               className="btn btn-secondary"
-              onClick={() => navigate('/provider/inquiries')}
+              onClick={() => navigate('/seller/inquiries')}
             >
               📨 View Inquiries
             </button>
@@ -561,7 +561,7 @@ export default function ProviderDashboard() {
         ) : !provider ? (
           <div className="glass-card empty-state">
             <span className="empty-state-icon">📋</span>
-            <h3>No provider profile found</h3>
+            <h3>No seller profile found</h3>
             <p>Please complete your registration to get started.</p>
           </div>
         ) : (
@@ -717,8 +717,8 @@ export default function ProviderDashboard() {
                   </div>
 
                   {/* The Spreadsheet Grid */}
-                  <div className="provider-products-table-wrap" style={{ borderTop: 'none', borderRadius: '0' }}>
-                    <table className="data-table provider-products-table">
+                  <div className="seller-products-table-wrap provider-products-table-wrap" style={{ borderTop: 'none', borderRadius: '0' }}>
+                    <table className="data-table seller-products-table provider-products-table">
                       <thead>
                         <tr>
                           <th>#</th>

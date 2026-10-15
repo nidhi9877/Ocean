@@ -15,7 +15,7 @@ export default function WelcomePage() {
 
   // If already logged in, redirect to dashboard
   if (user) {
-    return <Navigate to={user.role === 'provider' ? '/provider/dashboard' : '/dashboard'} replace />;
+    return <Navigate to={user.role === 'seller' || user.role === 'provider' ? '/seller/dashboard' : '/dashboard'} replace />;
   }
 
   return (
@@ -29,7 +29,7 @@ export default function WelcomePage() {
       </h1>
 
       <p className="hero-subtitle">
-        Your trusted marketplace for premium marine spare parts and equipment. Connect with verified global vendors instantly.
+        Your trusted marketplace for premium marine spare parts and equipment. Connect with verified global sellers instantly.
       </p>
 
       <div className="hero-cta">

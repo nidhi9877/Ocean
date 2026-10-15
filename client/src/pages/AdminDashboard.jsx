@@ -67,8 +67,8 @@ export default function AdminDashboard() {
         </div>
         <div className="stat-card">
           <div className="stat-icon">🏭</div>
-          <div className="stat-value">{stats.totalProviders}</div>
-          <div className="stat-label">Registered Providers</div>
+          <div className="stat-value">{stats.totalSellers ?? stats.totalProviders}</div>
+          <div className="stat-label">Registered Sellers</div>
         </div>
         <div className="stat-card">
           <div className="stat-icon">⚙️</div>
@@ -94,7 +94,7 @@ export default function AdminDashboard() {
           className={`tab-btn ${activeTab === 'providers' ? 'active' : ''}`}
           onClick={() => setActiveTab('providers')}
         >
-          Vendors
+          Sellers
         </button>
         <button 
           className={`tab-btn ${activeTab === 'buyers' ? 'active' : ''}`}
@@ -131,8 +131,8 @@ export default function AdminDashboard() {
                     <td>#{user.id}</td>
                     <td style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>{user.username}</td>
                     <td>
-                      <span className={`nav-user-badge ${user.role === 'provider' ? 'badge-provider' : 'badge-buyer'}`}>
-                        {user.role}
+                      <span className={`nav-user-badge ${user.role === 'provider' || user.role === 'seller' ? 'badge-seller' : 'badge-buyer'}`}>
+                        {user.role === 'provider' ? 'seller' : user.role}
                       </span>
                     </td>
                     <td>{new Date(user.created_at).toLocaleDateString()}</td>
@@ -151,7 +151,7 @@ export default function AdminDashboard() {
 
         {activeTab === 'providers' && (
           <div>
-            <h2 style={{ marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif", background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Vendor Profiles</h2>
+            <h2 style={{ marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif", background: 'var(--accent-gradient)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Seller Profiles</h2>
             <table className="data-table">
               <thead>
                 <tr>
@@ -181,7 +181,7 @@ export default function AdminDashboard() {
                 ))}
               </tbody>
             </table>
-            {providers.length === 0 && <div className="empty-state"><p>No vendors registered yet.</p></div>}
+            {providers.length === 0 && <div className="empty-state"><p>No sellers registered yet.</p></div>}
           </div>
         )}
 
@@ -228,7 +228,7 @@ export default function AdminDashboard() {
                   <th>Date</th>
                   <th>Product Details</th>
                   <th>Buyer (Ship)</th>
-                  <th>Vendor</th>
+                  <th>Seller</th>
                   <th>Delivery Reqs</th>
                   <th>Status</th>
                 </tr>
@@ -255,7 +255,7 @@ export default function AdminDashboard() {
                       <div><strong>ETA:</strong> {inquiry.delivery_requirements?.eta || 'N/A'}</div>
                     </td>
                     <td>
-                      <span className={`nav-user-badge ${inquiry.status === 'pending' ? 'badge-buyer' : inquiry.status === 'accepted' ? 'badge-provider' : ''}`} style={{ background: inquiry.status === 'rejected' ? 'var(--danger-bg)' : undefined, color: inquiry.status === 'rejected' ? 'var(--danger)' : undefined, borderColor: inquiry.status === 'rejected' ? 'var(--danger-border)' : undefined }}>
+                      <span className={`nav-user-badge ${inquiry.status === 'pending' ? 'badge-buyer' : inquiry.status === 'accepted' ? 'badge-seller' : ''}`} style={{ background: inquiry.status === 'rejected' ? 'var(--danger-bg)' : undefined, color: inquiry.status === 'rejected' ? 'var(--danger)' : undefined, borderColor: inquiry.status === 'rejected' ? 'var(--danger-border)' : undefined }}>
                         {inquiry.status}
                       </span>
                     </td>

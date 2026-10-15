@@ -39,7 +39,7 @@ export default function SmartSearchBar({ onSearchResults, selectedCategory }) {
 
     setIsSearching(true);
     try {
-      const res = await axios.get(`${API}/provider/products/search`, {
+      const res = await axios.get(`${API}/seller/products/search`, {
         params: { q: searchQuery.trim() }
       });
       

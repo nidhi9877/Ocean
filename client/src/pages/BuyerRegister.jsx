@@ -91,7 +91,7 @@ export default function BuyerRegister() {
           <span className="login-brand-icon">🚢</span>
           <h2 className="login-brand-title" style={{ fontSize: '2rem' }}>Welcome Aboard</h2>
           <p className="login-brand-subtitle">
-            Register as a buyer to discover and procure marine spare parts from verified vendors.
+            Register as a buyer to discover and procure marine spare parts from verified sellers.
           </p>
           <div className="login-brand-features" style={{ marginTop: '2rem' }}>
             <div className="login-brand-feature">
@@ -100,7 +100,7 @@ export default function BuyerRegister() {
             </div>
             <div className="login-brand-feature">
               <span className="login-brand-feature-icon">📨</span>
-              <span>Send mass inquiries to vendors</span>
+              <span>Send mass inquiries to sellers</span>
             </div>
             <div className="login-brand-feature">
               <span className="login-brand-feature-icon">⏱️</span>

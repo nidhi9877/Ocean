@@ -24,7 +24,7 @@ export default function AddDataOptions() {
               <div 
                 className="glass-card" 
                 style={{ padding: '2rem 1.5rem', cursor: 'pointer', background: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}
-                onClick={() => navigate('/provider/add-csv')}
+                onClick={() => navigate('/seller/add-csv')}
               >
                 <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>📄</div>
                 <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', marginBottom: '0.75rem', fontFamily: "'Outfit', sans-serif" }}>Upload CSV File</h3>
@@ -38,7 +38,7 @@ export default function AddDataOptions() {
               <div 
                 className="glass-card" 
                 style={{ padding: '2rem 1.5rem', cursor: 'pointer', background: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}
-                onClick={() => navigate('/provider/add-data')}
+                onClick={() => navigate('/seller/add-data')}
               >
                 <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>✍️</div>
                 <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', marginBottom: '0.75rem', fontFamily: "'Outfit', sans-serif" }}>Add Manually</h3>

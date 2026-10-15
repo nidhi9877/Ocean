@@ -28,12 +28,14 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 8 characters and contain texts, numbers, and at least one special character' });
     }
 
-    if (!['buyer', 'provider'].includes(role)) {
-      return res.status(400).json({ error: 'Role must be either "buyer" or "provider"' });
+    if (!['buyer', 'provider', 'seller'].includes(role)) {
+      return res.status(400).json({ error: 'Role must be either "buyer" or "seller"' });
     }
 
-    // Additional validation for buyer and provider
-    if (role === 'buyer' || role === 'provider') {
+    const isSeller = role === 'provider' || role === 'seller';
+
+    // Additional validation for buyer and seller
+    if (role === 'buyer' || isSeller) {
       if (role === 'buyer' && (!email || !phone)) {
         return res.status(400).json({ error: 'All buyer details (email, phone) are required' });
       }
@@ -79,10 +81,11 @@ router.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Insert user
+    // Insert user (save as seller if role is seller or provider)
+    const effectiveRole = isSeller ? 'seller' : role;
     const result = await sql`
       INSERT INTO users (username, password_hash, role)
-      VALUES (${username}, ${passwordHash}, ${role})
+      VALUES (${username}, ${passwordHash}, ${effectiveRole})
       RETURNING id, username, role
     `;
 
@@ -96,8 +99,8 @@ router.post('/register', async (req, res) => {
       `;
     }
 
-    // If provider, insert basic provider details
-    if (role === 'provider') {
+    // If seller / provider, insert basic seller details
+    if (isSeller) {
       const { companyName, companyType, address, paymentMode, country: providerCountry } = req.body;
       const finalCountry = providerCountry || country || null;
       await sql`
@@ -124,7 +127,7 @@ router.post('/register', async (req, res) => {
 
     // Generate JWT token with session ID
     const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role, sessionId: sessionToken },
+      { id: user.id, username: user.username, role: effectiveRole, sessionId: sessionToken },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -132,7 +135,7 @@ router.post('/register', async (req, res) => {
     res.status(201).json({
       message: 'User registered successfully',
       token,
-      user: { id: user.id, username: user.username, role: user.role }
+      user: { id: user.id, username: user.username, role: effectiveRole }
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -176,8 +179,9 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
-    // Check approval status for providers
-    if (user.role === 'provider') {
+    // Check approval status for sellers / providers
+    const isSeller = user.role === 'provider' || user.role === 'seller';
+    if (isSeller) {
       const providerData = await sql`SELECT status FROM providers WHERE user_id = ${user.id}`;
       if (providerData.length > 0) {
         const status = providerData[0].status;
@@ -205,9 +209,11 @@ router.post('/login', async (req, res) => {
     // Insert new session
     await sql`INSERT INTO user_sessions (user_id, session_token) VALUES (${user.id}, ${sessionToken})`;
 
+    const effectiveRole = isSeller ? 'seller' : user.role;
+
     // Generate JWT token with session ID
     const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role, sessionId: sessionToken },
+      { id: user.id, username: user.username, role: effectiveRole, sessionId: sessionToken },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -215,7 +221,7 @@ router.post('/login', async (req, res) => {
     res.json({
       message: 'Login successful',
       token,
-      user: { id: user.id, username: user.username, role: user.role }
+      user: { id: user.id, username: user.username, role: effectiveRole }
     });
   } catch (error) {
     console.error('Login error:', error);

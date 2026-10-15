@@ -115,7 +115,7 @@ export default function BuyerDashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await axios.get(`${API}/provider/products`);
+        const r = await axios.get(`${API}/seller/products`);
         setAllProducts(r.data.products || []);
       } catch (e) { console.error(e); }
     })();
@@ -1031,10 +1031,10 @@ export default function BuyerDashboard() {
       return;
     }
     setSelectedProduct(product);
-    const vendorName = product.provider_username || product.company_name || 'Vendor';
+    const sellerName = product.provider_username || product.company_name || 'Seller';
     const productName = product.product_name || product.category || 'N/A';
     const subject = `🚢 Purchase Inquiry: ${productName} — MarineStockHub Marketplace`;
-    const body = `Dear ${vendorName} Team,\n\nI am interested in purchasing the following listed product:\n\n- Product: ${productName}\n- Brand: ${product.brand || 'N/A'}\n- Model: ${product.model_number || 'N/A'}\n- Part Number: ${product.part_number || 'N/A'}\n\nDelivery Details:\n- Destination Port: ${inquiryMeta.destination.trim()}\n- ETA: ${inquiryMeta.eta.trim()}\n- ETD: ${inquiryMeta.etd ? inquiryMeta.etd.trim() : 'N/A'}\n- Vessel Name: ${inquiryMeta.vesselName.trim()}\n- Minimum Quantity Required: ${filters.minQty}\n\nPlease let me know if you can fulfill this request and provide a price quote.\n\nBest regards,\n${user?.username || 'Buyer'}`;
+    const body = `Dear ${sellerName} Team,\n\nI am interested in purchasing the following listed product:\n\n- Product: ${productName}\n- Brand: ${product.brand || 'N/A'}\n- Model: ${product.model_number || 'N/A'}\n- Part Number: ${product.part_number || 'N/A'}\n\nDelivery Details:\n- Destination Port: ${inquiryMeta.destination.trim()}\n- ETA: ${inquiryMeta.eta.trim()}\n- ETD: ${inquiryMeta.etd ? inquiryMeta.etd.trim() : 'N/A'}\n- Vessel Name: ${inquiryMeta.vesselName.trim()}\n- Minimum Quantity Required: ${filters.minQty}\n\nPlease let me know if you can fulfill this request and provide a price quote.\n\nBest regards,\n${user?.username || 'Buyer'}`;
     
     setShowCc(false);
     setShowBcc(false);
@@ -1070,7 +1070,7 @@ export default function BuyerDashboard() {
         <div className="dashboard-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'1rem' }}>
           <div>
             <h1 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.8rem', fontWeight:'700' }}>Welcome, {user?.username} 👋</h1>
-            <p style={{ color:'var(--text-secondary)', marginTop:'0.25rem' }}>Search marine spare parts and send inquiries directly to vendors.</p>
+            <p style={{ color:'var(--text-secondary)', marginTop:'0.25rem' }}>Search marine spare parts and send inquiries directly to sellers.</p>
           </div>
           <div style={{ display:'flex', gap:'0.75rem', flexWrap:'wrap' }}>
             <button onClick={() => setShowShipsModal(true)} className="btn btn-primary" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', background: ships.length > 0 ? 'linear-gradient(135deg, #059669, #10b981)' : undefined, position:'relative' }}>

@@ -36,7 +36,7 @@ router.post('/register', authenticateToken, async (req, res) => {
       SELECT id FROM providers WHERE user_id = ${req.user.id}
     `;
     if (existingProvider.length > 0) {
-      return res.status(409).json({ error: 'Provider profile already exists for this user' });
+      return res.status(409).json({ error: 'Seller profile already exists for this user' });
     }
 
     // Insert provider
@@ -79,11 +79,12 @@ router.post('/register', authenticateToken, async (req, res) => {
       }
     }
 
-    // Update user role to provider
-    await sql`UPDATE users SET role = 'provider' WHERE id = ${req.user.id}`;
+    // Update user role to seller
+    await sql`UPDATE users SET role = 'seller' WHERE id = ${req.user.id}`;
 
     res.status(201).json({
-      message: 'Provider registration successful',
+      message: 'Seller registration successful',
+      sellerId: providerId,
       providerId
     });
   } catch (error) {
@@ -107,7 +108,7 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
     `;
 
     if (existingProvider.length === 0) {
-      return res.status(404).json({ error: 'Provider profile not found' });
+      return res.status(404).json({ error: 'Seller profile not found' });
     }
 
     const providerId = existingProvider[0].id;
@@ -157,7 +158,7 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
   }
 });
 
-// Get provider profile
+// Get seller profile
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
     const providers = await sql`
@@ -165,17 +166,17 @@ router.get('/profile', authenticateToken, async (req, res) => {
     `;
 
     if (providers.length === 0) {
-      return res.status(404).json({ error: 'Provider profile not found' });
+      return res.status(404).json({ error: 'Seller profile not found' });
     }
 
     const provider = providers[0];
 
-    // Get products for this provider
+    // Get products for this seller
     const products = await sql`
       SELECT * FROM products WHERE provider_id = ${provider.id}
     `;
 
-    res.json({ provider, products });
+    res.json({ seller: provider, provider, products });
   } catch (error) {
     console.error('Profile fetch error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -272,7 +273,7 @@ router.get('/inquiries', authenticateToken, async (req, res) => {
     `;
 
     if (existingProvider.length === 0) {
-      return res.status(404).json({ error: 'Provider profile not found' });
+      return res.status(404).json({ error: 'Seller profile not found' });
     }
 
     const providerId = existingProvider[0].id;
@@ -312,7 +313,7 @@ router.put('/inquiries/:id/status', authenticateToken, async (req, res) => {
     `;
 
     if (existingProvider.length === 0) {
-      return res.status(404).json({ error: 'Provider profile not found' });
+      return res.status(404).json({ error: 'Seller profile not found' });
     }
     const providerId = existingProvider[0].id;
 
@@ -352,7 +353,7 @@ router.put('/products/:id', authenticateToken, async (req, res) => {
       SELECT id FROM providers WHERE user_id = ${req.user.id}
     `;
     if (existingProvider.length === 0) {
-      return res.status(404).json({ error: 'Provider profile not found' });
+      return res.status(404).json({ error: 'Seller profile not found' });
     }
     const providerId = existingProvider[0].id;
 
@@ -397,7 +398,7 @@ router.delete('/products/:id', authenticateToken, async (req, res) => {
     const productId = req.params.id;
     // Get provider for this user
     const existingProvider = await sql`SELECT id FROM providers WHERE user_id = ${req.user.id}`;
-    if (existingProvider.length === 0) return res.status(404).json({ error: 'Provider profile not found' });
+    if (existingProvider.length === 0) return res.status(404).json({ error: 'Seller profile not found' });
     const providerId = existingProvider[0].id;
 
     // Verify product belongs to this provider
@@ -420,7 +421,7 @@ router.post('/products/bulk-update-service-type', authenticateToken, async (req,
     if (!serviceType) return res.status(400).json({ error: 'Service Type is required' });
 
     const existingProvider = await sql`SELECT id FROM providers WHERE user_id = ${req.user.id}`;
-    if (existingProvider.length === 0) return res.status(404).json({ error: 'Provider profile not found' });
+    if (existingProvider.length === 0) return res.status(404).json({ error: 'Seller profile not found' });
     const providerId = existingProvider[0].id;
 
     await sql`UPDATE products SET service_type = ${serviceType}, updated_at = NOW() WHERE id = ANY(${ids}) AND provider_id = ${providerId}`;
@@ -438,7 +439,7 @@ router.post('/products/bulk-delete', authenticateToken, async (req, res) => {
     if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'No product IDs provided' });
 
     const existingProvider = await sql`SELECT id FROM providers WHERE user_id = ${req.user.id}`;
-    if (existingProvider.length === 0) return res.status(404).json({ error: 'Provider profile not found' });
+    if (existingProvider.length === 0) return res.status(404).json({ error: 'Seller profile not found' });
     const providerId = existingProvider[0].id;
 
     await sql`DELETE FROM products WHERE id = ANY(${ids}) AND provider_id = ${providerId}`;
@@ -456,7 +457,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
     if (!Array.isArray(products) || products.length === 0) return res.status(400).json({ error: 'No products provided' });
 
     const existingProvider = await sql`SELECT id FROM providers WHERE user_id = ${req.user.id}`;
-    if (existingProvider.length === 0) return res.status(404).json({ error: 'Provider profile not found' });
+    if (existingProvider.length === 0) return res.status(404).json({ error: 'Seller profile not found' });
     const providerId = existingProvider[0].id;
 
     for (const p of products) {
@@ -517,7 +518,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
 router.delete('/products', authenticateToken, async (req, res) => {
   try {
     const existingProvider = await sql`SELECT id FROM providers WHERE user_id = ${req.user.id}`;
-    if (existingProvider.length === 0) return res.status(404).json({ error: 'Provider profile not found' });
+    if (existingProvider.length === 0) return res.status(404).json({ error: 'Seller profile not found' });
     const providerId = existingProvider[0].id;
 
     await sql`DELETE FROM products WHERE provider_id = ${providerId}`;

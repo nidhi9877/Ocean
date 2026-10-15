@@ -101,7 +101,7 @@ export default function UploadModal({ onClose, onSuccess }) {
 
     try {
       await axios.post(
-        `${API}/provider/bulk-products`,
+        `${API}/seller/bulk-products`,
         { products: validProducts, department },
         { headers: { Authorization: `Bearer ${token}` } }
       );

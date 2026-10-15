@@ -168,7 +168,7 @@ export default function BuyerInquiries() {
           <div className="glass-card empty-state">
             <span className="empty-state-icon">📭</span>
             <h3>No recent activity</h3>
-            <p>You have no recent searches or sent inquiries from the last 7 days. Search for products to view details and contact vendors.</p>
+            <p>You have no recent searches or sent inquiries from the last 7 days. Search for products to view details and contact sellers.</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '1rem' }}>
@@ -215,7 +215,7 @@ export default function BuyerInquiries() {
                     
                     <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '0.6rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-                        <span>🏭</span> <strong>Vendor:</strong> {item.company_name}
+                        <span>🏭</span> <strong>Seller:</strong> {item.company_name}
                       </div>
                       {isSent ? (
                         <>
@@ -264,7 +264,7 @@ export default function BuyerInquiries() {
                       className="btn btn-primary"
                       style={{ textDecoration: 'none', textAlign: 'center', padding: '0.55rem 1rem', border: 'none', cursor: 'pointer', display: 'block', width: '100%' }}
                     >
-                      {isSent ? '✉️ Follow up mail' : '✉️ Email Vendor'}
+                      {isSent ? '✉️ Follow up mail' : '✉️ Email Seller'}
                     </button>
                   </div>
                 </div>

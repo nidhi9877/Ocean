@@ -98,12 +98,12 @@ export default function ProviderForm() {
     setLoading(true);
     try {
       await axios.post(
-        `${API}/provider/register`,
+        `${API}/seller/register`,
         { ...company, products },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setSuccess('🎉 Registration successful! Your company and products are now listed.');
-      setTimeout(() => navigate('/provider/dashboard'), 2000);
+      setTimeout(() => navigate('/seller/dashboard'), 2000);
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed. Please try again.');
     } finally {
@@ -117,10 +117,10 @@ export default function ProviderForm() {
 
       <div className="page-container page-with-nav">
         <div className="content-container content-container-lg">
-          <div className="glass-card provider-form-card">
+          <div className="glass-card seller-form-card provider-form-card">
             {/* Header */}
             <div className="form-header">
-              <h2>🏭 Provider Registration</h2>
+              <h2>🏭 Seller Registration</h2>
               <p>Fill in your company details and list your marine spare parts</p>
             </div>
 
@@ -389,7 +389,7 @@ export default function ProviderForm() {
                 className="btn btn-primary btn-block btn-lg"
                 disabled={loading}
               >
-                {loading ? <span className="spinner"></span> : '🚀 Register as Provider'}
+                {loading ? <span className="spinner"></span> : '🚀 Register as Seller'}
               </button>
             </form>
           </div>

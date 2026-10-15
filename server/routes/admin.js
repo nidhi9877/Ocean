@@ -18,8 +18,8 @@ router.get('/users', async (req, res) => {
   }
 });
 
-// Get all providers
-router.get('/providers', async (req, res) => {
+// Get all sellers / providers
+const getSellers = async (req, res) => {
   try {
     const providers = await sql`
       SELECT p.*, u.username 
@@ -29,10 +29,13 @@ router.get('/providers', async (req, res) => {
     `;
     res.json(providers);
   } catch (error) {
-    console.error('Error fetching providers:', error);
-    res.status(500).json({ error: 'Failed to fetch providers' });
+    console.error('Error fetching sellers:', error);
+    res.status(500).json({ error: 'Failed to fetch sellers' });
   }
-});
+};
+
+router.get('/sellers', getSellers);
+router.get('/providers', getSellers);
 
 // Get all buyers
 router.get('/buyers', async (req, res) => {
@@ -83,6 +86,7 @@ router.get('/stats', async (req, res) => {
     
     res.json({
       totalUsers: parseInt(usersCount[0].count),
+      totalSellers: parseInt(providersCount[0].count),
       totalProviders: parseInt(providersCount[0].count),
       totalProducts: parseInt(productsCount[0].count),
       totalInquiries: parseInt(inquiriesCount[0].count),

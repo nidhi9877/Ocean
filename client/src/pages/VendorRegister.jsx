@@ -61,7 +61,7 @@ export default function VendorRegister() {
       const res = await axios.post(`${API}/auth/register`, {
         username: formData.username,
         password: formData.password,
-        role: 'provider',
+        role: 'seller',
         email: formData.email,
         phone: formData.phone,
         companyName: formData.companyName,
@@ -86,7 +86,7 @@ export default function VendorRegister() {
       <div className="register-side">
         <div className="login-brand-content">
           <span className="login-brand-icon">🏭</span>
-          <h2 className="login-brand-title" style={{ fontSize: '2rem' }}>Become a Vendor</h2>
+          <h2 className="login-brand-title" style={{ fontSize: '2rem' }}>Become a Seller</h2>
           <p className="login-brand-subtitle">
             Join MarineStockHub to list your marine spare parts and reach buyers worldwide.
           </p>
@@ -112,8 +112,8 @@ export default function VendorRegister() {
         <div className="content-container-lg" style={{ width: '100%' }}>
           <div className="glass-card login-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
             <div className="login-header">
-              <h1 className="login-title">Vendor Registration</h1>
-              <p className="login-subtitle">Join as a vendor to sell marine spare parts</p>
+              <h1 className="login-title">Seller Registration</h1>
+              <p className="login-subtitle">Join as a seller to list and sell marine spare parts</p>
             </div>
 
             <form onSubmit={handleRegister}>
@@ -146,7 +146,7 @@ export default function VendorRegister() {
                   <label className="form-label">Country</label>
                   <CountrySelect
                     name="country"
-                    id="vendor-country"
+                    id="seller-country"
                     value={formData.country}
                     onChange={handleChange}
                     placeholder="Select country..."
@@ -170,7 +170,7 @@ export default function VendorRegister() {
               </div>
               
               <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={loading} style={{ marginTop: '0.5rem' }}>
-                {loading ? <span className="spinner"></span> : 'Create Vendor Account'}
+                {loading ? <span className="spinner"></span> : 'Create Seller Account'}
               </button>
             </form>
             

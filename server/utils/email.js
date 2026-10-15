@@ -195,7 +195,7 @@ function buildInquiryEmailHTML({
                 </tr>
               </table>
               <p style="margin:16px 0 0 0;font-size:14px;color:#ef4444;font-weight:700;">
-                ⚠️ This is a broadcast inquiry. The first vendor to accept secures the contract.
+                ⚠️ This is a broadcast inquiry. The first seller to accept secures the contract.
               </p>
             </td>
           </tr>
@@ -217,7 +217,7 @@ function buildInquiryEmailHTML({
                       ⚡ RUTHLESS EXECUTION MODEL
                     </p>
                     <p style="margin:8px 0 0 0;font-size:13px;color:#fca5a5;line-height:1.6;">
-                      MarineStockHub operates on a First-to-Accept basis to maximize speed. <strong>No counter-offers. No negotiations.</strong> If you can fulfill the order, click Accept immediately before another vendor takes the deal.
+                      MarineStockHub operates on a First-to-Accept basis to maximize speed. <strong>No counter-offers. No negotiations.</strong> If you can fulfill the order, click Accept immediately before another seller takes the deal.
                     </p>
                   </td>
                 </tr>

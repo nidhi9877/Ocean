@@ -26,9 +26,9 @@ export default function LoginPage() {
     try {
       const res = await axios.post(`${API}/auth/login`, { username: username.trim(), password });
       login(res.data.user, res.data.token);
-      if (res.data.user.role === 'provider') {
+      if (res.data.user.role === 'seller' || res.data.user.role === 'provider') {
         toast.success(`Welcome back, ${res.data.user.username}!`);
-        navigate('/provider/dashboard');
+        navigate('/seller/dashboard');
       } else if (res.data.user.role === 'management') {
         toast.success(`Welcome back, ${res.data.user.username}!`);
         navigate('/management/dashboard');
@@ -51,7 +51,7 @@ export default function LoginPage() {
           <span className="login-brand-icon">⚓</span>
           <h1 className="login-brand-title">MarineStockHub</h1>
           <p className="login-brand-subtitle">
-            The premier B2B marketplace connecting marine vessel operators with verified spare parts vendors worldwide.
+            The premier B2B marketplace connecting marine vessel operators with verified spare parts sellers worldwide.
           </p>
           <div className="login-brand-features">
             <div className="login-brand-feature">
@@ -60,11 +60,11 @@ export default function LoginPage() {
             </div>
             <div className="login-brand-feature">
               <span className="login-brand-feature-icon">📨</span>
-              <span>Mass inquiry system to multiple vendors</span>
+              <span>Mass inquiry system to multiple sellers</span>
             </div>
             <div className="login-brand-feature">
               <span className="login-brand-feature-icon">⏱️</span>
-              <span>24-hour guaranteed vendor response time</span>
+              <span>24-hour guaranteed seller response time</span>
             </div>
             <div className="login-brand-feature">
               <span className="login-brand-feature-icon">🌍</span>
@@ -150,11 +150,11 @@ export default function LoginPage() {
               <button
                 type="button"
                 className="role-btn"
-                onClick={() => navigate('/vendor/register')}
+                onClick={() => navigate('/seller/register')}
                 disabled={loading}
               >
                 <span className="role-btn-icon">🏭</span>
-                <span className="role-btn-label">Vendor</span>
+                <span className="role-btn-label">Seller</span>
                 <span className="role-btn-desc">Sell spare parts</span>
               </button>
 
