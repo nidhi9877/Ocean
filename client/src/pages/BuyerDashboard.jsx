@@ -66,6 +66,7 @@ export default function BuyerDashboard() {
   const [showShipsModal, setShowShipsModal] = useState(false);
   const [ships, setShips] = useState([]);
   const [selectedShipId, setSelectedShipId] = useState(null); // null = "All Equipment"
+  const [hasManuallyClearedShip, setHasManuallyClearedShip] = useState(false);
   const [savedSpecs, setSavedSpecs] = useState([]);
   const [specsFilterActive, setSpecsFilterActive] = useState(false);
   const [csvPreview, setCsvPreview] = useState([]);
@@ -123,10 +124,20 @@ export default function BuyerDashboard() {
     if (!token) { setShipsLoading(false); return; }
     try {
       const r = await axios.get(`${API}/buyer/ships`, { headers: { Authorization: `Bearer ${token}` } });
-      setShips(r.data || []);
+      const loadedShips = r.data || [];
+      setShips(loadedShips);
+      // Auto-select ship with specifications so compatible options and yellow/red rows are immediately active
+      setSelectedShipId(current => {
+        if (current && loadedShips.some(s => s.id === current)) return current;
+        if (!hasManuallyClearedShip && loadedShips.length > 0) {
+          const withSpecs = loadedShips.find(s => (s.spec_count || 0) > 0);
+          return withSpecs ? withSpecs.id : loadedShips[0].id;
+        }
+        return current;
+      });
     } catch (e) { console.error('Failed to load ships:', e); }
     finally { setShipsLoading(false); }
-  }, [token]);
+  }, [token, hasManuallyClearedShip]);
 
   useEffect(() => { loadShips(); }, [loadShips]);
 
@@ -481,8 +492,11 @@ Boiler,Aalborg,Mission OS`;
     setSelectedShipId(shipId);
     setShowShipDropdown(false);
     if (!shipId) {
+      setHasManuallyClearedShip(true);
       setSavedSpecs([]);
       setSpecsFilterActive(false);
+    } else {
+      setHasManuallyClearedShip(false);
     }
   };
 
@@ -1086,13 +1100,47 @@ Boiler,Aalborg,Mission OS`;
                   <span style={{ fontSize:'0.75rem', background:'rgba(5,150,105,0.12)', color:'#059669', padding:'0.15rem 0.55rem', borderRadius:'1rem', fontWeight:'600' }}>
                     {savedSpecs.length} Equipment Specifications
                   </span>
+                  {specsFilterActive ? (
+                    <span style={{ fontSize:'0.72rem', background:'rgba(5,150,105,0.15)', color:'#059669', padding:'0.15rem 0.55rem', borderRadius:'1rem', fontWeight:'600', display:'inline-flex', alignItems:'center', gap:'0.3rem' }}>
+                      ✓ Compatibility & Colors Active
+                    </span>
+                  ) : (
+                    <span style={{ fontSize:'0.72rem', background:'rgba(245,158,11,0.15)', color:'#d97706', padding:'0.15rem 0.55rem', borderRadius:'1rem', fontWeight:'600', display:'inline-flex', alignItems:'center', gap:'0.3rem' }}>
+                      🔍 Search Active (Filtered)
+                    </span>
+                  )}
                 </div>
                 <div style={{ fontSize:'0.82rem', color:'var(--text-secondary)', marginTop:'0.2rem' }}>
-                  Marketplace filtered to this ship. Export available equipment and spare parts data (with quantities and vendor details) to CSV.
+                  {specsFilterActive
+                    ? 'Marketplace filtered to this ship specifications. Compatible, different specs (yellow), and unavailable (red) parts are highlighted below.'
+                    : 'Showing keyword search results. Click "Restore Compatibility View" to re-enable ship specification matching with yellow & red rows.'}
                 </div>
               </div>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', flexWrap:'wrap' }}>
+              {!specsFilterActive && savedSpecs.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSpecsFilterActive(true);
+                    setSearchQuery('');
+                    toast.success('⚡ Restored Ship Specifications & Compatibility view!');
+                  }}
+                  className="btn btn-primary"
+                  style={{
+                    padding:'0.55rem 1.15rem',
+                    fontSize:'0.85rem',
+                    background:'linear-gradient(135deg, #f59e0b, #f97316)',
+                    display:'inline-flex',
+                    alignItems:'center',
+                    gap:'0.45rem',
+                    fontWeight:'600',
+                    boxShadow:'0 2px 8px rgba(245,158,11,0.25)'
+                  }}
+                >
+                  <span>⚡</span> Restore Compatibility View
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => handleExportShipCsv(selectedShip, 'detailed')}
