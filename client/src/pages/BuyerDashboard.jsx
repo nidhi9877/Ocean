@@ -104,6 +104,7 @@ export default function BuyerDashboard() {
   const [exportPreviewData, setExportPreviewData] = useState(null);
   const [loadingExportPreview, setLoadingExportPreview] = useState(false);
   const [exportingCsv, setExportingCsv] = useState(false);
+  const [exportBreakdownTab, setExportBreakdownTab] = useState('available'); // 'available' | 'unavailable'
 
   const [filters, setFilters] = useState({
     equipment: [], manufacturer: [], modelNumber: '', partNumber: '',
@@ -556,6 +557,7 @@ Boiler,Aalborg,Mission OS`;
     setShowExportModal(true);
     setLoadingExportPreview(true);
     setExportPreviewData(null);
+    setExportBreakdownTab('available');
     try {
       const res = await axios.get(`${API}/buyer/ships/${ship.id}/market-availability`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -2715,93 +2717,263 @@ Boiler,Aalborg,Mission OS`;
                     </div>
                   </div>
 
-                  {/* Equipment Specifications & Market Breakdown Table */}
-                  <h4 style={{ fontSize:'0.95rem', fontWeight:'600', marginBottom:'0.75rem', color:'var(--text-primary)', display:'flex', alignItems:'center', gap:'0.4rem' }}>
-                    <span>📋</span> Equipment & Market Availability Breakdown ({exportPreviewData.equipment?.length || 0})
-                  </h4>
+                  {/* Equipment Specifications & Market Availability Breakdown Tabs */}
+                  {(() => {
+                    const allEquipment = exportPreviewData.equipment || [];
+                    const availableItems = allEquipment.filter(eq => eq.compatibility_status === 'compatible');
+                    const unavailableItems = allEquipment.filter(eq => eq.compatibility_status !== 'compatible');
+                    const displayedTabItems = exportBreakdownTab === 'available' ? availableItems : unavailableItems;
 
-                  {exportPreviewData.equipment?.length === 0 ? (
-                    <div style={{ textAlign:'center', padding:'2.5rem', background:'var(--bg-surface)', borderRadius:'var(--radius-md)', border:'1px dashed var(--border-color)', color:'var(--text-muted)' }}>
-                      <span style={{ fontSize:'2rem', display:'block', marginBottom:'0.5rem' }}>⚙️</span>
-                      <p style={{ fontWeight:'500', color:'var(--text-secondary)', marginBottom:'0.25rem' }}>No equipment specifications configured</p>
-                      <p style={{ fontSize:'0.82rem' }}>Add specifications to this ship to see available market spare parts and stock quantities.</p>
-                    </div>
-                  ) : (
-                    <div style={{ maxHeight:'320px', overflowY:'auto', border:'1px solid var(--border-color)', borderRadius:'var(--radius-md)' }}>
-                      <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.82rem' }}>
-                        <thead>
-                          <tr style={{ background:'var(--bg-surface)', borderBottom:'2px solid var(--border-color)', position:'sticky', top:0, zIndex:2 }}>
-                            <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)', width:'40px' }}>#</th>
-                            <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Equipment</th>
-                            <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Manufacturer / Model</th>
-                            <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Market Status</th>
-                            <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Listings</th>
-                            <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Total Qty</th>
-                            <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Available Parts Preview</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {exportPreviewData.equipment.map((eq, i) => {
-                            const rowBg = eq.compatibility_status === 'not_available'
-                              ? 'rgba(239,68,68,0.06)'
-                              : eq.compatibility_status === 'incompatible'
-                                ? 'rgba(245,158,11,0.06)'
-                                : 'transparent';
-                            return (
-                            <tr key={eq.id || i} style={{ borderBottom:'1px solid var(--border-color)', background: rowBg }}>
-                              <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-muted)' }}>{i + 1}</td>
-                              <td style={{ padding:'0.55rem 0.75rem', fontWeight:'600', color:'var(--text-primary)' }}>{eq.equipment}</td>
-                              <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-secondary)' }}>
-                                {eq.manufacturer || '—'} {eq.model ? `(${eq.model})` : ''}
-                              </td>
-                              <td style={{ padding:'0.55rem 0.75rem', textAlign:'center' }}>
-                                <span style={{
-                                  display:'inline-flex',
-                                  alignItems:'center',
-                                  gap:'0.3rem',
-                                  padding:'0.2rem 0.6rem',
-                                  borderRadius:'1rem',
-                                  fontSize:'0.72rem',
-                                  fontWeight:'600',
-                                  background: eq.compatibility_status === 'compatible' ? 'rgba(5,150,105,0.1)' : eq.compatibility_status === 'incompatible' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
-                                  color: eq.compatibility_status === 'compatible' ? '#059669' : eq.compatibility_status === 'incompatible' ? '#d97706' : '#dc2626'
-                                }}>
-                                  {eq.compatibility_status === 'compatible' ? '✓ Compatible' : eq.compatibility_status === 'incompatible' ? '⚠ Different Specs' : '✗ Not Available'}
-                                </span>
-                              </td>
-                              <td style={{ padding:'0.55rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-primary)' }}>
-                                {eq.available_listings_count}
-                                {eq.equipment_only_listings_count > 0 && (
-                                  <span style={{ fontSize:'0.68rem', color:'#d97706', display:'block' }}>+{eq.equipment_only_listings_count} alt</span>
-                                )}
-                              </td>
-                              <td style={{ padding:'0.55rem 0.75rem', textAlign:'center', fontWeight:'700', color: eq.total_available_quantity > 0 ? '#059669' : (eq.equipment_only_total_quantity > 0 ? '#d97706' : 'var(--text-muted)') }}>
-                                {eq.total_available_quantity}
-                                {eq.equipment_only_total_quantity > 0 && (
-                                  <span style={{ fontSize:'0.68rem', color:'#d97706', display:'block' }}>+{eq.equipment_only_total_quantity} alt</span>
-                                )}
-                              </td>
-                              <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-secondary)', fontSize:'0.78rem' }}>
-                                {eq.products.length > 0 ? (
-                                  <span>
-                                    {eq.products.slice(0, 3).map(p => `${p.product_name} (${p.quantity} units)`).join(', ')}
-                                    {eq.products.length > 3 && ` + ${eq.products.length - 3} more`}
-                                  </span>
-                                ) : eq.equipment_only_products && eq.equipment_only_products.length > 0 ? (
-                                  <span style={{ color:'#d97706', fontStyle:'italic' }}>
-                                    {eq.equipment_only_products.length} alternative{eq.equipment_only_products.length !== 1 ? 's' : ''} (different specs)
-                                  </span>
-                                ) : (
-                                  <span style={{ color:'var(--danger)', fontStyle:'italic' }}>{eq.compatibility_reason || 'Not available in market'}</span>
-                                )}
-                              </td>
-                            </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                    return (
+                      <>
+                        {/* Section Header & Breakdown Tabs */}
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'0.75rem', marginBottom:'0.85rem' }}>
+                          <h4 style={{ fontSize:'0.95rem', fontWeight:'600', margin:0, color:'var(--text-primary)', display:'flex', alignItems:'center', gap:'0.4rem' }}>
+                            <span>📋</span> Equipment Availability Breakdown ({allEquipment.length})
+                          </h4>
+
+                          <div style={{ display:'flex', gap:'0.4rem', background:'var(--bg-surface)', padding:'0.25rem', borderRadius:'var(--radius-full)', border:'1px solid var(--border-color)' }}>
+                            <button
+                              type="button"
+                              onClick={() => setExportBreakdownTab('available')}
+                              style={{
+                                padding:'0.45rem 1rem',
+                                borderRadius:'var(--radius-full)',
+                                fontSize:'0.82rem',
+                                fontWeight:'600',
+                                cursor:'pointer',
+                                display:'inline-flex',
+                                alignItems:'center',
+                                gap:'0.45rem',
+                                transition:'all 0.15s',
+                                background: exportBreakdownTab === 'available' ? 'linear-gradient(135deg, #059669, #10b981)' : 'transparent',
+                                color: exportBreakdownTab === 'available' ? 'white' : 'var(--text-secondary)',
+                                border:'none',
+                                boxShadow: exportBreakdownTab === 'available' ? '0 2px 6px rgba(5,150,105,0.25)' : 'none'
+                              }}
+                            >
+                              <span>🟢 Available Items</span>
+                              <span style={{
+                                background: exportBreakdownTab === 'available' ? 'rgba(255,255,255,0.25)' : 'rgba(5,150,105,0.12)',
+                                color: exportBreakdownTab === 'available' ? 'white' : '#059669',
+                                padding:'0.1rem 0.5rem',
+                                borderRadius:'1rem',
+                                fontSize:'0.72rem',
+                                fontWeight:'700'
+                              }}>
+                                {availableItems.length}
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setExportBreakdownTab('unavailable')}
+                              style={{
+                                padding:'0.45rem 1rem',
+                                borderRadius:'var(--radius-full)',
+                                fontSize:'0.82rem',
+                                fontWeight:'600',
+                                cursor:'pointer',
+                                display:'inline-flex',
+                                alignItems:'center',
+                                gap:'0.45rem',
+                                transition:'all 0.15s',
+                                background: exportBreakdownTab === 'unavailable' ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 'transparent',
+                                color: exportBreakdownTab === 'unavailable' ? 'white' : 'var(--text-secondary)',
+                                border:'none',
+                                boxShadow: exportBreakdownTab === 'unavailable' ? '0 2px 6px rgba(245,158,11,0.25)' : 'none'
+                              }}
+                            >
+                              <span>🟠 Not Available Items (Compatible Options)</span>
+                              <span style={{
+                                background: exportBreakdownTab === 'unavailable' ? 'rgba(255,255,255,0.25)' : 'rgba(245,158,11,0.15)',
+                                color: exportBreakdownTab === 'unavailable' ? 'white' : '#d97706',
+                                padding:'0.1rem 0.5rem',
+                                borderRadius:'1rem',
+                                fontSize:'0.72rem',
+                                fontWeight:'700'
+                              }}>
+                                {unavailableItems.length}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {allEquipment.length === 0 ? (
+                          <div style={{ textAlign:'center', padding:'2.5rem', background:'var(--bg-surface)', borderRadius:'var(--radius-md)', border:'1px dashed var(--border-color)', color:'var(--text-muted)' }}>
+                            <span style={{ fontSize:'2rem', display:'block', marginBottom:'0.5rem' }}>⚙️</span>
+                            <p style={{ fontWeight:'500', color:'var(--text-secondary)', marginBottom:'0.25rem' }}>No equipment specifications configured</p>
+                            <p style={{ fontSize:'0.82rem' }}>Add specifications to this ship to see available market spare parts and stock quantities.</p>
+                          </div>
+                        ) : displayedTabItems.length === 0 ? (
+                          <div style={{ textAlign:'center', padding:'2.5rem', background:'var(--bg-surface)', borderRadius:'var(--radius-md)', border:'1px dashed var(--border-color)', color:'var(--text-muted)' }}>
+                            <span style={{ fontSize:'2rem', display:'block', marginBottom:'0.5rem' }}>
+                              {exportBreakdownTab === 'available' ? '🔍' : '🎉'}
+                            </span>
+                            <p style={{ fontWeight:'600', color:'var(--text-primary)', marginBottom:'0.25rem' }}>
+                              {exportBreakdownTab === 'available'
+                                ? 'No fully compatible items currently found in market'
+                                : 'Great! All equipment items are available in the marketplace'}
+                            </p>
+                            <p style={{ fontSize:'0.82rem' }}>
+                              {exportBreakdownTab === 'available'
+                                ? 'Switch to "Not Available Items (Compatible Options)" tab to see market alternatives.'
+                                : 'All your ship specifications have matching marketplace parts.'}
+                            </p>
+                          </div>
+                        ) : exportBreakdownTab === 'available' ? (
+                          /* ── Tab 1: Available Items Table ── */
+                          <div style={{ maxHeight:'340px', overflowY:'auto', border:'1px solid var(--border-color)', borderRadius:'var(--radius-md)' }}>
+                            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.82rem' }}>
+                              <thead>
+                                <tr style={{ background:'var(--bg-surface)', borderBottom:'2px solid var(--border-color)', position:'sticky', top:0, zIndex:2 }}>
+                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)', width:'40px' }}>#</th>
+                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Equipment</th>
+                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Manufacturer / Model</th>
+                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Availability</th>
+                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Number of Sellers</th>
+                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Total Spares Qty</th>
+                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Available Parts Preview</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {availableItems.map((eq, i) => (
+                                  <tr key={eq.id || i} style={{ borderBottom:'1px solid var(--border-color)' }}>
+                                    <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-muted)' }}>{i + 1}</td>
+                                    <td style={{ padding:'0.55rem 0.75rem', fontWeight:'600', color:'var(--text-primary)' }}>{eq.equipment}</td>
+                                    <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-secondary)' }}>
+                                      {eq.manufacturer || '—'} {eq.model ? `(${eq.model})` : ''}
+                                    </td>
+                                    <td style={{ padding:'0.55rem 0.75rem', textAlign:'center' }}>
+                                      <span style={{
+                                        display:'inline-flex',
+                                        alignItems:'center',
+                                        gap:'0.3rem',
+                                        padding:'0.2rem 0.65rem',
+                                        borderRadius:'1rem',
+                                        fontSize:'0.72rem',
+                                        fontWeight:'600',
+                                        background:'rgba(5,150,105,0.12)',
+                                        color:'#059669'
+                                      }}>
+                                        ✓ Available
+                                      </span>
+                                    </td>
+                                    <td style={{ padding:'0.55rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-primary)' }}>
+                                      {eq.available_listings_count} seller{eq.available_listings_count !== 1 ? 's' : ''}
+                                      {eq.equipment_only_listings_count > 0 && (
+                                        <span style={{ fontSize:'0.68rem', color:'#d97706', display:'block' }}>+{eq.equipment_only_listings_count} alt</span>
+                                      )}
+                                    </td>
+                                    <td style={{ padding:'0.55rem 0.75rem', textAlign:'center', fontWeight:'700', color:'#059669' }}>
+                                      {eq.total_available_quantity} units
+                                    </td>
+                                    <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-secondary)', fontSize:'0.78rem' }}>
+                                      {eq.products.length > 0 ? (
+                                        <span>
+                                          {eq.products.slice(0, 3).map(p => `${p.product_name} (${p.quantity} units)`).join(', ')}
+                                          {eq.products.length > 3 && ` + ${eq.products.length - 3} more`}
+                                        </span>
+                                      ) : (
+                                        <span style={{ color:'var(--text-muted)' }}>—</span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          /* ── Tab 2: Not Available Items (With Compatible Options) Table ── */
+                          <div style={{ maxHeight:'340px', overflowY:'auto', border:'1px solid var(--border-color)', borderRadius:'var(--radius-md)' }}>
+                            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.82rem' }}>
+                              <thead>
+                                <tr style={{ background:'var(--bg-surface)', borderBottom:'2px solid var(--border-color)', position:'sticky', top:0, zIndex:2 }}>
+                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)', width:'40px' }}>#</th>
+                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Equipment</th>
+                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Ship Spec (Manufacturer / Model)</th>
+                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Availability</th>
+                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Compatible Options</th>
+                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Number of Sellers</th>
+                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Total Spares Qty</th>
+                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Available Parts Preview</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {unavailableItems.map((eq, i) => {
+                                  const isAlt = eq.compatibility_status === 'incompatible';
+                                  const rowBg = isAlt ? 'rgba(245,158,11,0.06)' : 'rgba(239,68,68,0.06)';
+                                  return (
+                                    <tr key={eq.id || i} style={{ borderBottom:'1px solid var(--border-color)', background: rowBg }}>
+                                      <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-muted)' }}>{i + 1}</td>
+                                      <td style={{ padding:'0.55rem 0.75rem', fontWeight:'600', color:'var(--text-primary)' }}>{eq.equipment}</td>
+                                      <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-secondary)' }}>
+                                        {eq.manufacturer || '—'} {eq.model ? `(${eq.model})` : ''}
+                                      </td>
+                                      <td style={{ padding:'0.55rem 0.75rem', textAlign:'center' }}>
+                                        <span style={{
+                                          display:'inline-flex',
+                                          alignItems:'center',
+                                          gap:'0.3rem',
+                                          padding:'0.2rem 0.65rem',
+                                          borderRadius:'1rem',
+                                          fontSize:'0.72rem',
+                                          fontWeight:'600',
+                                          background: isAlt ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.12)',
+                                          color: isAlt ? '#d97706' : '#dc2626'
+                                        }}>
+                                          {isAlt ? '⚠ Different Specs' : '✗ Not in Market'}
+                                        </span>
+                                      </td>
+                                      <td style={{ padding:'0.55rem 0.75rem', textAlign:'center' }}>
+                                        {eq.equipment_only_listings_count > 0 ? (
+                                          <span style={{
+                                            display:'inline-flex',
+                                            alignItems:'center',
+                                            gap:'0.25rem',
+                                            background:'rgba(245,158,11,0.15)',
+                                            color:'#d97706',
+                                            padding:'0.2rem 0.6rem',
+                                            borderRadius:'1rem',
+                                            fontSize:'0.72rem',
+                                            fontWeight:'700'
+                                          }}>
+                                            🔍 {eq.equipment_only_listings_count} Option{eq.equipment_only_listings_count !== 1 ? 's' : ''}
+                                          </span>
+                                        ) : (
+                                          <span style={{ color:'var(--text-muted)', fontSize:'0.78rem' }}>None</span>
+                                        )}
+                                      </td>
+                                      <td style={{ padding:'0.55rem 0.75rem', textAlign:'center', fontWeight:'600', color: eq.equipment_only_listings_count > 0 ? '#d97706' : 'var(--text-muted)' }}>
+                                        {eq.equipment_only_listings_count > 0 ? `${eq.equipment_only_listings_count} seller${eq.equipment_only_listings_count !== 1 ? 's' : ''}` : '0'}
+                                      </td>
+                                      <td style={{ padding:'0.55rem 0.75rem', textAlign:'center', fontWeight:'700', color: eq.equipment_only_total_quantity > 0 ? '#d97706' : 'var(--text-muted)' }}>
+                                        {eq.equipment_only_total_quantity > 0 ? `${eq.equipment_only_total_quantity} units` : '0'}
+                                      </td>
+                                      <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-secondary)', fontSize:'0.78rem' }}>
+                                        {eq.equipment_only_products && eq.equipment_only_products.length > 0 ? (
+                                          <div>
+                                            <span style={{ color:'#d97706', fontWeight:'500' }}>
+                                              {eq.equipment_only_products.slice(0, 3).map(p => `${p.product_name} (${p.quantity} units, ${p.brand || 'Alt'})`).join(', ')}
+                                              {eq.equipment_only_products.length > 3 && ` + ${eq.equipment_only_products.length - 3} more`}
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          <span style={{ color:'#dc2626', fontStyle:'italic' }}>
+                                            {eq.compatibility_reason || 'No compatible parts or sellers in market'}
+                                          </span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </>
               ) : (
                 <div style={{ textAlign:'center', padding:'2.5rem', color:'var(--text-muted)' }}>
