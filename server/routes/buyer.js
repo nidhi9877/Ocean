@@ -637,11 +637,7 @@ router.get('/ships/:shipId/market-availability', authenticateToken, async (req, 
         price: m.price || '0.00',
         location: m.location || '',
         service_type: m.service_type || 'Supply',
-        department: m.department || '',
-        company_name: m.company_name || '',
-        contact_person: m.contact_person || '',
-        provider_email: m.provider_email || '',
-        provider_phone: m.provider_phone || ''
+        department: m.department || ''
       });
 
       return {
@@ -728,10 +724,6 @@ router.get('/ships/:shipId/market-availability', authenticateToken, async (req, 
           'Unit Price (USD)',
           'Stock Location',
           'Service Type',
-          'Supplier Company',
-          'Supplier Contact Person',
-          'Supplier Email',
-          'Supplier Phone',
           'Market Availability Status'
         ];
         csvRows.push(headers.map(escapeCell).join(','));
@@ -762,10 +754,6 @@ router.get('/ships/:shipId/market-availability', authenticateToken, async (req, 
                 p.price,
                 p.location || 'N/A',
                 p.service_type || 'Supply',
-                p.company_name || 'N/A',
-                p.contact_person || 'N/A',
-                p.provider_email || 'N/A',
-                p.provider_phone || 'N/A',
                 'Compatible - Available in Market'
               ].map(escapeCell).join(','));
             }
@@ -794,10 +782,6 @@ router.get('/ships/:shipId/market-availability', authenticateToken, async (req, 
                 p.price,
                 p.location || 'N/A',
                 p.service_type || 'Supply',
-                p.company_name || 'N/A',
-                p.contact_person || 'N/A',
-                p.provider_email || 'N/A',
-                p.provider_phone || 'N/A',
                 'Alternative - Different Specs Available'
               ].map(escapeCell).join(','));
             }
@@ -822,10 +806,6 @@ router.get('/ships/:shipId/market-availability', authenticateToken, async (req, 
               'N/A',
               'N/A',
               0,
-              'N/A',
-              'N/A',
-              'N/A',
-              'N/A',
               'N/A',
               'N/A',
               'N/A',

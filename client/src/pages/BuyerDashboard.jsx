@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
@@ -162,76 +163,109 @@ export default function BuyerDashboard() {
     })();
   }, [token, selectedShipId]);
 
-  // ── CSV parsing handler ──
-  const handleCsvFile = useCallback((file) => {
+  // ── Specifications file parsing handler (supports standard .xlsx, .xls, and .csv) ──
+  const handleSpecsFile = useCallback((file) => {
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      toast.error('Please upload a .csv file.');
+    const name = file.name || '';
+    const ext = name.split('.').pop().toLowerCase();
+    if (!['xlsx', 'xls', 'csv'].includes(ext)) {
+      toast.error('Please upload a standard Excel (.xlsx, .xls) file.');
       return;
     }
-    setCsvFileName(file.name);
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const headers = results.meta.fields.map(h => h.trim().toLowerCase());
-        if (!headers.includes('equipment')) {
-          toast.error('CSV must contain an "Equipment" column.');
-          setCsvPreview([]);
-          setCsvFileName('');
-          return;
-        }
-        // Map rows to normalized objects
-        const rows = results.data.map(row => {
-          const normalized = {};
-          Object.keys(row).forEach(k => { normalized[k.trim().toLowerCase()] = row[k]; });
-          return {
-            equipment: (normalized['equipment'] || '').trim(),
-            manufacturer: (normalized['manufacturer'] || '').trim(),
-            model: (normalized['model'] || '').trim(),
-          };
-        }).filter(r => r.equipment); // skip rows with empty equipment
-        if (rows.length === 0) {
-          toast.error('No valid rows found in the CSV.');
-          setCsvPreview([]);
-          setCsvFileName('');
-          return;
-        }
-        setCsvPreview(rows);
-        toast.success(`Parsed ${rows.length} specification(s) from ${file.name}`);
-      },
-      error: (err) => {
-        toast.error('Failed to parse CSV: ' + err.message);
+    setCsvFileName(name);
+
+    const processRows = (rawRows, sourceName) => {
+      if (!rawRows || !rawRows.length) {
+        toast.error('No rows found in the uploaded file.');
         setCsvPreview([]);
         setCsvFileName('');
+        return;
       }
-    });
+      // Check headers
+      const firstRow = rawRows[0] || {};
+      const keys = Object.keys(firstRow).map(k => k.trim().toLowerCase());
+      if (!keys.includes('equipment')) {
+        toast.error('File must contain an "Equipment" column.');
+        setCsvPreview([]);
+        setCsvFileName('');
+        return;
+      }
+      const normalizedRows = rawRows.map(row => {
+        const norm = {};
+        Object.keys(row).forEach(k => { norm[k.trim().toLowerCase()] = row[k]; });
+        return {
+          equipment: String(norm['equipment'] || '').trim(),
+          manufacturer: String(norm['manufacturer'] || '').trim(),
+          model: String(norm['model'] || '').trim(),
+        };
+      }).filter(r => r.equipment);
+
+      if (normalizedRows.length === 0) {
+        toast.error('No valid equipment rows found in the file.');
+        setCsvPreview([]);
+        setCsvFileName('');
+        return;
+      }
+      setCsvPreview(normalizedRows);
+      toast.success(`✅ Parsed ${normalizedRows.length} specification(s) from ${sourceName}`);
+    };
+
+    if (ext === 'csv') {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => processRows(results.data, name),
+        error: (err) => {
+          toast.error('Failed to parse file: ' + err.message);
+          setCsvPreview([]);
+          setCsvFileName('');
+        }
+      });
+    } else {
+      // Excel .xlsx / .xls parsing via XLSX
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+          processRows(json, name);
+        } catch (err) {
+          toast.error('Failed to parse Excel file: ' + err.message);
+          setCsvPreview([]);
+          setCsvFileName('');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
   }, []);
 
-  // ── Download Sample CSV for ship specifications ──
-  const downloadSampleCsv = () => {
-    const csvContent = 
-`Equipment,Manufacturer,Model
-Main Engine,MAN B&W,6S50MC-C
-Auxiliary Engine,Yanmar,6EY18ALW
-Turbocharger,ABB,TPL77-B
-Oily Water Separator,Alfa Laval,PureBilge
-Purifier,Alfa Laval,S 821
-Radar,Furuno,FAR-2117
-ECDIS,Transas,Navi-Sailor 4000
-Boiler,Aalborg,Mission OS`;
+  // Backward compatibility alias
+  const handleCsvFile = handleSpecsFile;
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'sample_ship_specifications.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast.success('Sample specifications CSV downloaded!');
+  // ── Download Sample Template in standard .xlsx format ──
+  const downloadSampleExcel = () => {
+    const sampleRows = [
+      { 'Equipment': 'Main Engine', 'Manufacturer': 'MAN B&W', 'Model': '6S50MC-C' },
+      { 'Equipment': 'Auxiliary Engine', 'Manufacturer': 'Yanmar', 'Model': '6EY18ALW' },
+      { 'Equipment': 'Turbocharger', 'Manufacturer': 'ABB', 'Model': 'TPL77-B' },
+      { 'Equipment': 'Oily Water Separator', 'Manufacturer': 'Alfa Laval', 'Model': 'PureBilge' },
+      { 'Equipment': 'Purifier', 'Manufacturer': 'Alfa Laval', 'Model': 'S 821' },
+      { 'Equipment': 'Radar', 'Manufacturer': 'Furuno', 'Model': 'FAR-2117' },
+      { 'Equipment': 'ECDIS', 'Manufacturer': 'Transas', 'Model': 'Navi-Sailor 4000' },
+      { 'Equipment': 'Boiler', 'Manufacturer': 'Aalborg', 'Model': 'Mission OS' }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(sampleRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Ship Specifications');
+    XLSX.writeFile(wb, 'sample_ship_specifications.xlsx');
+    toast.success('Sample specifications template (.xlsx) downloaded!');
   };
+
+  const downloadSampleCsv = downloadSampleExcel;
 
   // ── Load specs for an expanded ship ──
   const loadShipSpecs = useCallback(async (shipId) => {
@@ -517,38 +551,137 @@ Boiler,Aalborg,Mission OS`;
     }
   };
 
-  // ── Export Ship Market Data to CSV ──
-  const handleExportShipCsv = async (ship, type = 'detailed') => {
+  // ── Download Ship Market Data in standard .xlsx format (confidential - no vendor contact info) ──
+  const handleDownloadShipData = async (ship, type = 'detailed') => {
     if (!ship || !ship.id) {
-      toast.error('Please choose a valid ship to export.');
+      toast.error('Please choose a valid ship to download.');
       return;
     }
     setExportingCsv(true);
-    const toastId = toast.loading(`Preparing market CSV export for ${ship.ship_name}...`);
+    const toastId = toast.loading(`Preparing ${type === 'summary' ? 'equipment summary' : 'market inventory'} Excel for ${ship.ship_name}...`);
     try {
-      const res = await axios.get(`${API}/buyer/ships/${ship.id}/market-availability?format=csv&type=${type}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        responseType: 'blob'
+      // Fetch structured market data JSON from server
+      const res = await axios.get(`${API}/buyer/ships/${ship.id}/market-availability`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
+      const data = res.data || {};
+      const equipmentList = data.equipment || [];
       const sanitizedName = (ship.ship_name || 'Ship').replace(/[^a-zA-Z0-9_-]/g, '_');
-      const filename = `${sanitizedName}_market_${type === 'summary' ? 'summary' : 'inventory'}.csv`;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast.success(`✅ Downloaded ${filename}!`, { id: toastId });
+
+      const wb = XLSX.utils.book_new();
+
+      if (type === 'summary') {
+        const rows = equipmentList.map((eq, i) => ({
+          '#': i + 1,
+          'Ship Name': ship.ship_name,
+          'Ship IMO': ship.imo_number || 'N/A',
+          'Ship Type': ship.ship_type || 'N/A',
+          'Equipment': eq.equipment,
+          'Specified Manufacturer': eq.manufacturer || 'N/A',
+          'Specified Model': eq.model || 'N/A',
+          'Availability': eq.compatibility_status === 'compatible' ? 'Available' : (eq.compatibility_status === 'incompatible' ? 'Different Specs' : 'Not in Market'),
+          'Number of Sellers': eq.available_listings_count || 0,
+          'Total Spares Qty': eq.total_available_quantity || 0,
+          'Compatible Options Found': eq.equipment_only_listings_count || 0,
+          'Compatible Options Spares Qty': eq.equipment_only_total_quantity || 0,
+          'Market Status Details': eq.compatibility_reason || 'N/A'
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, ws, 'Equipment Summary');
+        XLSX.writeFile(wb, `${sanitizedName}_equipment_summary.xlsx`);
+      } else {
+        // Detailed inventory Excel — STRICT CONFIDENTIALITY: NO vendor/supplier personal or contact info
+        const rows = [];
+        equipmentList.forEach(eq => {
+          const availStatus = eq.compatibility_status === 'compatible'
+            ? 'Available'
+            : (eq.compatibility_status === 'incompatible' ? 'Different Specs' : 'Not in Market');
+
+          if (eq.products && eq.products.length > 0) {
+            eq.products.forEach(p => {
+              rows.push({
+                'Ship Name': ship.ship_name,
+                'Ship IMO': ship.imo_number || 'N/A',
+                'Ship Type': ship.ship_type || 'N/A',
+                'Equipment': eq.equipment,
+                'Specified Manufacturer': eq.manufacturer || 'N/A',
+                'Specified Model': eq.model || 'N/A',
+                'Availability': availStatus,
+                'Match Type': 'Exact Compatible Match',
+                'Part Name': p.product_name || 'N/A',
+                'Part Number': p.part_number || 'N/A',
+                'Market Brand': p.brand || 'N/A',
+                'Market Model Number': p.model_number || 'N/A',
+                'Available Spares Qty': p.quantity || 0,
+                'Unit Price (USD)': p.price || '0.00',
+                'Stock Location': p.location || 'N/A',
+                'Service Type': p.service_type || 'Supply'
+              });
+            });
+          }
+
+          if (eq.equipment_only_products && eq.equipment_only_products.length > 0) {
+            eq.equipment_only_products.forEach(p => {
+              rows.push({
+                'Ship Name': ship.ship_name,
+                'Ship IMO': ship.imo_number || 'N/A',
+                'Ship Type': ship.ship_type || 'N/A',
+                'Equipment': eq.equipment,
+                'Specified Manufacturer': eq.manufacturer || 'N/A',
+                'Specified Model': eq.model || 'N/A',
+                'Availability': availStatus,
+                'Match Type': 'Alternative Compatible Option',
+                'Part Name': p.product_name || 'N/A',
+                'Part Number': p.part_number || 'N/A',
+                'Market Brand': p.brand || 'N/A',
+                'Market Model Number': p.model_number || 'N/A',
+                'Available Spares Qty': p.quantity || 0,
+                'Unit Price (USD)': p.price || '0.00',
+                'Stock Location': p.location || 'N/A',
+                'Service Type': p.service_type || 'Supply'
+              });
+            });
+          }
+
+          if ((!eq.products || eq.products.length === 0) && (!eq.equipment_only_products || eq.equipment_only_products.length === 0)) {
+            rows.push({
+              'Ship Name': ship.ship_name,
+              'Ship IMO': ship.imo_number || 'N/A',
+              'Ship Type': ship.ship_type || 'N/A',
+              'Equipment': eq.equipment,
+              'Specified Manufacturer': eq.manufacturer || 'N/A',
+              'Specified Model': eq.model || 'N/A',
+              'Availability': 'Not in Market',
+              'Match Type': 'No Market Listings',
+              'Part Name': 'No spare parts currently listed in market',
+              'Part Number': 'N/A',
+              'Market Brand': 'N/A',
+              'Market Model Number': 'N/A',
+              'Available Spares Qty': 0,
+              'Unit Price (USD)': 'N/A',
+              'Stock Location': 'N/A',
+              'Service Type': 'N/A'
+            });
+          }
+        });
+
+        const ws = XLSX.utils.json_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, ws, 'Market Inventory');
+        XLSX.writeFile(wb, `${sanitizedName}_market_inventory.xlsx`);
+      }
+
+      toast.success(`✅ Downloaded ${sanitizedName}_market_${type === 'summary' ? 'summary' : 'inventory'}.xlsx!`, { id: toastId });
     } catch (err) {
-      console.error('Failed to export ship market CSV:', err);
-      toast.error('Failed to export CSV. Please try again.', { id: toastId });
+      console.error('Failed to download ship market data:', err);
+      toast.error('Failed to download data. Please try again.', { id: toastId });
     } finally {
       setExportingCsv(false);
     }
   };
+
+  // Backward compatibility alias
+  const handleExportShipCsv = handleDownloadShipData;
 
   // ── Open Export Preview & Options Modal ──
   const handleOpenExportModal = async (ship) => {
@@ -983,11 +1116,11 @@ Boiler,Aalborg,Mission OS`;
                   <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transition:'transform 0.2s', transform: showShipDropdown ? 'rotate(180deg)' : 'none' }}><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
 
-                {/* Direct Export Button right next to selector when a ship is chosen */}
+                {/* Direct Download Button right next to selector when a ship is chosen */}
                 {selectedShip && (
                   <button
                     type="button"
-                    onClick={() => handleExportShipCsv(selectedShip, 'detailed')}
+                    onClick={() => handleDownloadShipData(selectedShip, 'detailed')}
                     disabled={exportingCsv}
                     className="btn btn-secondary"
                     style={{
@@ -1005,10 +1138,10 @@ Boiler,Aalborg,Mission OS`;
                       transition:'all 0.2s',
                       fontFamily:"'Inter',sans-serif"
                     }}
-                    title={`Export all available market spare parts & quantities for ${selectedShip.ship_name} to CSV`}
+                    title={`Download market spare parts & inventory for ${selectedShip.ship_name} in Excel (.xlsx)`}
                   >
                     <span>📥</span>
-                    <span>{exportingCsv ? 'Exporting...' : `Export ${selectedShip.ship_name} (CSV)`}</span>
+                    <span>{exportingCsv ? 'Downloading...' : 'Download Ship Data'}</span>
                   </button>
                 )}
 
@@ -1083,9 +1216,9 @@ Boiler,Aalborg,Mission OS`;
                               gap:'0.25rem',
                               marginLeft:'0.5rem'
                             }}
-                            title={`Export market parts CSV for ${ship.ship_name}`}
+                            title={`Download market parts for ${ship.ship_name} (.xlsx)`}
                           >
-                            <span>📥 CSV</span>
+                            <span>📥 Download</span>
                           </button>
                         </div>
                       ))}
@@ -1178,7 +1311,7 @@ Boiler,Aalborg,Mission OS`;
               )}
               <button
                 type="button"
-                onClick={() => handleExportShipCsv(selectedShip, 'detailed')}
+                onClick={() => handleDownloadShipData(selectedShip, 'detailed')}
                 disabled={exportingCsv}
                 className="btn btn-primary"
                 style={{
@@ -1192,7 +1325,7 @@ Boiler,Aalborg,Mission OS`;
                   boxShadow:'0 2px 8px rgba(5,150,105,0.25)'
                 }}
               >
-                <span>📥</span> {exportingCsv ? 'Exporting CSV...' : `Export ${selectedShip.ship_name} Data (CSV)`}
+                <span>📥</span> {exportingCsv ? 'Downloading...' : 'Download Ship Data'}
               </button>
               <button
                 type="button"
@@ -1933,17 +2066,17 @@ Boiler,Aalborg,Mission OS`;
             <div style={{ padding:'1.25rem 1.5rem', borderBottom:'1px solid var(--border-color)', display:'flex', justifyContent:'space-between', alignItems:'center', background:'linear-gradient(135deg, rgba(5,150,105,0.06), rgba(16,185,129,0.06))' }}>
               <div>
                 <h3 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.25rem', fontWeight:'700', margin:0, display:'flex', alignItems:'center', gap:'0.5rem', color:'var(--text-primary)' }}>🚢 Manage My Ships</h3>
-                <p style={{ fontSize:'0.82rem', color:'var(--text-muted)', margin:'0.2rem 0 0' }}>Add ships, manage specifications manually, or import bulk specifications via CSV.</p>
+                <p style={{ fontSize:'0.82rem', color:'var(--text-muted)', margin:'0.2rem 0 0' }}>Add ships, manage specifications manually, or import bulk specifications via Excel (.xlsx).</p>
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
                 <button
                   type="button"
-                  onClick={downloadSampleCsv}
+                  onClick={downloadSampleExcel}
                   className="btn btn-secondary"
                   style={{ fontSize:'0.8rem', padding:'0.45rem 0.85rem', display:'inline-flex', alignItems:'center', gap:'0.4rem', color:'#059669', borderColor:'rgba(5,150,105,0.4)', background:'rgba(5,150,105,0.06)', fontWeight:'600' }}
-                  title="Download sample .csv file for ship equipment specifications"
+                  title="Download sample .xlsx template for ship equipment specifications"
                 >
-                  <span>📥</span> Download Sample CSV
+                  <span>📥</span> Download Sample Template (.xlsx)
                 </button>
                 <button onClick={handleCloseShipsModal} style={{ background:'none', border:'none', fontSize:'1.3rem', cursor:'pointer', color:'var(--text-muted)', padding:'0.25rem' }}>✕</button>
               </div>
@@ -2018,9 +2151,9 @@ Boiler,Aalborg,Mission OS`;
                               alignItems:'center',
                               gap:'0.3rem'
                             }}
-                            title={`Export Market Inventory for ${ship.ship_name}`}
+                            title={`Download Market Inventory for ${ship.ship_name} (.xlsx)`}
                           >
-                            <span>📥</span> Export CSV
+                            <span>📥</span> Download Data
                           </button>
                           <span style={{ display:'inline-flex', alignItems:'center', gap:'0.35rem', padding:'0.25rem 0.6rem', borderRadius:'1rem', fontSize:'0.75rem', fontWeight:'600', background: ship.spec_count > 0 ? 'rgba(5,150,105,0.1)' : 'rgba(100,100,100,0.1)', color: ship.spec_count > 0 ? '#059669' : 'var(--text-secondary)' }}>
                             {ship.spec_count || 0} Specifications
@@ -2076,7 +2209,7 @@ Boiler,Aalborg,Mission OS`;
                                   onClick={() => handleOpenExportModal(ship)}
                                   style={{ padding:'0.35rem 0.75rem', fontSize:'0.78rem', display:'inline-flex', alignItems:'center', gap:'0.35rem', color:'#059669', borderColor:'rgba(5,150,105,0.4)', background:'rgba(5,150,105,0.06)', fontWeight:'600' }}
                                 >
-                                  📥 Export Market CSV
+                                  📥 Download Market Data
                                 </button>
                                 <button
                                   type="button"
@@ -2139,13 +2272,13 @@ Boiler,Aalborg,Mission OS`;
                                   transition:'all 0.15s'
                                 }}
                               >
-                                📤 Bulk CSV Upload
+                                📤 Bulk Excel Upload
                               </button>
                             </div>
 
                             <button
                               type="button"
-                              onClick={downloadSampleCsv}
+                              onClick={downloadSampleExcel}
                               className="btn btn-secondary"
                               style={{
                                 fontSize:'0.8rem',
@@ -2158,9 +2291,9 @@ Boiler,Aalborg,Mission OS`;
                                 background:'rgba(5,150,105,0.06)',
                                 fontWeight:'600'
                               }}
-                              title="Download sample .csv template"
+                              title="Download sample .xlsx template"
                             >
-                              <span>📥</span> Download Sample CSV
+                              <span>📥</span> Download Sample Template (.xlsx)
                             </button>
                           </div>
 
@@ -2246,7 +2379,7 @@ Boiler,Aalborg,Mission OS`;
                                 <div style={{ textAlign:'center', padding:'2.5rem 1rem', background:'var(--bg-surface)', borderRadius:'var(--radius-sm)', border:'1px dashed var(--border-color)', color:'var(--text-muted)' }}>
                                   <span style={{ fontSize:'1.8rem', display:'block', marginBottom:'0.5rem' }}>📋</span>
                                   <p style={{ margin:'0 0 0.35rem', fontWeight:'500', color:'var(--text-secondary)', fontSize:'0.9rem' }}>No specifications added yet for {ship.ship_name}</p>
-                                  <p style={{ margin:0, fontSize:'0.8rem' }}>Add specifications manually above, or switch to the <strong>Bulk CSV Upload</strong> tab to upload a file.</p>
+                                  <p style={{ margin:0, fontSize:'0.8rem' }}>Add specifications manually above, or switch to the <strong>Bulk Excel Upload</strong> tab to upload an Excel file.</p>
                                 </div>
                               ) : filteredShipSpecs.length === 0 ? (
                                 <div style={{ textAlign:'center', padding:'1.5rem', color:'var(--text-muted)', background:'var(--bg-surface)', borderRadius:'var(--radius-sm)' }}>
@@ -2358,26 +2491,26 @@ Boiler,Aalborg,Mission OS`;
                             </div>
                           )}
 
-                          {/* ═══ TAB 2: BULK CSV UPLOAD ═══ */}
+                          {/* ═══ TAB 2: BULK EXCEL UPLOAD ═══ */}
                           {shipSpecsTab === 'upload' && (
                             <div>
                               {/* Instructions & Template info card */}
                               <div style={{ background:'rgba(5,150,105,0.04)', border:'1px solid rgba(5,150,105,0.2)', borderRadius:'var(--radius-sm)', padding:'0.9rem 1.1rem', marginBottom:'1rem', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'0.75rem' }}>
                                 <div>
                                   <p style={{ margin:0, fontSize:'0.82rem', color:'var(--text-primary)', fontWeight:'500' }}>
-                                    📄 Required CSV columns: <strong>Equipment</strong>. Optional columns: <strong>Manufacturer</strong>, <strong>Model</strong>.
+                                    📄 Required Excel columns: <strong>Equipment</strong>. Optional columns: <strong>Manufacturer</strong>, <strong>Model</strong>.
                                   </p>
                                   <p style={{ margin:'0.2rem 0 0', fontSize:'0.78rem', color:'var(--text-muted)' }}>
-                                    Need help with the CSV structure? Download the sample file to see the expected format.
+                                    Need help with the file format? Download the sample template to see the expected format.
                                   </p>
                                 </div>
                                 <button
                                   type="button"
-                                  onClick={downloadSampleCsv}
+                                  onClick={downloadSampleExcel}
                                   className="btn btn-secondary"
                                   style={{ fontSize:'0.78rem', padding:'0.35rem 0.75rem', display:'inline-flex', alignItems:'center', gap:'0.35rem', color:'#059669', borderColor:'#059669', background:'white' }}
                                 >
-                                  📥 Download Sample CSV
+                                  📥 Download Sample Template (.xlsx)
                                 </button>
                               </div>
 
@@ -2410,7 +2543,7 @@ Boiler,Aalborg,Mission OS`;
                               <div
                                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                                 onDragLeave={() => setDragOver(false)}
-                                onDrop={(e) => { e.preventDefault(); setDragOver(false); const file = e.dataTransfer.files[0]; handleCsvFile(file); }}
+                                onDrop={(e) => { e.preventDefault(); setDragOver(false); const file = e.dataTransfer.files[0]; handleSpecsFile(file); }}
                                 style={{
                                   border: `2px dashed ${dragOver ? '#059669' : csvFileName ? '#059669' : 'var(--border-color)'}`,
                                   borderRadius: 'var(--radius-md)',
@@ -2421,16 +2554,16 @@ Boiler,Aalborg,Mission OS`;
                                   cursor: 'pointer',
                                   marginBottom: '1.25rem'
                                 }}
-                                onClick={() => document.getElementById(`specs-csv-input-${ship.id}`).click()}
+                                onClick={() => document.getElementById(`specs-excel-input-${ship.id}`).click()}
                               >
                                 <input
-                                  id={`specs-csv-input-${ship.id}`}
+                                  id={`specs-excel-input-${ship.id}`}
                                   type="file"
-                                  accept=".csv"
+                                  accept=".xlsx, .xls, .csv"
                                   style={{ display: 'none' }}
-                                  onChange={(e) => { handleCsvFile(e.target.files[0]); e.target.value = ''; }}
+                                  onChange={(e) => { handleSpecsFile(e.target.files[0]); e.target.value = ''; }}
                                 />
-                                <span style={{ fontSize:'2rem', display:'block', marginBottom:'0.5rem' }}>{csvFileName ? '✅' : '📄'}</span>
+                                <span style={{ fontSize:'2rem', display:'block', marginBottom:'0.5rem' }}>{csvFileName ? '✅' : '📊'}</span>
                                 {csvFileName ? (
                                   <>
                                     <p style={{ fontWeight:'600', color:'#059669', marginBottom:'0.25rem', fontSize:'0.9rem' }}>{csvFileName}</p>
@@ -2438,8 +2571,8 @@ Boiler,Aalborg,Mission OS`;
                                   </>
                                 ) : (
                                   <>
-                                    <p style={{ fontWeight:'600', color:'var(--text-primary)', marginBottom:'0.25rem', fontSize:'0.9rem' }}>Upload Specs CSV for {ship.ship_name}</p>
-                                    <p style={{ fontSize:'0.8rem', color:'var(--text-muted)' }}>Drag & drop your CSV file here, or click to browse</p>
+                                    <p style={{ fontWeight:'600', color:'var(--text-primary)', marginBottom:'0.25rem', fontSize:'0.9rem' }}>Upload Specifications (.xlsx) for {ship.ship_name}</p>
+                                    <p style={{ fontSize:'0.8rem', color:'var(--text-muted)' }}>Drag & drop your Excel (.xlsx) file here, or click to browse</p>
                                     {ship.spec_count > 0 && csvUploadMode === 'replace' && (
                                       <p style={{ fontSize:'0.75rem', color:'var(--danger)', marginTop:'0.5rem', fontWeight:'500' }}>
                                         ⚠️ Note: Uploading in "Replace" mode will overwrite {ship.spec_count} existing specification(s).
@@ -2449,7 +2582,7 @@ Boiler,Aalborg,Mission OS`;
                                 )}
                               </div>
 
-                              {/* CSV Preview Table */}
+                              {/* Specifications Preview Table */}
                               {csvPreview.length > 0 && (
                                 <div style={{ marginBottom:'1.25rem' }}>
                                   <h4 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'0.9rem', fontWeight:'600', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
@@ -2512,11 +2645,11 @@ Boiler,Aalborg,Mission OS`;
             <div style={{ padding:'1rem 1.5rem', borderTop:'1px solid var(--border-color)', display:'flex', justifyContent:'space-between', alignItems:'center', background:'var(--bg-card)' }}>
               <button
                 type="button"
-                onClick={downloadSampleCsv}
+                onClick={downloadSampleExcel}
                 className="btn btn-secondary"
                 style={{ fontSize:'0.82rem', padding:'0.5rem 1rem', display:'inline-flex', alignItems:'center', gap:'0.4rem', color:'#059669', borderColor:'rgba(5,150,105,0.4)', background:'rgba(5,150,105,0.05)' }}
               >
-                <span>📥</span> Download Sample CSV Template
+                <span>📥</span> Download Sample Template (.xlsx)
               </button>
               <button className="btn btn-secondary" onClick={handleCloseShipsModal} style={{ padding:'0.6rem 1.5rem' }}>Close</button>
             </div>
@@ -2577,7 +2710,7 @@ Boiler,Aalborg,Mission OS`;
                   gap:'0.5rem',
                   color:'var(--text-primary)'
                 }}>
-                  <span>📥</span> Export Market Data — {exportModalShip.ship_name}
+                  <span>📥</span> Download Ship Data — {exportModalShip.ship_name}
                 </h3>
                 <p style={{ fontSize:'0.82rem', color:'var(--text-muted)', margin:'0.25rem 0 0' }}>
                   Market availability of equipment and spare parts for <strong>{exportModalShip.ship_name}</strong>
@@ -2671,16 +2804,16 @@ Boiler,Aalborg,Mission OS`;
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'0.75rem' }}>
                       <div>
                         <h4 style={{ margin:0, fontSize:'0.95rem', fontWeight:'600', color:'var(--text-primary)', display:'flex', alignItems:'center', gap:'0.4rem' }}>
-                          📄 Export Format Options
+                          📄 Download Format Options
                         </h4>
                         <p style={{ margin:'0.25rem 0 0', fontSize:'0.8rem', color:'var(--text-muted)' }}>
-                          Choose between a detailed spare parts inventory or an equipment availability summary.
+                          Choose between a detailed spare parts inventory or an equipment availability summary in Excel (.xlsx) format.
                         </p>
                       </div>
                       <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
                         <button
                           type="button"
-                          onClick={() => handleExportShipCsv(exportModalShip, 'detailed')}
+                          onClick={() => handleDownloadShipData(exportModalShip, 'detailed')}
                           disabled={exportingCsv}
                           className="btn btn-primary"
                           style={{
@@ -2693,11 +2826,11 @@ Boiler,Aalborg,Mission OS`;
                             fontWeight:'600'
                           }}
                         >
-                          <span>📥</span> {exportingCsv ? 'Exporting...' : 'Detailed Parts CSV'}
+                          <span>📥</span> {exportingCsv ? 'Downloading...' : 'Detailed Parts Excel (.xlsx)'}
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleExportShipCsv(exportModalShip, 'summary')}
+                          onClick={() => handleDownloadShipData(exportModalShip, 'summary')}
                           disabled={exportingCsv}
                           className="btn btn-secondary"
                           style={{
@@ -2711,7 +2844,7 @@ Boiler,Aalborg,Mission OS`;
                             fontWeight:'600'
                           }}
                         >
-                          <span>📊</span> Equipment Summary CSV
+                          <span>📊</span> Equipment Summary Excel (.xlsx)
                         </button>
                       </div>
                     </div>
@@ -2994,7 +3127,7 @@ Boiler,Aalborg,Mission OS`;
               gap:'0.75rem'
             }}>
               <span style={{ fontSize:'0.78rem', color:'var(--text-muted)', display:'flex', alignItems:'center', gap:'0.35rem' }}>
-                <span>💡</span> CSV contains all equipment specs, market parts, part numbers, stock quantities, prices, and vendor contacts.
+                <span>💡</span> Download contains equipment specifications and live market spare parts inventory in standard Excel (.xlsx) format.
               </span>
               <div style={{ display:'flex', gap:'0.6rem' }}>
                 <button
@@ -3008,7 +3141,7 @@ Boiler,Aalborg,Mission OS`;
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={() => handleExportShipCsv(exportModalShip, 'detailed')}
+                  onClick={() => handleDownloadShipData(exportModalShip, 'detailed')}
                   disabled={exportingCsv}
                   style={{
                     padding:'0.5rem 1.35rem',
@@ -3020,7 +3153,7 @@ Boiler,Aalborg,Mission OS`;
                     fontWeight:'600'
                   }}
                 >
-                  <span>📥</span> {exportingCsv ? 'Exporting...' : 'Download Detailed CSV'}
+                  <span>📥</span> {exportingCsv ? 'Downloading...' : 'Download Detailed Excel (.xlsx)'}
                 </button>
               </div>
             </div>
