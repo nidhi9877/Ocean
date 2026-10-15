@@ -1431,11 +1431,23 @@ export default function BuyerDashboard() {
                   </button>
                 )}
               </div>
-              <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', fontSize:'0.9rem', minWidth:900 }}>
+              {(() => {
+                // Build a stable Seller 1 / Seller 2 … Seller N map keyed by provider_id
+                const sellerIdMap = {};
+                let sellerCounter = 0;
+                displayedProducts.forEach(p => {
+                  const pid = p.provider_id ?? p.seller_id ?? p.user_id;
+                  if (pid !== undefined && pid !== null && !sellerIdMap[pid]) {
+                    sellerCounter += 1;
+                    sellerIdMap[pid] = `Seller ${sellerCounter}`;
+                  }
+                });
+                return (
+              <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', fontSize:'0.9rem', minWidth:1000 }}>
                 <thead>
                   <tr style={{ borderBottom:'2px solid var(--border-color)' }}>
-                    {['Equipment','Manufacturer','Model','Year','Part Name','Part #','Location','Qty','Service','Payment','Last Updated','Action'].map(h => (
-                      <th key={h} style={{ padding:'0.75rem', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)' }}>{h}</th>
+                    {['Seller ID','Equipment','Manufacturer','Model','Year','Part Name','Part #','Location','Qty','Service','Payment','Last Updated','Action'].map(h => (
+                      <th key={h} style={{ padding:'0.75rem', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)', whiteSpace:'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1443,10 +1455,22 @@ export default function BuyerDashboard() {
                   {/* Compatible product rows (normal white rows) */}
                   {displayedProducts.map(p => {
                     const sending = sendingIds.has(p.id);
+                    const pid = p.provider_id ?? p.seller_id ?? p.user_id;
+                    const sellerLabel = sellerIdMap[pid] || '—';
                     return (
                       <tr key={p.id} style={{ borderBottom:'1px solid var(--border-color)', transition:'background 0.15s' }}
                           onMouseEnter={e=>e.currentTarget.style.background='var(--bg-card-hover)'}
                           onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                        <td style={{ padding:'0.75rem' }}>
+                          <span style={{
+                            display:'inline-flex', alignItems:'center', justifyContent:'center',
+                            padding:'0.22rem 0.65rem', borderRadius:'1rem',
+                            fontSize:'0.75rem', fontWeight:'700',
+                            background:'linear-gradient(135deg,rgba(37,99,235,0.12),rgba(99,102,241,0.12))',
+                            color:'var(--accent-primary)', border:'1px solid rgba(37,99,235,0.22)',
+                            whiteSpace:'nowrap', letterSpacing:'0.02em'
+                          }}>{sellerLabel}</span>
+                        </td>
                         <td style={{ padding:'0.75rem' }}>{p.category||'-'}</td>
                         <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.brand||'-'}</td>
                         <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.model_number||'-'}</td>
@@ -1476,6 +1500,7 @@ export default function BuyerDashboard() {
                     .filter(sc => sc.status === 'incompatible')
                     .map((sc, i) => (
                       <tr key={`incompat-${sc.spec.id || i}`} style={{ borderBottom:'1px solid rgba(245,158,11,0.25)', background:'rgba(245,158,11,0.08)' }}>
+                        <td style={{ padding:'0.75rem' }}><span style={{ fontSize:'0.75rem', color:'var(--text-muted)', fontStyle:'italic' }}>—</span></td>
                         <td style={{ padding:'0.75rem', fontWeight:'600' }}>{sc.spec.equipment}</td>
                         <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{sc.spec.manufacturer || '-'}</td>
                         <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{sc.spec.model || '-'}</td>
@@ -1524,6 +1549,7 @@ export default function BuyerDashboard() {
                     .filter(sc => sc.status === 'not_available')
                     .map((sc, i) => (
                       <tr key={`unavail-${sc.spec.id || i}`} style={{ borderBottom:'1px solid rgba(239,68,68,0.25)', background:'rgba(239,68,68,0.08)' }}>
+                        <td style={{ padding:'0.75rem' }}><span style={{ fontSize:'0.75rem', color:'var(--text-muted)', fontStyle:'italic' }}>—</span></td>
                         <td style={{ padding:'0.75rem', fontWeight:'600' }}>{sc.spec.equipment}</td>
                         <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{sc.spec.manufacturer || '-'}</td>
                         <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{sc.spec.model || '-'}</td>
@@ -1565,6 +1591,8 @@ export default function BuyerDashboard() {
                   }
                 </tbody>
               </table>
+                );
+              })()}
             </div>
           </>
         )}
