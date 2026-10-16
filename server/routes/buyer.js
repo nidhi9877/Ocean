@@ -21,7 +21,7 @@ router.post('/inquiries', authenticateToken, async (req, res) => {
 
     const eta = delivery_requirements?.eta || req.body.eta;
     const etd = delivery_requirements?.etd || req.body.etd || null;
-    const vesselName = delivery_requirements?.vessel_name || req.body.vessel_name || req.body.vesselName;
+    const vesselName = (delivery_requirements?.vessel_name || req.body.vessel_name || req.body.vesselName || '').toString().trim() || null;
 
     if (!destination_location || !destination_location.trim()) {
       return res.status(400).json({ error: 'Destination location is required.' });
@@ -29,10 +29,6 @@ router.post('/inquiries', authenticateToken, async (req, res) => {
 
     if (!eta || !eta.toString().trim()) {
       return res.status(400).json({ error: 'ETA is compulsory for sending an inquiry.' });
-    }
-
-    if (!vesselName || !vesselName.toString().trim()) {
-      return res.status(400).json({ error: 'Vessel Name is compulsory for sending an inquiry.' });
     }
 
     // Get the buyer profile
@@ -57,7 +53,7 @@ router.post('/inquiries', authenticateToken, async (req, res) => {
       // Insert inquiry into DB
       await sql`
         INSERT INTO inquiries (buyer_id, provider_id, product_id, destination_location, eta, etd, vessel_name, target_price, broadcast_id, cc, bcc)
-        VALUES (${buyer_id}, ${sel.provider_id}, ${sel.product_id}, ${destination_location.trim()}, ${eta.toString().trim()}, ${etd ? etd.toString().trim() : null}, ${vesselName.toString().trim()}, NULL, ${broadcast_id}, ${cc || null}, ${bcc || null})
+        VALUES (${buyer_id}, ${sel.provider_id}, ${sel.product_id}, ${destination_location.trim()}, ${eta.toString().trim()}, ${etd ? etd.toString().trim() : null}, ${vesselName}, NULL, ${broadcast_id}, ${cc || null}, ${bcc || null})
       `;
     }
 

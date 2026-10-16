@@ -968,7 +968,6 @@ export default function BuyerDashboard() {
     if (!selectedProduct) return;
     if (!inquiryMeta.destination.trim()) { toast.error('Please enter Destination Port in the inquiry details section.'); return; }
     if (!inquiryMeta.eta.trim()) { toast.error('Please select ETA in the inquiry details section (compulsory).'); return; }
-    if (!inquiryMeta.vesselName.trim()) { toast.error('Please enter Vessel Name in the inquiry details section (compulsory).'); return; }
     if (sendingIds.has(selectedProduct.id)) return;
     setSendingIds(prev => new Set(prev).add(selectedProduct.id));
     try {
@@ -978,7 +977,7 @@ export default function BuyerDashboard() {
         delivery_requirements: {
           eta: inquiryMeta.eta.trim(),
           etd: inquiryMeta.etd ? inquiryMeta.etd.trim() : null,
-          vessel_name: inquiryMeta.vesselName.trim()
+          vessel_name: inquiryMeta.vesselName ? inquiryMeta.vesselName.trim() : null
         },
         cc: emailData.cc ? emailData.cc.trim() : null,
         bcc: emailData.bcc ? emailData.bcc.trim() : null,
@@ -1014,15 +1013,11 @@ export default function BuyerDashboard() {
       toast.error('Please select ETA in the inquiry details section (compulsory).');
       return;
     }
-    if (!inquiryMeta.vesselName.trim()) {
-      toast.error('Please enter Vessel Name in the inquiry details section (compulsory).');
-      return;
-    }
     setSelectedProduct(product);
     const sellerName = product.provider_username || product.company_name || 'Seller';
     const productName = product.product_name || product.category || 'N/A';
     const subject = `🚢 Purchase Inquiry: ${productName} — MarineStockHub Marketplace`;
-    const body = `Dear ${sellerName} Team,\n\nI am interested in purchasing the following listed product:\n\n- Product: ${productName}\n- Brand: ${product.brand || 'N/A'}\n- Model: ${product.model_number || 'N/A'}\n- Part Number: ${product.part_number || 'N/A'}\n\nDelivery Details:\n- Destination Port: ${inquiryMeta.destination.trim()}\n- ETA: ${inquiryMeta.eta.trim()}\n- ETD: ${inquiryMeta.etd ? inquiryMeta.etd.trim() : 'N/A'}\n- Vessel Name: ${inquiryMeta.vesselName.trim()}\n- Minimum Quantity Required: ${filters.minQty}\n\nPlease let me know if you can fulfill this request and provide a price quote.\n\nBest regards,\n${user?.username || 'Buyer'}`;
+    const body = `Dear ${sellerName} Team,\n\nI am interested in purchasing the following listed product:\n\n- Product: ${productName}\n- Brand: ${product.brand || 'N/A'}\n- Model: ${product.model_number || 'N/A'}\n- Part Number: ${product.part_number || 'N/A'}\n\nDelivery Details:\n- Destination Port: ${inquiryMeta.destination.trim()}\n- ETA: ${inquiryMeta.eta.trim()}\n- ETD: ${inquiryMeta.etd ? inquiryMeta.etd.trim() : 'N/A'}\n- Vessel Name: ${inquiryMeta.vesselName ? inquiryMeta.vesselName.trim() : 'N/A'}\n- Minimum Quantity Required: ${filters.minQty}\n\nPlease let me know if you can fulfill this request and provide a price quote.\n\nBest regards,\n${user?.username || 'Buyer'}`;
     
     setShowCc(false);
     setShowBcc(false);
@@ -1393,7 +1388,7 @@ export default function BuyerDashboard() {
         {/* Inquiry Details (ETA/ETD/Vessel/Destination) */}
         <div className="glass-card" style={{ padding:'1.25rem 1.5rem', marginBottom:'1.25rem' }}>
           <h4 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1rem', fontWeight:'600', marginBottom:'0.75rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
-            📋 Inquiry Details <span style={{ fontSize:'0.75rem', fontWeight:'400', color:'var(--text-muted)' }}>(Destination, ETA & Vessel Name are compulsory)</span>
+            📋 Inquiry Details <span style={{ fontSize:'0.75rem', fontWeight:'400', color:'var(--text-muted)' }}>(Destination & ETA are compulsory)</span>
           </h4>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:'0.75rem' }}>
             <div>
@@ -1409,8 +1404,8 @@ export default function BuyerDashboard() {
               <input type="date" className="form-input" value={inquiryMeta.etd} onChange={e=>setInquiryMeta(m=>({...m,etd:e.target.value}))}/>
             </div>
             <div>
-              <label className="form-label">Vessel Name <span style={{ color:'var(--danger)' }}>*</span></label>
-              <input className="form-input" placeholder="e.g., MV Ocean Star" value={inquiryMeta.vesselName} onChange={e=>setInquiryMeta(m=>({...m,vesselName:e.target.value}))} required />
+              <label className="form-label">Vessel Name <span style={{ fontSize:'0.8rem', color:'var(--text-muted)', fontWeight:'normal' }}>(Optional)</span></label>
+              <input className="form-input" placeholder="e.g., MV Ocean Star" value={inquiryMeta.vesselName} onChange={e=>setInquiryMeta(m=>({...m,vesselName:e.target.value}))} />
             </div>
           </div>
         </div>
@@ -1436,35 +1431,7 @@ export default function BuyerDashboard() {
         ) : (
           <>
             <div className="glass-card" style={{ padding:'1.25rem', overflowX:'auto' }}>
-              {/* Compatible Options Mode Banner */}
-              {compatibleOptionsMode && compatibleOptionsSpec && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  gap: '0.75rem', padding: '0.7rem 1rem', borderRadius: 'var(--radius-md)',
-                  background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.35)',
-                  marginBottom: '1rem', flexWrap: 'wrap'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '1.1rem' }}>🔍</span>
-                    <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#d97706' }}>
-                      Compatible Options Mode
-                    </span>
-                    <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                      — Showing only <strong>Complete Set</strong> alternatives for&nbsp;
-                      <strong>{compatibleOptionsSpec.equipment}</strong>
-                      {compatibleOptionsSpec.manufacturer && (
-                        <> (excluding <em>{compatibleOptionsSpec.manufacturer}</em>)</>
-                      )}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => { setCompatibleOptionsMode(false); setSearchQuery(''); }}
-                    style={{ background: 'none', border: '1px solid rgba(245,158,11,0.4)', borderRadius: '1rem', padding: '0.25rem 0.75rem', fontSize: '0.78rem', color: '#d97706', cursor: 'pointer', fontWeight: 600 }}
-                  >
-                    ✕ Clear Filter
-                  </button>
-                </div>
-              )}
+
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'0.75rem', marginBottom:'1rem' }}>
                 <p style={{ color:'var(--text-secondary)', fontSize:'0.95rem', margin:0 }}>
                   {selectedShip && specsFilterActive ? (
