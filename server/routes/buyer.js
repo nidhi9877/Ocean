@@ -598,11 +598,14 @@ router.get('/ships/:shipId/market-availability', authenticateToken, async (req, 
     const equipmentBreakdown = specs.map(spec => {
       // Tier 1: Fully compatible products (equipment + manufacturer + model match)
       const compatibleProducts = marketProducts.filter(p => matchesSpecFull(p, spec));
-      // Tier 2: Equipment type matches but different manufacturer/model
+      // Tier 2: Equipment type matches but different manufacturer/model — ONLY 'Complete Set' items qualify as compatible alternatives
       const equipmentOnlyProducts = marketProducts.filter(p => {
         if (!matchesEquipment(p, spec)) return false;
         // Exclude products already in compatible list
         if (compatibleProducts.some(cp => cp.id === p.id)) return false;
+        // Only 'Complete Set' items can appear as compatible alternatives
+        const cat = (p.part_category || '').trim().toLowerCase();
+        if (cat !== 'complete set') return false;
         return true;
       });
 

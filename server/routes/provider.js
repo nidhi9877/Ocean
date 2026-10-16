@@ -122,7 +122,7 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
       if (qty > 0) {
         await sql`
           INSERT INTO products (
-            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode, department, warranty
+            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode, department, warranty, part_category
           )
           VALUES (
             ${providerId}, 
@@ -142,7 +142,8 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
             ${p.serviceType || 'Supply'},
             ${p.payment_mode || 'pre-payment'},
             ${department || null},
-            ${p.warranty || null}
+            ${p.warranty || null},
+            ${p.part_category || p.partCategory || 'Spare Part'}
           )
         `;
         insertedCount++;
@@ -387,6 +388,7 @@ router.put('/products/:id', authenticateToken, async (req, res) => {
         service_type = ${req.body.service_type || 'Supply'},
         payment_mode = ${req.body.payment_mode || 'pre-payment'},
         warranty = ${req.body.warranty || null},
+        part_category = ${req.body.part_category || req.body.partCategory || 'Spare Part'},
         updated_at = NOW()
       WHERE id = ${productId}
     `;
@@ -508,7 +510,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
       if (!p.id || String(p.id).startsWith('temp_')) {
         await sql`
           INSERT INTO products (
-            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode, warranty
+            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode, warranty, part_category
           )
           VALUES (
             ${providerId}, 
@@ -521,13 +523,14 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
             ${p.location || null}, 
             ${p.price || 0}, 
             ${p.quantity || 0}, 
-            ${p.description || null},
-            ${p.additional_info || null},
-            ${p.media_link || null},
-            ${p.equipment_condition || 'New'},
-            ${p.service_type || 'Supply'},
-            ${p.payment_mode || 'pre-payment'},
-            ${p.warranty || null}
+            ${p.description || null}, 
+            ${p.additional_info || null}, 
+            ${p.media_link || null}, 
+            ${p.equipment_condition || 'New'}, 
+            ${p.service_type || 'Supply'}, 
+            ${p.payment_mode || 'pre-payment'}, 
+            ${p.warranty || null},
+            ${p.part_category || p.partCategory || 'Spare Part'}
           )
         `;
       } else {
@@ -549,6 +552,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
             service_type = ${p.service_type || 'Supply'},
             payment_mode = ${p.payment_mode || 'pre-payment'},
             warranty = ${p.warranty || null},
+            part_category = ${p.part_category || p.partCategory || 'Spare Part'},
             updated_at = NOW()
           WHERE id = ${p.id} AND provider_id = ${providerId}
         `;

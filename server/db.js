@@ -74,6 +74,7 @@ export async function initDatabase() {
         payment_mode VARCHAR(50) DEFAULT 'pre-payment',
         department VARCHAR(255),
         warranty VARCHAR(100),
+        part_category VARCHAR(50) DEFAULT 'Spare Part',
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
       )
@@ -153,6 +154,7 @@ export async function initDatabase() {
         sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT 'pre-payment'`,
         sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS department VARCHAR(255)`,
         sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS warranty VARCHAR(100)`,
+        sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS part_category VARCHAR(50) DEFAULT 'Spare Part'`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS target_price DECIMAL(10,2)`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS surge_email_sent BOOLEAN DEFAULT FALSE`,

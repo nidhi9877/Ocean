@@ -47,7 +47,16 @@ export default function UploadModal({ onClose, onSuccess }) {
     }
 
     const firstRow = data[0];
-    const colEquipment = findCol(firstRow, ['equipment', 'category']);
+    const colEquipment = findCol(firstRow, ['equipment', 'equipmentname']) || findCol(firstRow, ['category']);
+    // Detect part category (Spare Part / Complete Set)
+    let colPartCategory = findCol(firstRow, ['partcategory', 'itemcategory', 'categorytype']);
+    if (!colPartCategory) {
+      const keys = metaFields || Object.keys(firstRow);
+      const catKey = keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === 'category');
+      if (catKey && (catKey !== colEquipment || findCol(firstRow, ['equipment', 'equipmentname']))) {
+        colPartCategory = catKey;
+      }
+    }
     const colManufacturer = findCol(firstRow, ['manufacturer', 'brand']);
     const colModelNumber = findCol(firstRow, ['model', 'modelnumber']);
     const colYearOfManufacturer = findCol(firstRow, ['authorization', 'authorized', 'yearofmanufacturer', 'year', 'manufacturedat']);
@@ -77,6 +86,16 @@ export default function UploadModal({ onClose, onSuccess }) {
         continue;
       }
 
+      let partCategoryVal = 'Spare Part';
+      if (colPartCategory && row[colPartCategory]) {
+        const rawCat = String(row[colPartCategory]).trim().toLowerCase();
+        if (rawCat.includes('complete')) {
+          partCategoryVal = 'Complete Set';
+        } else {
+          partCategoryVal = 'Spare Part';
+        }
+      }
+
       validProducts.push({
         companyName: user?.username || '',
         productId: '',
@@ -95,7 +114,8 @@ export default function UploadModal({ onClose, onSuccess }) {
         service_type: colServiceType ? (row[colServiceType] || 'Supply') : 'Supply',
         payment_mode: colPaymentMode ? (row[colPaymentMode] || 'pre-payment') : 'pre-payment',
         equipment_condition: colCondition && row[colCondition] ? (String(row[colCondition]).trim().toLowerCase().includes('refurb') ? 'Refurbished' : 'New') : 'New',
-        warranty: colWarranty ? (row[colWarranty] || '') : ''
+        warranty: colWarranty ? (row[colWarranty] || '') : '',
+        part_category: partCategoryVal
       });
     }
 
@@ -169,10 +189,10 @@ export default function UploadModal({ onClose, onSuccess }) {
   };
 
   const downloadSampleExcel = () => {
-    const headers = ['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
+    const headers = ['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
     const rows = [
-      ['Navigation', 'Raymarine', 'Axiom 9', 'Yes', 'GPS Chartplotter', 'E70366', 'Miami, FL', 5, 'Supply', 'pre-payment/credit', 'New', '1 Year'],
-      ['Engine', 'Caterpillar', 'C32', 'No', 'Fuel Injector', '10R-1273', 'Houston, TX', 12, 'Supply and Service', 'pre-payment', 'Refurbished', '6 Months']
+      ['Navigation', 'Raymarine', 'Axiom 9', 'Yes', 'Spare Part', 'GPS Chartplotter', 'E70366', 'Miami, FL', 5, 'Supply', 'pre-payment', 'New', '1 Year'],
+      ['Engine', 'Caterpillar', 'C32', 'No', 'Complete Set', 'Complete Set', '10R-1273', 'Houston, TX', 12, 'Supply and Service', 'pre-payment', 'Refurbished', '6 Months']
     ];
     
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);

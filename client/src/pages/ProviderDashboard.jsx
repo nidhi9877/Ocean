@@ -100,6 +100,7 @@ export default function ProviderDashboard() {
       newEditDataMap[p.id] = {
         product_name: p.product_name || '',
         category: p.category || '',
+        part_category: p.part_category || 'Spare Part',
         part_number: p.part_number || '',
         brand: p.brand || '',
         model_number: p.model_number || '',
@@ -129,6 +130,7 @@ export default function ProviderDashboard() {
         newEditDataMap[p.id] = {
           product_name: p.product_name || '',
           category: p.category || '',
+          part_category: p.part_category || 'Spare Part',
           part_number: p.part_number || '',
           brand: p.brand || '',
           model_number: p.model_number || '',
@@ -170,6 +172,7 @@ export default function ProviderDashboard() {
         [product.id]: {
           product_name: product.product_name || '',
           category: product.category || '',
+          part_category: product.part_category || 'Spare Part',
           part_number: product.part_number || '',
           brand: product.brand || '',
           model_number: product.model_number || '',
@@ -203,6 +206,7 @@ export default function ProviderDashboard() {
       id: tempId,
       product_name: '',
       category: '',
+      part_category: 'Spare Part',
       brand: '',
       model_number: '',
       part_number: '',
@@ -411,14 +415,15 @@ export default function ProviderDashboard() {
   const downloadCSV = () => {
     if (products.length === 0) return;
     
-    // Headers: Equipment, Manufacturer, Model, Authorization, Part Name, Part No., Location, QTY, Business Type, Payment Mode, Condition, Warranty
-    const headers = ['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
+    // Headers: Equipment, Manufacturer, Model, Authorization, Category, Part Name, Part No., Location, QTY, Business Type, Payment Mode, Condition, Warranty
+    const headers = ['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
     
     const rows = products.map(p => [
       p.category || '',
       p.brand || '',
       p.model_number || '',
       p.manufactured_at || '',
+      p.part_category || 'Spare Part',
       p.product_name || '',
       p.part_number || '',
       p.location || '',
@@ -468,12 +473,13 @@ export default function ProviderDashboard() {
 
   const downloadExcel = () => {
     if (products.length === 0) return;
-    const headers = ['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
+    const headers = ['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
     const rows = products.map(p => [
       p.category || '',
       p.brand || '',
       p.model_number || '',
       p.manufactured_at || '',
+      p.part_category || 'Spare Part',
       p.product_name || '',
       p.part_number || '',
       p.location || '',
@@ -493,12 +499,13 @@ export default function ProviderDashboard() {
   const downloadPDF = () => {
     if (products.length === 0) return;
     const doc = new jsPDF();
-    const headers = [['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment', 'Condition', 'Warranty']];
+    const headers = [['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment', 'Condition', 'Warranty']];
     const rows = products.map(p => [
       p.category || '',
       p.brand || '',
       p.model_number || '',
       p.manufactured_at || '',
+      p.part_category || 'Spare Part',
       p.product_name || '',
       p.part_number || '',
       p.location || '',
@@ -894,6 +901,7 @@ export default function ProviderDashboard() {
                           <th style={{ fontSize: '0.56rem' }}>Manufacturer</th>
                           <th style={{ fontSize: '0.56rem' }}>Model</th>
                           <th style={{ fontSize: '0.54rem' }}>Authorization</th>
+                          <th style={{ fontSize: '0.62rem' }}>Category</th>
                           <th style={{ fontSize: '0.62rem' }}>Part Name</th>
                           <th style={{ fontSize: '0.58rem' }}>Part No.</th>
                           <th style={{ fontSize: '0.56rem' }}>Location</th>
@@ -913,6 +921,7 @@ export default function ProviderDashboard() {
                           return (
                             (p.product_name && p.product_name.toLowerCase().includes(q)) ||
                             (p.category && p.category.toLowerCase().includes(q)) ||
+                            (p.part_category && p.part_category.toLowerCase().includes(q)) ||
                             (p.brand && p.brand.toLowerCase().includes(q)) ||
                             (p.model_number && p.model_number.toLowerCase().includes(q)) ||
                             (p.part_number && p.part_number.toLowerCase().includes(q)) ||
@@ -972,47 +981,30 @@ export default function ProviderDashboard() {
                                   </select>
                                 </td>
                                 <td>
-                                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                    <input
-                                      className="inline-edit-input"
-                                      style={{ 
-                                        paddingRight: '24px',
-                                        backgroundColor: editDataMap[product.id]?.product_name === 'Complete Set' ? 'var(--bg-muted, #f1f5f9)' : 'transparent',
-                                        color: editDataMap[product.id]?.product_name === 'Complete Set' ? 'var(--text-muted, #64748b)' : 'inherit'
-                                      }}
-                                      placeholder="Enter part name"
-                                      value={editDataMap[product.id]?.product_name || ''}
-                                      onChange={(e) => handleBulkEditChange(product.id, 'product_name', e.target.value)}
-                                      readOnly={editDataMap[product.id]?.product_name === 'Complete Set'}
-                                      autoFocus
-                                    />
-                                    <select
-                                      style={{
-                                        position: 'absolute',
-                                        right: 0,
-                                        top: 0,
-                                        bottom: 0,
-                                        width: '24px',
-                                        opacity: 0,
-                                        cursor: 'pointer'
-                                      }}
-                                      value={editDataMap[product.id]?.product_name === 'Complete Set' ? 'Complete Set' : 'Custom'}
-                                      onChange={(e) => {
-                                        if (e.target.value === 'Complete Set') {
-                                          handleBulkEditChange(product.id, 'product_name', 'Complete Set');
-                                        } else {
-                                          if (editDataMap[product.id]?.product_name === 'Complete Set') {
-                                            handleBulkEditChange(product.id, 'product_name', '');
-                                          }
-                                        }
-                                      }}
-                                      title="Choose option"
-                                    >
-                                      <option value="Custom">Custom Part</option>
-                                      <option value="Complete Set">Complete Set</option>
-                                    </select>
-                                    <span style={{ position: 'absolute', right: '6px', pointerEvents: 'none', fontSize: '10px', color: '#64748b' }}>▼</span>
-                                  </div>
+                                  <select
+                                    className="inline-edit-input"
+                                    value={
+                                      (() => {
+                                        const raw = editDataMap[product.id]?.part_category;
+                                        if (!raw) return 'Spare Part';
+                                        const s = String(raw).trim().toLowerCase();
+                                        if (s === 'complete set' || s === 'completeset') return 'Complete Set';
+                                        return 'Spare Part';
+                                      })()
+                                    }
+                                    onChange={(e) => handleBulkEditChange(product.id, 'part_category', e.target.value)}
+                                  >
+                                    <option value="Spare Part">Spare Part</option>
+                                    <option value="Complete Set">Complete Set</option>
+                                  </select>
+                                </td>
+                                <td>
+                                  <input
+                                    className="inline-edit-input"
+                                    placeholder="Enter part name"
+                                    value={editDataMap[product.id]?.product_name ?? ''}
+                                    onChange={(e) => handleBulkEditChange(product.id, 'product_name', e.target.value)}
+                                  />
                                 </td>
                                 <td>{editInput(product.id, 'part_number')}</td>
                                 <td>{editInput(product.id, 'location')}</td>
@@ -1070,6 +1062,19 @@ export default function ProviderDashboard() {
                                     }
                                     return highlightText(product.manufactured_at, searchQuery);
                                   })()}
+                                </td>
+                                <td>
+                                  <span style={{
+                                    display: 'inline-block',
+                                    padding: '0.15rem 0.5rem',
+                                    borderRadius: '4px',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 600,
+                                    background: (product.part_category === 'Complete Set') ? 'rgba(59, 130, 246, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                                    color: (product.part_category === 'Complete Set') ? '#2563eb' : '#059669'
+                                  }}>
+                                    {highlightText(product.part_category || 'Spare Part', searchQuery)}
+                                  </span>
                                 </td>
                                 <td style={{ fontWeight: 600 }}>{highlightText(product.product_name, searchQuery)}</td>
                                 <td>{highlightText(product.part_number, searchQuery)}</td>
