@@ -112,6 +112,7 @@ export default function ProviderDashboard() {
         equipment_condition: p.equipment_condition || 'New',
         service_type: p.service_type || 'Supply',
         payment_mode: p.payment_mode || 'pre-payment',
+        warranty: p.warranty || '',
         id: p.id
       };
     });
@@ -140,6 +141,7 @@ export default function ProviderDashboard() {
           equipment_condition: p.equipment_condition || 'New',
           service_type: p.service_type || 'Supply',
           payment_mode: p.payment_mode || 'pre-payment',
+          warranty: p.warranty || '',
           id: p.id
         };
       }
@@ -180,6 +182,7 @@ export default function ProviderDashboard() {
           equipment_condition: product.equipment_condition || 'New',
           service_type: product.service_type || 'Supply',
           payment_mode: product.payment_mode || 'pre-payment',
+          warranty: product.warranty || '',
           id: product.id
         }
       });
@@ -211,7 +214,8 @@ export default function ProviderDashboard() {
       additional_info: '',
       equipment_condition: 'New',
       service_type: 'Supply',
-      payment_mode: 'pre-payment'
+      payment_mode: 'pre-payment',
+      warranty: ''
     };
     
     // Add to products
@@ -407,8 +411,8 @@ export default function ProviderDashboard() {
   const downloadCSV = () => {
     if (products.length === 0) return;
     
-    // Headers: Equipment, Manufacturer, Model number, Authorization, Part Name, Part Numer, Stock location, Qunatity, Service Type
-    const headers = ['Equipment', 'Manufacturer', 'Model number', 'Authorization', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type', 'Payment Mode', 'Equipment Condition'];
+    // Headers: Equipment, Manufacturer, Model, Authorization, Part Name, Part No., Location, QTY, Business Type, Payment Mode, Condition, Warranty
+    const headers = ['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
     
     const rows = products.map(p => [
       p.category || '',
@@ -421,7 +425,8 @@ export default function ProviderDashboard() {
       p.quantity || 0,
       p.service_type || 'Supply',
       p.payment_mode || 'pre-payment',
-      p.equipment_condition || 'New'
+      p.equipment_condition || 'New',
+      p.warranty || ''
     ]);
     
     const csvContent = [
@@ -463,7 +468,7 @@ export default function ProviderDashboard() {
 
   const downloadExcel = () => {
     if (products.length === 0) return;
-    const headers = ['Equipment', 'Manufacturer', 'Model number', 'Authorization', 'Part Name', 'Part Numer', 'Stock location', 'Qunatity', 'Service Type', 'Payment Mode', 'Equipment Condition'];
+    const headers = ['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
     const rows = products.map(p => [
       p.category || '',
       p.brand || '',
@@ -475,7 +480,8 @@ export default function ProviderDashboard() {
       p.quantity || 0,
       p.service_type || 'Supply',
       p.payment_mode || 'pre-payment',
-      p.equipment_condition || 'New'
+      p.equipment_condition || 'New',
+      p.warranty || ''
     ]);
     
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -487,7 +493,7 @@ export default function ProviderDashboard() {
   const downloadPDF = () => {
     if (products.length === 0) return;
     const doc = new jsPDF();
-    const headers = [['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Part Name', 'Part No.', 'Location', 'Qty', 'Service', 'Payment', 'Condition']];
+    const headers = [['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment', 'Condition', 'Warranty']];
     const rows = products.map(p => [
       p.category || '',
       p.brand || '',
@@ -499,7 +505,8 @@ export default function ProviderDashboard() {
       p.quantity || 0,
       p.service_type || 'Supply',
       p.payment_mode || 'pre-payment',
-      p.equipment_condition || 'New'
+      p.equipment_condition || 'New',
+      p.warranty || ''
     ]);
     
     doc.autoTable({
@@ -752,9 +759,9 @@ export default function ProviderDashboard() {
 
                             <div className="toolbar-separator" />
 
-                            {/* Service Type Group */}
+                            {/* Business Type Group */}
                             <div className="bulk-group">
-                              <span className="bulk-group-title">Service:</span>
+                              <span className="bulk-group-title">Business:</span>
                               <div className="bulk-btn-cluster">
                                 <button 
                                   type="button" 
@@ -885,15 +892,16 @@ export default function ProviderDashboard() {
                           <th>#</th>
                           <th style={{ fontSize: '0.62rem' }}>Equipment</th>
                           <th style={{ fontSize: '0.56rem' }}>Manufacturer</th>
-                          <th style={{ fontSize: '0.56rem' }}>Model Number</th>
+                          <th style={{ fontSize: '0.56rem' }}>Model</th>
                           <th style={{ fontSize: '0.54rem' }}>Authorization</th>
                           <th style={{ fontSize: '0.62rem' }}>Part Name</th>
-                          <th style={{ fontSize: '0.58rem' }}>Part Number</th>
-                          <th style={{ fontSize: '0.52rem' }}>Stock Location</th>
-                          <th style={{ fontSize: '0.62rem' }}>Quantity</th>
-                          <th style={{ fontSize: '0.58rem' }}>Service Type</th>
+                          <th style={{ fontSize: '0.58rem' }}>Part No.</th>
+                          <th style={{ fontSize: '0.56rem' }}>Location</th>
+                          <th style={{ fontSize: '0.62rem' }}>QTY</th>
+                          <th style={{ fontSize: '0.58rem' }}>Business Type</th>
                           <th style={{ fontSize: '0.56rem' }}>Payment Mode</th>
-                          <th style={{ fontSize: '0.45rem', letterSpacing: '-0.2px', paddingLeft: '2px', paddingRight: '2px' }}>Equipment Condition</th>
+                          <th style={{ fontSize: '0.56rem' }}>Condition</th>
+                          <th style={{ fontSize: '0.56rem' }}>Warranty</th>
                           <th style={{ width: '65px', minWidth: '65px', textAlign: 'center', color: 'var(--danger)', fontSize: '0.64rem' }}>Delete</th>
                         </tr>
                       </thead>
@@ -912,6 +920,7 @@ export default function ProviderDashboard() {
                             (p.manufactured_at && String(p.manufactured_at).toLowerCase().includes(q)) ||
                             (p.service_type && p.service_type.toLowerCase().includes(q)) ||
                             (p.equipment_condition && p.equipment_condition.toLowerCase().includes(q)) ||
+                            (p.warranty && p.warranty.toLowerCase().includes(q)) ||
                             (p.quantity !== undefined && p.quantity !== null && String(p.quantity).includes(q))
                           );
                         }).sort((a, b) => {
@@ -1030,6 +1039,7 @@ export default function ProviderDashboard() {
                                     <option value="Refurbished">Refurbished</option>
                                   </select>
                                 </td>
+                                <td>{editInput(product.id, 'warranty', { width: '85px' })}</td>
                                 <td style={{ textAlign: 'center', backgroundColor: '#fee2e2' }}>
                                   <button
                                     className="table-action-btn delete-btn"
@@ -1082,6 +1092,7 @@ export default function ProviderDashboard() {
                                     {highlightText(product.equipment_condition || 'New', searchQuery)}
                                   </span>
                                 </td>
+                                <td>{highlightText(product.warranty || '—', searchQuery)}</td>
                                 <td style={{ textAlign: 'center', backgroundColor: '#fee2e2' }}>
                                   <button
                                     className="table-action-btn delete-btn"

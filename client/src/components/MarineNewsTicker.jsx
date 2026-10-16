@@ -124,7 +124,7 @@ export default function MarineNewsTicker() {
                 className={`ticker-item ${isNews ? 'ticker-item-news' : 'ticker-item-fact'}`}
               >
                 <span className="ticker-icon">{item.icon || (isNews ? '📰' : '🌊')}</span>
-                <span className="ticker-category-tag">{item.category || (isNews ? 'MARITIME DISPATCH' : 'OCEAN FACT')}</span>
+                <span className="ticker-category-tag" data-cat={item.category || ''}>{item.category || (isNews ? 'MARITIME DISPATCH' : 'OCEAN FACT')}</span>
                 
                 {isNews && item.url ? (
                   <a 

@@ -45,16 +45,19 @@ export default function AddCsvData() {
           });
         };
 
-        const colEquipment = findCol(['equipment']);
-        const colManufacturer = findCol(['manufacturer']);
-        const colModelNumber = findCol(['modelnumber']);
+        const colEquipment = findCol(['equipment', 'category']);
+        const colManufacturer = findCol(['manufacturer', 'brand']);
+        const colModelNumber = findCol(['model', 'modelnumber']);
         const colYearOfManufacturer = findCol(['authorization', 'authorized', 'yearofmanufacturer', 'year', 'manufacturedat']);
-        const colPartName = findCol(['partname']);
-        const colPartNumer = findCol(['partnumer', 'partnumber']);
-        const colStockLocation = findCol(['stocklocation']);
-        const colQunatity = findCol(['qunatity', 'quantity']);
+        const colPartName = findCol(['partname', 'productname', 'item']);
+        const colPartNumer = findCol(['partno', 'partnumber', 'partnumer', 'pn']);
+        const colStockLocation = findCol(['location', 'stocklocation']);
+        const colQunatity = findCol(['qty', 'quantity', 'qunatity']);
+        const colServiceType = findCol(['businesstype', 'servicetype', 'service']);
+        const colPaymentMode = findCol(['paymentmode', 'payment', 'paymode']);
         const colMail = findCol(['mail', 'email']);
-        const colCondition = findCol(['equipmentcondition', 'condition', 'equipment_condition']);
+        const colCondition = findCol(['condition', 'equipmentcondition', 'equipment_condition']);
+        const colWarranty = findCol(['warranty', 'guarantee', 'warrantee']);
 
         // Build products from CSV rows — no mandatory column requirement
         const validProducts = [];
@@ -91,7 +94,10 @@ export default function AddCsvData() {
             price: '0',
             email: (colMail && row[colMail]) ? row[colMail] : (user?.email || ''),
             additionalInfo: '',
-            equipment_condition: colCondition && row[colCondition] ? (String(row[colCondition]).trim().toLowerCase().includes('refurb') ? 'Refurbished' : 'New') : 'New'
+            service_type: colServiceType ? (row[colServiceType] || 'Supply') : 'Supply',
+            payment_mode: colPaymentMode ? (row[colPaymentMode] || 'pre-payment') : 'pre-payment',
+            equipment_condition: colCondition && row[colCondition] ? (String(row[colCondition]).trim().toLowerCase().includes('refurb') ? 'Refurbished' : 'New') : 'New',
+            warranty: colWarranty ? (row[colWarranty] || '') : ''
           });
         }
 

@@ -55,7 +55,7 @@ router.post('/register', authenticateToken, async (req, res) => {
         if (qty > 0) {
           await sql`
             INSERT INTO products (
-              provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode
+              provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode, warranty
             )
             VALUES (
               ${providerId}, 
@@ -73,7 +73,8 @@ router.post('/register', authenticateToken, async (req, res) => {
               ${product.mediaLink || null},
               ${product.equipmentCondition || product.equipment_condition || 'New'},
               ${product.serviceType || 'Supply'},
-              ${product.payment_mode || 'pre-payment'}
+              ${product.payment_mode || 'pre-payment'},
+              ${product.warranty || null}
             )
           `;
         }
@@ -121,7 +122,7 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
       if (qty > 0) {
         await sql`
           INSERT INTO products (
-            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode, department
+            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode, department, warranty
           )
           VALUES (
             ${providerId}, 
@@ -140,7 +141,8 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
             ${p.equipmentCondition || p.equipment_condition || 'New'},
             ${p.serviceType || 'Supply'},
             ${p.payment_mode || 'pre-payment'},
-            ${department || null}
+            ${department || null},
+            ${p.warranty || null}
           )
         `;
         insertedCount++;
@@ -384,6 +386,7 @@ router.put('/products/:id', authenticateToken, async (req, res) => {
         equipment_condition = ${req.body.equipment_condition || req.body.equipmentCondition || 'New'},
         service_type = ${req.body.service_type || 'Supply'},
         payment_mode = ${req.body.payment_mode || 'pre-payment'},
+        warranty = ${req.body.warranty || null},
         updated_at = NOW()
       WHERE id = ${productId}
     `;
@@ -505,7 +508,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
       if (!p.id || String(p.id).startsWith('temp_')) {
         await sql`
           INSERT INTO products (
-            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode
+            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode, warranty
           )
           VALUES (
             ${providerId}, 
@@ -523,7 +526,8 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
             ${p.media_link || null},
             ${p.equipment_condition || 'New'},
             ${p.service_type || 'Supply'},
-            ${p.payment_mode || 'pre-payment'}
+            ${p.payment_mode || 'pre-payment'},
+            ${p.warranty || null}
           )
         `;
       } else {
@@ -544,6 +548,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
             equipment_condition = ${p.equipment_condition || 'New'},
             service_type = ${p.service_type || 'Supply'},
             payment_mode = ${p.payment_mode || 'pre-payment'},
+            warranty = ${p.warranty || null},
             updated_at = NOW()
           WHERE id = ${p.id} AND provider_id = ${providerId}
         `;

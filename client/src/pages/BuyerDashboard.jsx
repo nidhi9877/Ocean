@@ -45,6 +45,58 @@ const getEmailClientUrl = (clientType, to, subject, body, cc, bcc) => {
   }
 };
 
+const cleanStr = (s) => (s || '').toLowerCase().replace(/[-_/\\.,:;()]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+const levenshtein = (a, b) => {
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const m = [];
+  for (let i = 0; i <= b.length; i++) m[i] = [i];
+  for (let j = 0; j <= a.length; j++) m[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) m[i][j] = m[i - 1][j - 1];
+      else m[i][j] = Math.min(m[i - 1][j - 1] + 1, Math.min(m[i][j - 1] + 1, m[i - 1][j] + 1));
+    }
+  }
+  return m[b.length][a.length];
+};
+
+const termMatchesText = (term, text) => {
+  if (!term) return true;
+  if (!text) return false;
+  const t = String(term).toLowerCase().trim();
+  const s = String(text).toLowerCase().trim();
+  if (!t || !s) return false;
+  if (s.includes(t)) return true;
+
+  const tClean = cleanStr(t);
+  const sClean = cleanStr(s);
+  if (!tClean || !sClean) return false;
+  if (sClean.includes(tClean)) return true;
+
+  const words = sClean.split(' ').filter(Boolean);
+  for (const word of words) {
+    if (word === tClean || word.startsWith(tClean)) return true;
+    // For short terms (<= 4 chars like "ais", "gps", "man", "c32"), never allow typo edit distance
+    if (tClean.length <= 4) continue;
+    // For longer terms (>= 5 chars), allow 1 typo edit distance
+    if (Math.abs(word.length - tClean.length) <= 1 && levenshtein(word, tClean) <= 1) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const matchesSearch = (query, ...textSources) => {
+  if (!query || !String(query).trim()) return true;
+  const rawQuery = String(query).toLowerCase().trim();
+  const terms = rawQuery.split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
+  const combined = textSources.filter(Boolean).map(s => String(s)).join(' ');
+  return terms.every(term => termMatchesText(term, combined));
+};
+
 export default function BuyerDashboard() {
   const { user, token } = useAuth();
   const [allProducts, setAllProducts] = useState([]);
@@ -611,13 +663,15 @@ export default function BuyerDashboard() {
                 'Availability': availStatus,
                 'Match Type': 'Exact Compatible Match',
                 'Part Name': p.product_name || 'N/A',
-                'Part Number': p.part_number || 'N/A',
+                'Part No.': p.part_number || 'N/A',
                 'Market Brand': p.brand || 'N/A',
-                'Market Model Number': p.model_number || 'N/A',
-                'Available Spares Qty': p.quantity || 0,
+                'Model': p.model_number || 'N/A',
+                'QTY': p.quantity || 0,
                 'Unit Price (USD)': p.price || '0.00',
-                'Stock Location': p.location || 'N/A',
-                'Service Type': p.service_type || 'Supply'
+                'Location': p.location || 'N/A',
+                'Business Type': p.service_type || 'Supply',
+                'Condition': p.equipment_condition || 'New',
+                'Warranty': p.warranty || '—'
               });
             });
           }
@@ -634,13 +688,15 @@ export default function BuyerDashboard() {
                 'Availability': availStatus,
                 'Match Type': 'Alternative Compatible Option',
                 'Part Name': p.product_name || 'N/A',
-                'Part Number': p.part_number || 'N/A',
+                'Part No.': p.part_number || 'N/A',
                 'Market Brand': p.brand || 'N/A',
-                'Market Model Number': p.model_number || 'N/A',
-                'Available Spares Qty': p.quantity || 0,
+                'Model': p.model_number || 'N/A',
+                'QTY': p.quantity || 0,
                 'Unit Price (USD)': p.price || '0.00',
-                'Stock Location': p.location || 'N/A',
-                'Service Type': p.service_type || 'Supply'
+                'Location': p.location || 'N/A',
+                'Business Type': p.service_type || 'Supply',
+                'Condition': p.equipment_condition || 'New',
+                'Warranty': p.warranty || '—'
               });
             });
           }
@@ -739,49 +795,17 @@ export default function BuyerDashboard() {
   const specClassification = useMemo(() => {
     if (!specsFilterActive || !savedSpecs.length) return [];
 
-    const levenshtein = (a, b) => {
-      if(!a.length) return b.length;
-      if(!b.length) return a.length;
-      const m = [];
-      for(let i=0; i<=b.length; i++) m[i] = [i];
-      for(let j=0; j<=a.length; j++) m[0][j] = j;
-      for(let i=1; i<=b.length; i++){
-        for(let j=1; j<=a.length; j++){
-          if(b.charAt(i-1) === a.charAt(j-1)) m[i][j] = m[i-1][j-1];
-          else m[i][j] = Math.min(m[i-1][j-1]+1, Math.min(m[i][j-1]+1, m[i-1][j]+1));
-        }
-      }
-      return m[b.length][a.length];
-    };
-    const fuzzyMatch = (str, pattern) => {
-      if (!pattern) return true;
-      if (!str) return false;
-      const s = String(str).toLowerCase().trim();
-      const p = pattern.toLowerCase().trim();
-      if (!s || !p) return false;
-      if (s === p) return true;
-      if (s.includes(p) || p.includes(s)) return true;
-      const sWords = s.split(/[\s-]+/).filter(Boolean);
-      const pWords = p.split(/[\s-]+/).filter(Boolean);
-      if (!sWords.length || !pWords.length) return false;
-      return pWords.every(pw => sWords.some(sw => {
-        if (sw === pw) return true;
-        if (sw.length >= 3 && pw.length >= 3 && (sw.includes(pw) || pw.includes(sw))) return true;
-        return levenshtein(sw, pw) <= (pw.length <= 4 ? 1 : 2);
-      }));
-    };
-
     const matchesEquipment = (p, spec) => {
       if (!spec.equipment) return true;
-      return fuzzyMatch(p.category, spec.equipment) || fuzzyMatch(p.product_name, spec.equipment);
+      return matchesSearch(spec.equipment, p.category, p.product_name);
     };
     const matchesSpecFull = (p, spec) => {
       if (!matchesEquipment(p, spec)) return false;
       if (spec.manufacturer && spec.manufacturer.trim()) {
-        if (!fuzzyMatch(p.brand, spec.manufacturer) && !fuzzyMatch(p.product_name, spec.manufacturer)) return false;
+        if (!matchesSearch(spec.manufacturer, p.brand, p.product_name)) return false;
       }
       if (spec.model && spec.model.trim()) {
-        if (!fuzzyMatch(p.model_number, spec.model) && !fuzzyMatch(p.product_name, spec.model)) return false;
+        if (!matchesSearch(spec.model, p.model_number, p.product_name)) return false;
       }
       return true;
     };
@@ -819,54 +843,19 @@ export default function BuyerDashboard() {
 
   const displayedProducts = useMemo(() => {
     if (!hasSearched) return [];
-    const q = searchQuery.trim().toLowerCase();
-    
-    // Robust fuzzy match with Levenshtein
-    const levenshtein = (a, b) => {
-      if(!a.length) return b.length;
-      if(!b.length) return a.length;
-      const m = [];
-      for(let i=0; i<=b.length; i++) m[i] = [i];
-      for(let j=0; j<=a.length; j++) m[0][j] = j;
-      for(let i=1; i<=b.length; i++){
-        for(let j=1; j<=a.length; j++){
-          if(b.charAt(i-1) === a.charAt(j-1)) m[i][j] = m[i-1][j-1];
-          else m[i][j] = Math.min(m[i-1][j-1]+1, Math.min(m[i][j-1]+1, m[i-1][j]+1));
-        }
-      }
-      return m[b.length][a.length];
-    };
+    const q = searchQuery.trim();
 
-    const fuzzyMatch = (str, pattern) => {
-      if (!pattern) return true;
-      if (!str) return false;
-      const s = String(str).toLowerCase().trim();
-      const p = pattern.toLowerCase().trim();
-      if (!s || !p) return false;
-      if (s === p) return true;
-      if (s.includes(p) || p.includes(s)) return true;
-      const sWords = s.split(/[\s-]+/).filter(Boolean);
-      const pWords = p.split(/[\s-]+/).filter(Boolean);
-      if (!sWords.length || !pWords.length) return false;
-      return pWords.every(pw => sWords.some(sw => {
-        if (sw === pw) return true;
-        if (sw.length >= 3 && pw.length >= 3 && (sw.includes(pw) || pw.includes(sw))) return true;
-        return levenshtein(sw, pw) <= (pw.length <= 4 ? 1 : 2);
-      }));
-    };
-
-    // Helper functions for spec matching
     const matchesEquipment = (p, spec) => {
       if (!spec.equipment) return true;
-      return fuzzyMatch(p.category, spec.equipment) || fuzzyMatch(p.product_name, spec.equipment);
+      return matchesSearch(spec.equipment, p.category, p.product_name);
     };
     const matchesSpecFull = (p, spec) => {
       if (!matchesEquipment(p, spec)) return false;
       if (spec.manufacturer && spec.manufacturer.trim()) {
-        if (!fuzzyMatch(p.brand, spec.manufacturer) && !fuzzyMatch(p.product_name, spec.manufacturer)) return false;
+        if (!matchesSearch(spec.manufacturer, p.brand, p.product_name)) return false;
       }
       if (spec.model && spec.model.trim()) {
-        if (!fuzzyMatch(p.model_number, spec.model) && !fuzzyMatch(p.product_name, spec.model)) return false;
+        if (!matchesSearch(spec.model, p.model_number, p.product_name)) return false;
       }
       return true;
     };
@@ -878,11 +867,13 @@ export default function BuyerDashboard() {
         if (!matchesAnySpecFull) return false;
       }
 
-      if (q && !(fuzzyMatch(p.product_name, q) || fuzzyMatch(p.part_number, q) || fuzzyMatch(p.category, q) || fuzzyMatch(p.brand, q))) return false;
+      if (q && !matchesSearch(q, p.product_name, p.category, p.brand, p.model_number, p.part_number, p.location, p.warranty, p.service_type, p.equipment_condition)) {
+        return false;
+      }
       if (filters.equipment.length && !filters.equipment.includes(p.category)) return false;
       if (filters.manufacturer.length && !filters.manufacturer.includes(p.brand)) return false;
-      if (filters.modelNumber && !fuzzyMatch(p.model_number, filters.modelNumber)) return false;
-      if (filters.partNumber && !fuzzyMatch(p.part_number, filters.partNumber)) return false;
+      if (filters.modelNumber && !matchesSearch(filters.modelNumber, p.model_number)) return false;
+      if (filters.partNumber && !matchesSearch(filters.partNumber, p.part_number)) return false;
       if (filters.stockLocation.length && !filters.stockLocation.includes(p.location)) return false;
       if (filters.minQty > 1 && Number(p.quantity) < filters.minQty) return false;
       const sType = p.service_type || 'Supply';
@@ -891,56 +882,25 @@ export default function BuyerDashboard() {
     });
   }, [hasSearched, searchQuery, filters, allProducts, specsFilterActive, savedSpecs]);
 
-  // Shared fuzzy match logic for option filtering
-  const getFuzzyMatch = () => {
-    const levenshtein = (a, b) => {
-      if(!a.length) return b.length;
-      if(!b.length) return a.length;
-      const m = [];
-      for(let i=0; i<=b.length; i++) m[i] = [i];
-      for(let j=0; j<=a.length; j++) m[0][j] = j;
-      for(let i=1; i<=b.length; i++){
-        for(let j=1; j<=a.length; j++){
-          if(b.charAt(i-1) === a.charAt(j-1)) m[i][j] = m[i-1][j-1];
-          else m[i][j] = Math.min(m[i-1][j-1]+1, Math.min(m[i][j-1]+1, m[i-1][j]+1));
-        }
-      }
-      return m[b.length][a.length];
-    };
-    return (str, pattern) => {
-      if (!pattern) return true;
-      if (!str) return false;
-      const s = String(str).toLowerCase();
-      const p = pattern.toLowerCase().trim();
-      if (s.includes(p)) return true;
-      const sWords = s.split(/[\s-]+/);
-      const pWords = p.split(/[\s-]+/);
-      return pWords.every(pw => sWords.some(sw => {
-        if (sw.includes(pw) || pw.includes(sw)) return true;
-        return levenshtein(sw, pw) <= (pw.length <= 4 ? 1 : 2);
-      }));
-    };
-  };
-
   const filteredEquipmentOpts = useMemo(() => {
     if (!equipmentSearch.trim()) {
       return equipmentOpts.filter(o => filters.equipment.includes(o));
     }
-    return equipmentOpts.filter(o => getFuzzyMatch()(o, equipmentSearch));
+    return equipmentOpts.filter(o => matchesSearch(equipmentSearch, o));
   }, [equipmentOpts, equipmentSearch, filters.equipment]);
 
   const filteredManufacturerOpts = useMemo(() => {
     if (!manufacturerSearch.trim()) {
       return manufacturerOpts.filter(o => filters.manufacturer.includes(o));
     }
-    return manufacturerOpts.filter(o => getFuzzyMatch()(o, manufacturerSearch));
+    return manufacturerOpts.filter(o => matchesSearch(manufacturerSearch, o));
   }, [manufacturerOpts, manufacturerSearch, filters.manufacturer]);
 
   const filteredLocationOpts = useMemo(() => {
     if (!locationSearch.trim()) {
       return locationOpts.filter(o => filters.stockLocation.includes(o));
     }
-    return locationOpts.filter(o => getFuzzyMatch()(o, locationSearch));
+    return locationOpts.filter(o => matchesSearch(locationSearch, o));
   }, [locationOpts, locationSearch, filters.stockLocation]);
 
   const logSearchedProducts = async (products, query) => {
@@ -1085,13 +1045,27 @@ export default function BuyerDashboard() {
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="glass-card" style={{ padding:'1.5rem 2rem', marginBottom:'1.25rem', overflow:'visible', position:'relative', zIndex:30 }}>
+        {/* Search Bar — Sticky & Static with zero hover jumping */}
+        <div
+          className="glass-card buyer-search-card"
+          style={{
+            padding: '1.25rem 2rem',
+            marginBottom: '1.25rem',
+            overflow: 'visible',
+            position: 'sticky',
+            top: '68px',
+            zIndex: 80,
+            background: 'rgba(255, 255, 255, 0.96)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            boxShadow: '0 4px 18px rgba(0, 0, 0, 0.06)'
+          }}
+        >
           <form onSubmit={handleSearch} style={{ display:'flex', gap:'0.75rem', alignItems:'center', flexWrap:'wrap' }}>
             <div style={{ position:'relative', flex:1, minWidth:'280px' }}>
               <span style={{ position:'absolute', left:'1rem', top:'50%', transform:'translateY(-50%)', fontSize:'1.15rem', color:'var(--text-muted)', pointerEvents:'none' }}>🔍</span>
               <input
-                style={{ width:'100%', padding:'0.9rem 1.2rem 0.9rem 3rem', background:'var(--bg-surface)', border:'2px solid var(--border-color)', borderRadius:'var(--radius-full)', color:'var(--text-primary)', fontFamily:"'Inter',sans-serif", fontSize:'0.95rem', outline:'none', transition:'all 0.2s' }}
+                style={{ width:'100%', padding:'0.9rem 2.8rem 0.9rem 3rem', background:'var(--bg-surface)', border:'2px solid var(--border-color)', borderRadius:'var(--radius-full)', color:'var(--text-primary)', fontFamily:"'Inter',sans-serif", fontSize:'0.95rem', outline:'none', transition:'all 0.2s' }}
                 placeholder="Search by Part Name, Number, Equipment, or Manufacturer..."
                 value={searchQuery}
                 onChange={e => {
@@ -1104,6 +1078,40 @@ export default function BuyerDashboard() {
                 onFocus={e => { e.target.style.borderColor='var(--accent-primary)'; e.target.style.boxShadow='0 0 0 3px rgba(37,99,235,0.1)'; }}
                 onBlur={e => { e.target.style.borderColor='var(--border-color)'; e.target.style.boxShadow='none'; }}
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    if (selectedShipId && savedSpecs.length > 0 && !specsFilterActive) {
+                      setSpecsFilterActive(true);
+                    }
+                  }}
+                  style={{
+                    position: 'absolute',
+                    right: '1rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    fontSize: '1rem',
+                    cursor: 'pointer',
+                    padding: '0.2rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                    width: '24px',
+                    height: '24px'
+                  }}
+                  title="Clear search"
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  ✕
+                </button>
+              )}
             </div>
             <button type="button" onClick={() => setShowModal(true)}
               style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', padding:'0.8rem 1.4rem', background: activeFilterCount?'rgba(37,99,235,0.04)':'var(--bg-surface)', border:`2px solid ${activeFilterCount?'var(--accent-primary)':'var(--border-color)'}`, borderRadius:'var(--radius-full)', color: activeFilterCount?'var(--accent-primary)':'var(--text-secondary)', fontWeight:'600', fontSize:'0.9rem', cursor:'pointer', transition:'all 0.2s', fontFamily:"'Inter',sans-serif" }}>
@@ -1384,10 +1392,16 @@ export default function BuyerDashboard() {
             <h3 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.3rem', fontWeight:'600', marginBottom:'0.5rem' }}>Search the Global Parts Database</h3>
             <p style={{ color:'var(--text-muted)', maxWidth:400, margin:'0 auto' }}>Use the search bar, select a ship, or apply filters to find the marine spare parts you need.</p>
           </div>
-        ) : displayedProducts.length === 0 && !(specsFilterActive && specClassification.length > 0) ? (
+        ) : displayedProducts.length === 0 && !(
+          specsFilterActive && specClassification.some(sc => !searchQuery.trim() || matchesSearch(searchQuery, sc.spec.equipment, sc.spec.manufacturer, sc.spec.model))
+        ) ? (
           <div className="glass-card empty-state" style={{ padding:'3rem', textAlign:'center' }}>
             <span className="empty-state-icon">🌊</span>
-            <p style={{ color:'var(--text-secondary)' }}>No products found. Try broadening your search.</p>
+            <p style={{ color:'var(--text-secondary)' }}>
+              {searchQuery.trim()
+                ? `No products or equipment found matching "${searchQuery}". Try broadening your search.`
+                : 'No products found. Try broadening your search.'}
+            </p>
           </div>
         ) : (
           <>
@@ -1396,10 +1410,11 @@ export default function BuyerDashboard() {
                 <p style={{ color:'var(--text-secondary)', fontSize:'0.95rem', margin:0 }}>
                   {selectedShip && specsFilterActive ? (
                     <>
-                      Showing equipment for <strong style={{ color:'var(--text-primary)' }}>{selectedShip.ship_name}</strong>: {' '}
+                      Showing equipment for <strong style={{ color:'var(--text-primary)' }}>{selectedShip.ship_name}</strong>
+                      {searchQuery.trim() ? <> matching "<strong>{searchQuery}</strong>"</> : null}: {' '}
                       <strong style={{ color:'#059669' }}>{displayedProducts.length}</strong> compatible product listings, {' '}
-                      <strong style={{ color:'#d97706' }}>{specClassification.filter(sc => sc.status === 'incompatible').length}</strong> with different specs, {' '}
-                      <strong style={{ color:'#dc2626' }}>{specClassification.filter(sc => sc.status === 'not_available').length}</strong> not in market
+                      <strong style={{ color:'#d97706' }}>{specClassification.filter(sc => sc.status === 'incompatible' && (!searchQuery.trim() || matchesSearch(searchQuery, sc.spec.equipment, sc.spec.manufacturer, sc.spec.model))).length}</strong> with different specs, {' '}
+                      <strong style={{ color:'#dc2626' }}>{specClassification.filter(sc => sc.status === 'not_available' && (!searchQuery.trim() || matchesSearch(searchQuery, sc.spec.equipment, sc.spec.manufacturer, sc.spec.model))).length}</strong> not in market
                     </>
                   ) : (
                     <>Found <strong style={{ color:'var(--accent-primary)' }}>{displayedProducts.length}</strong> result{displayedProducts.length!==1?'s':''}</>
@@ -1443,10 +1458,10 @@ export default function BuyerDashboard() {
                   }
                 });
                 return (
-              <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', fontSize:'0.9rem', minWidth:1000 }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', fontSize:'0.9rem', minWidth:1150 }}>
                 <thead>
                   <tr style={{ borderBottom:'2px solid var(--border-color)' }}>
-                    {['Seller ID','Equipment','Manufacturer','Model','Year','Part Name','Part #','Location','Qty','Service','Payment','Last Updated','Action'].map(h => (
+                    {['Seller ID', 'Equipment', 'Manufacturer', 'Model', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment', 'Condition', 'Warranty', 'Last Updated', 'Action'].map(h => (
                       <th key={h} style={{ padding:'0.75rem', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)', whiteSpace:'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -1474,13 +1489,26 @@ export default function BuyerDashboard() {
                         <td style={{ padding:'0.75rem' }}>{p.category||'-'}</td>
                         <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.brand||'-'}</td>
                         <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.model_number||'-'}</td>
-                        <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.manufactured_at||'-'}</td>
                         <td style={{ padding:'0.75rem', fontWeight:'500' }}>{p.product_name||'-'}</td>
                         <td style={{ padding:'0.75rem', fontFamily:'monospace', color:'var(--text-secondary)' }}>{p.part_number||'-'}</td>
                         <td style={{ padding:'0.75rem' }}>{p.location||'-'}</td>
                         <td style={{ padding:'0.75rem', color:'var(--accent-primary)', fontWeight:'bold' }}>{p.quantity||'-'}</td>
                         <td style={{ padding:'0.75rem' }}>{p.service_type || 'Supply'}</td>
                         <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.payment_mode || 'pre-payment'}</td>
+                        <td style={{ padding:'0.75rem' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '0.2rem 0.55rem',
+                            borderRadius: '4px',
+                            fontSize: '0.78rem',
+                            fontWeight: 600,
+                            background: (p.equipment_condition === 'Refurbished') ? 'rgba(234, 179, 8, 0.15)' : 'rgba(34, 197, 94, 0.15)',
+                            color: (p.equipment_condition === 'Refurbished') ? '#b45309' : '#15803d'
+                          }}>
+                            {p.equipment_condition || 'New'}
+                          </span>
+                        </td>
+                        <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.warranty || '—'}</td>
                         <td style={{ padding:'0.75rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                           {p.updated_at ? new Date(p.updated_at).toLocaleDateString() : p.created_at ? new Date(p.created_at).toLocaleDateString() : '-'}
                         </td>
@@ -1495,16 +1523,22 @@ export default function BuyerDashboard() {
                     );
                   })}
 
-                  {/* Incompatible spec rows (amber) — appended at bottom */}
+                  {/* Incompatible spec rows (amber) — appended at bottom, filtered by query */}
                   {specsFilterActive && savedSpecs.length > 0 && specClassification
-                    .filter(sc => sc.status === 'incompatible')
+                    .filter(sc => {
+                      if (sc.status !== 'incompatible') return false;
+                      if (searchQuery.trim()) {
+                        return matchesSearch(searchQuery, sc.spec.equipment, sc.spec.manufacturer, sc.spec.model);
+                      }
+                      return true;
+                    })
                     .map((sc, i) => (
                       <tr key={`incompat-${sc.spec.id || i}`} style={{ borderBottom:'1px solid rgba(245,158,11,0.25)', background:'rgba(245,158,11,0.08)' }}>
                         <td style={{ padding:'0.75rem' }}><span style={{ fontSize:'0.75rem', color:'var(--text-muted)', fontStyle:'italic' }}>—</span></td>
                         <td style={{ padding:'0.75rem', fontWeight:'600' }}>{sc.spec.equipment}</td>
                         <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{sc.spec.manufacturer || '-'}</td>
                         <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{sc.spec.model || '-'}</td>
-                        <td colSpan={3} style={{ padding:'0.75rem' }}>
+                        <td colSpan={2} style={{ padding:'0.75rem' }}>
                           <span style={{
                             display:'inline-flex', alignItems:'center', gap:'0.3rem',
                             padding:'0.2rem 0.6rem', borderRadius:'1rem', fontSize:'0.72rem', fontWeight:'600',
@@ -1513,9 +1547,9 @@ export default function BuyerDashboard() {
                             ⚠ Different Specs
                           </span>
                         </td>
-                        <td style={{ padding:'0.75rem', fontWeight:'bold', color:'var(--accent-primary)' }}>0</td>
+                        <td style={{ padding:'0.75rem', color:'var(--text-muted)' }}>—</td>
                         <td style={{ padding:'0.75rem', fontWeight:'bold', color:'#d97706' }}>{sc.incompatibleCount}</td>
-                        <td colSpan={4} style={{ padding:'0.75rem' }}>
+                        <td colSpan={6} style={{ padding:'0.75rem' }}>
                           <button
                             className="btn btn-primary"
                             onClick={() => {
@@ -1544,16 +1578,22 @@ export default function BuyerDashboard() {
                     ))
                   }
 
-                  {/* Not available spec rows (red) — displayed in prominent red */}
+                  {/* Not available spec rows (red) — displayed in prominent red, filtered by query */}
                   {specsFilterActive && savedSpecs.length > 0 && specClassification
-                    .filter(sc => sc.status === 'not_available')
+                    .filter(sc => {
+                      if (sc.status !== 'not_available') return false;
+                      if (searchQuery.trim()) {
+                        return matchesSearch(searchQuery, sc.spec.equipment, sc.spec.manufacturer, sc.spec.model);
+                      }
+                      return true;
+                    })
                     .map((sc, i) => (
                       <tr key={`unavail-${sc.spec.id || i}`} style={{ borderBottom:'1px solid rgba(239,68,68,0.25)', background:'rgba(239,68,68,0.08)' }}>
                         <td style={{ padding:'0.75rem' }}><span style={{ fontSize:'0.75rem', color:'var(--text-muted)', fontStyle:'italic' }}>—</span></td>
                         <td style={{ padding:'0.75rem', fontWeight:'600' }}>{sc.spec.equipment}</td>
                         <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{sc.spec.manufacturer || '-'}</td>
                         <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{sc.spec.model || '-'}</td>
-                        <td colSpan={3} style={{ padding:'0.75rem' }}>
+                        <td colSpan={2} style={{ padding:'0.75rem' }}>
                           <span style={{
                             display:'inline-flex', alignItems:'center', gap:'0.3rem',
                             padding:'0.2rem 0.6rem', borderRadius:'1rem', fontSize:'0.72rem', fontWeight:'600',
@@ -1562,9 +1602,9 @@ export default function BuyerDashboard() {
                             ✗ Not Available
                           </span>
                         </td>
-                        <td style={{ padding:'0.75rem', fontWeight:'bold', color:'var(--accent-primary)' }}>0</td>
+                        <td style={{ padding:'0.75rem', color:'var(--text-muted)' }}>—</td>
                         <td style={{ padding:'0.75rem', fontWeight:'bold', color:'#dc2626' }}>0</td>
-                        <td colSpan={4} style={{ padding:'0.75rem' }}>
+                        <td colSpan={6} style={{ padding:'0.75rem' }}>
                           <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', flexWrap:'nowrap' }}>
                             <span style={{
                               padding:'0.35rem 0.8rem',
@@ -1656,31 +1696,31 @@ export default function BuyerDashboard() {
                   </div>
                 </div>
 
-                {/* Model Number */}
+                {/* Model */}
                 <div>
-                  <SectionTitle icon="🔎" label="Model Number" />
+                  <SectionTitle icon="🔎" label="Model" />
                   <div style={{ position:'relative', marginBottom:'0.75rem' }}>
                     <span style={{ position:'absolute', left:'0.85rem', top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', fontSize:'0.9rem' }}>🔍</span>
-                    <input className="form-input" placeholder="Search model number..." value={filters.modelNumber}
+                    <input className="form-input" placeholder="Search model..." value={filters.modelNumber}
                       onChange={e => setFilters(f=>({...f, modelNumber:e.target.value}))}
                       style={{ paddingLeft:'2.5rem' }} />
                   </div>
                 </div>
 
-                {/* Part Number */}
+                {/* Part No. */}
                 <div>
-                  <SectionTitle icon="🏷️" label="Part Number" />
+                  <SectionTitle icon="🏷️" label="Part No." />
                   <div style={{ position:'relative', marginBottom:'0.75rem' }}>
                     <span style={{ position:'absolute', left:'0.85rem', top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', fontSize:'0.9rem' }}>🔍</span>
-                    <input className="form-input" placeholder="Search part number..." value={filters.partNumber}
+                    <input className="form-input" placeholder="Search part no..." value={filters.partNumber}
                       onChange={e => setFilters(f=>({...f, partNumber:e.target.value}))}
                       style={{ paddingLeft:'2.5rem' }} />
                   </div>
                 </div>
 
-                {/* Stock Location */}
+                {/* Location */}
                 <div>
-                  <SectionTitle icon="📍" label="Stock Location" />
+                  <SectionTitle icon="📍" label="Location" />
                   <div style={{ position:'relative', marginBottom:'0.75rem' }}>
                     <span style={{ position:'absolute', left:'0.85rem', top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', fontSize:'0.9rem' }}>🔍</span>
                     <input className="form-input" placeholder="Search locations..." value={locationSearch}
@@ -1697,9 +1737,9 @@ export default function BuyerDashboard() {
                   </div>
                 </div>
 
-                {/* Minimum Quantity */}
+                {/* Minimum QTY */}
                 <div>
-                  <SectionTitle icon="📦" label={`Minimum Quantity: ${filters.minQty}`} />
+                  <SectionTitle icon="📦" label={`Minimum QTY: ${filters.minQty}`} />
                   <div style={{ padding:'0 0.25rem' }}>
                     <input type="range" min="1" max="100" value={filters.minQty}
                       onChange={e => setFilters(f=>({...f, minQty:Number(e.target.value)}))}
@@ -1710,9 +1750,9 @@ export default function BuyerDashboard() {
                   </div>
                 </div>
 
-                {/* Service Type */}
+                {/* Business Type */}
                 <div>
-                  <SectionTitle icon="🛠️" label="Service Type" />
+                  <SectionTitle icon="🛠️" label="Business Type" />
                   <select className="form-input" value={filters.serviceType} onChange={e => setFilters(f => ({...f, serviceType: e.target.value}))}>
                     <option value="">Any</option>
                     <option value="Supply">Supply</option>
@@ -2822,72 +2862,26 @@ export default function BuyerDashboard() {
                     </div>
                   </div>
 
-                  {/* Export Options Banner */}
-                  <div style={{
-                    padding:'1.25rem',
-                    background:'var(--bg-surface)',
-                    borderRadius:'var(--radius-md)',
-                    border:'1px solid var(--border-color)',
-                    marginBottom:'1.5rem',
-                    display:'flex',
-                    flexDirection:'column',
-                    gap:'1rem'
-                  }}>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'0.75rem' }}>
-                      <div>
-                        <h4 style={{ margin:0, fontSize:'0.95rem', fontWeight:'600', color:'var(--text-primary)', display:'flex', alignItems:'center', gap:'0.4rem' }}>
-                          📄 Download Format Options
-                        </h4>
-                        <p style={{ margin:'0.25rem 0 0', fontSize:'0.8rem', color:'var(--text-muted)' }}>
-                          Choose between a detailed spare parts inventory or an equipment availability summary in Excel (.xlsx) format.
-                        </p>
-                      </div>
-                      <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleDownloadShipData(exportModalShip, 'detailed')}
-                          disabled={exportingCsv}
-                          className="btn btn-primary"
-                          style={{
-                            padding:'0.55rem 1.15rem',
-                            fontSize:'0.85rem',
-                            background:'linear-gradient(135deg, #059669, #10b981)',
-                            display:'inline-flex',
-                            alignItems:'center',
-                            gap:'0.4rem',
-                            fontWeight:'600'
-                          }}
-                        >
-                          <span>📥</span> {exportingCsv ? 'Downloading...' : 'Detailed Parts Excel (.xlsx)'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDownloadShipData(exportModalShip, 'summary')}
-                          disabled={exportingCsv}
-                          className="btn btn-secondary"
-                          style={{
-                            padding:'0.55rem 1rem',
-                            fontSize:'0.85rem',
-                            display:'inline-flex',
-                            alignItems:'center',
-                            gap:'0.4rem',
-                            color:'#059669',
-                            borderColor:'rgba(5,150,105,0.3)',
-                            fontWeight:'600'
-                          }}
-                        >
-                          <span>📊</span> Equipment Summary Excel (.xlsx)
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
+                  
                   {/* Equipment Specifications & Market Availability Breakdown Tabs */}
                   {(() => {
                     const allEquipment = exportPreviewData.equipment || [];
                     const availableItems = allEquipment.filter(eq => eq.compatibility_status === 'compatible');
                     const unavailableItems = allEquipment.filter(eq => eq.compatibility_status !== 'compatible');
                     const displayedTabItems = exportBreakdownTab === 'available' ? availableItems : unavailableItems;
+
+                    const getUniquePartNames = (items) => {
+                      const seen = new Set();
+                      const list = [];
+                      (items || []).forEach(p => {
+                        const name = p.product_name?.trim();
+                        if (name && !seen.has(name.toLowerCase())) {
+                          seen.add(name.toLowerCase());
+                          list.push(name);
+                        }
+                      });
+                      return list;
+                    };
 
                     return (
                       <>
@@ -2994,8 +2988,7 @@ export default function BuyerDashboard() {
                                 <tr style={{ background:'var(--bg-surface)', borderBottom:'2px solid var(--border-color)', position:'sticky', top:0, zIndex:2 }}>
                                   <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)', width:'40px' }}>#</th>
                                   <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Equipment</th>
-                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Manufacturer / Model</th>
-                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Availability</th>
+                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Manufacturer</th>
                                   <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Number of Sellers</th>
                                   <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Total Spares Qty</th>
                                   <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Available Parts Preview</th>
@@ -3007,41 +3000,26 @@ export default function BuyerDashboard() {
                                     <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-muted)' }}>{i + 1}</td>
                                     <td style={{ padding:'0.55rem 0.75rem', fontWeight:'600', color:'var(--text-primary)' }}>{eq.equipment}</td>
                                     <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-secondary)' }}>
-                                      {eq.manufacturer || '—'} {eq.model ? `(${eq.model})` : ''}
-                                    </td>
-                                    <td style={{ padding:'0.55rem 0.75rem', textAlign:'center' }}>
-                                      <span style={{
-                                        display:'inline-flex',
-                                        alignItems:'center',
-                                        gap:'0.3rem',
-                                        padding:'0.2rem 0.65rem',
-                                        borderRadius:'1rem',
-                                        fontSize:'0.72rem',
-                                        fontWeight:'600',
-                                        background:'rgba(5,150,105,0.12)',
-                                        color:'#059669'
-                                      }}>
-                                        ✓ Available
-                                      </span>
+                                      {eq.manufacturer || '—'}
                                     </td>
                                     <td style={{ padding:'0.55rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-primary)' }}>
                                       {eq.available_listings_count} seller{eq.available_listings_count !== 1 ? 's' : ''}
-                                      {eq.equipment_only_listings_count > 0 && (
-                                        <span style={{ fontSize:'0.68rem', color:'#d97706', display:'block' }}>+{eq.equipment_only_listings_count} alt</span>
-                                      )}
                                     </td>
                                     <td style={{ padding:'0.55rem 0.75rem', textAlign:'center', fontWeight:'700', color:'#059669' }}>
                                       {eq.total_available_quantity} units
                                     </td>
                                     <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-secondary)', fontSize:'0.78rem' }}>
-                                      {eq.products.length > 0 ? (
-                                        <span>
-                                          {eq.products.slice(0, 3).map(p => `${p.product_name} (${p.quantity} units)`).join(', ')}
-                                          {eq.products.length > 3 && ` + ${eq.products.length - 3} more`}
-                                        </span>
-                                      ) : (
-                                        <span style={{ color:'var(--text-muted)' }}>—</span>
-                                      )}
+                                      {(() => {
+                                        const uniqueParts = getUniquePartNames(eq.products);
+                                        return uniqueParts.length > 0 ? (
+                                          <span title={uniqueParts.join(', ')}>
+                                            {uniqueParts.slice(0, 3).join(', ')}
+                                            {uniqueParts.length > 3 && ` + ${uniqueParts.length - 3} more`}
+                                          </span>
+                                        ) : (
+                                          <span style={{ color:'var(--text-muted)' }}>—</span>
+                                        );
+                                      })()}
                                     </td>
                                   </tr>
                                 ))}
@@ -3056,8 +3034,7 @@ export default function BuyerDashboard() {
                                 <tr style={{ background:'var(--bg-surface)', borderBottom:'2px solid var(--border-color)', position:'sticky', top:0, zIndex:2 }}>
                                   <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)', width:'40px' }}>#</th>
                                   <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Equipment</th>
-                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Ship Spec (Manufacturer / Model)</th>
-                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Availability</th>
+                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Manufacturer</th>
                                   <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Compatible Options</th>
                                   <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Number of Sellers</th>
                                   <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Total Spares Qty</th>
@@ -3073,22 +3050,7 @@ export default function BuyerDashboard() {
                                       <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-muted)' }}>{i + 1}</td>
                                       <td style={{ padding:'0.55rem 0.75rem', fontWeight:'600', color:'var(--text-primary)' }}>{eq.equipment}</td>
                                       <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-secondary)' }}>
-                                        {eq.manufacturer || '—'} {eq.model ? `(${eq.model})` : ''}
-                                      </td>
-                                      <td style={{ padding:'0.55rem 0.75rem', textAlign:'center' }}>
-                                        <span style={{
-                                          display:'inline-flex',
-                                          alignItems:'center',
-                                          gap:'0.3rem',
-                                          padding:'0.2rem 0.65rem',
-                                          borderRadius:'1rem',
-                                          fontSize:'0.72rem',
-                                          fontWeight:'600',
-                                          background: isAlt ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.12)',
-                                          color: isAlt ? '#d97706' : '#dc2626'
-                                        }}>
-                                          {isAlt ? '⚠ Different Specs' : '✗ Not in Market'}
-                                        </span>
+                                        {eq.manufacturer || '—'}
                                       </td>
                                       <td style={{ padding:'0.55rem 0.75rem', textAlign:'center' }}>
                                         {eq.equipment_only_listings_count > 0 ? (
@@ -3116,18 +3078,21 @@ export default function BuyerDashboard() {
                                         {eq.equipment_only_total_quantity > 0 ? `${eq.equipment_only_total_quantity} units` : '0'}
                                       </td>
                                       <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-secondary)', fontSize:'0.78rem' }}>
-                                        {eq.equipment_only_products && eq.equipment_only_products.length > 0 ? (
-                                          <div>
-                                            <span style={{ color:'#d97706', fontWeight:'500' }}>
-                                              {eq.equipment_only_products.slice(0, 3).map(p => `${p.product_name} (${p.quantity} units, ${p.brand || 'Alt'})`).join(', ')}
-                                              {eq.equipment_only_products.length > 3 && ` + ${eq.equipment_only_products.length - 3} more`}
+                                        {(() => {
+                                          const uniqueParts = getUniquePartNames(eq.equipment_only_products);
+                                          return uniqueParts.length > 0 ? (
+                                            <div>
+                                              <span style={{ color:'#d97706', fontWeight:'500' }} title={uniqueParts.join(', ')}>
+                                                {uniqueParts.slice(0, 3).join(', ')}
+                                                {uniqueParts.length > 3 && ` + ${uniqueParts.length - 3} more`}
+                                              </span>
+                                            </div>
+                                          ) : (
+                                            <span style={{ color:'#dc2626', fontStyle:'italic' }}>
+                                              {eq.compatibility_reason || 'No compatible parts or sellers in market'}
                                             </span>
-                                          </div>
-                                        ) : (
-                                          <span style={{ color:'#dc2626', fontStyle:'italic' }}>
-                                            {eq.compatibility_reason || 'No compatible parts or sellers in market'}
-                                          </span>
-                                        )}
+                                          );
+                                        })()}
                                       </td>
                                     </tr>
                                   );
@@ -3169,6 +3134,24 @@ export default function BuyerDashboard() {
                   style={{ padding:'0.5rem 1.25rem', fontSize:'0.85rem' }}
                 >
                   Close
+                </button>
+                                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => handleDownloadShipData(exportModalShip, 'summary')}
+                  disabled={exportingCsv}
+                  style={{
+                    padding:'0.5rem 1.15rem',
+                    fontSize:'0.85rem',
+                    display:'inline-flex',
+                    alignItems:'center',
+                    gap:'0.4rem',
+                    color:'#059669',
+                    borderColor:'rgba(5,150,105,0.4)',
+                    fontWeight:'600'
+                  }}
+                >
+                  <span>📊</span> Equipment Summary (.xlsx)
                 </button>
                 <button
                   type="button"

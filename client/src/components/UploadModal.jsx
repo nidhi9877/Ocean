@@ -49,14 +49,16 @@ export default function UploadModal({ onClose, onSuccess }) {
     const firstRow = data[0];
     const colEquipment = findCol(firstRow, ['equipment', 'category']);
     const colManufacturer = findCol(firstRow, ['manufacturer', 'brand']);
-    const colModelNumber = findCol(firstRow, ['modelnumber', 'model']);
+    const colModelNumber = findCol(firstRow, ['model', 'modelnumber']);
     const colYearOfManufacturer = findCol(firstRow, ['authorization', 'authorized', 'yearofmanufacturer', 'year', 'manufacturedat']);
     const colPartName = findCol(firstRow, ['partname', 'productname', 'item']);
-    const colPartNumer = findCol(firstRow, ['partnumer', 'partnumber', 'pn']);
-    const colStockLocation = findCol(firstRow, ['stocklocation', 'location']);
-    const colQunatity = findCol(firstRow, ['qunatity', 'quantity', 'qty', 'quantiy']);
+    const colPartNumer = findCol(firstRow, ['partno', 'partnumber', 'partnumer', 'pn']);
+    const colStockLocation = findCol(firstRow, ['location', 'stocklocation']);
+    const colQunatity = findCol(firstRow, ['qty', 'quantity', 'qunatity', 'quantiy']);
+    const colServiceType = findCol(firstRow, ['businesstype', 'servicetype', 'service', 'type']);
     const colPaymentMode = findCol(firstRow, ['paymentmode', 'payment', 'paymode']);
-    const colCondition = findCol(firstRow, ['equipmentcondition', 'condition', 'equipment_condition']);
+    const colCondition = findCol(firstRow, ['condition', 'equipmentcondition', 'equipment_condition']);
+    const colWarranty = findCol(firstRow, ['warranty', 'guarantee', 'warrantee']);
 
     const validProducts = [];
     let skippedRows = 0;
@@ -90,8 +92,10 @@ export default function UploadModal({ onClose, onSuccess }) {
         price: '0',
         email: user?.email || '',
         additionalInfo: '',
+        service_type: colServiceType ? (row[colServiceType] || 'Supply') : 'Supply',
         payment_mode: colPaymentMode ? (row[colPaymentMode] || 'pre-payment') : 'pre-payment',
-        equipment_condition: colCondition && row[colCondition] ? (String(row[colCondition]).trim().toLowerCase().includes('refurb') ? 'Refurbished' : 'New') : 'New'
+        equipment_condition: colCondition && row[colCondition] ? (String(row[colCondition]).trim().toLowerCase().includes('refurb') ? 'Refurbished' : 'New') : 'New',
+        warranty: colWarranty ? (row[colWarranty] || '') : ''
       });
     }
 
@@ -165,10 +169,10 @@ export default function UploadModal({ onClose, onSuccess }) {
   };
 
   const downloadSampleExcel = () => {
-    const headers = ['Equipment', 'Manufacturer', 'Model Number', 'Authorization', 'Part Name', 'Part Number', 'Stock Location', 'Quantity', 'Service Type', 'Payment Mode'];
+    const headers = ['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
     const rows = [
-      ['Navigation', 'Raymarine', 'Axiom 9', 'Yes', 'GPS Chartplotter', 'E70366', 'Miami, FL', 5, 'Supply', 'pre-payment/credit'],
-      ['Engine', 'Caterpillar', 'C32', 'No', 'Fuel Injector', '10R-1273', 'Houston, TX', 12, 'Supply and Service', 'pre-payment']
+      ['Navigation', 'Raymarine', 'Axiom 9', 'Yes', 'GPS Chartplotter', 'E70366', 'Miami, FL', 5, 'Supply', 'pre-payment/credit', 'New', '1 Year'],
+      ['Engine', 'Caterpillar', 'C32', 'No', 'Fuel Injector', '10R-1273', 'Houston, TX', 12, 'Supply and Service', 'pre-payment', 'Refurbished', '6 Months']
     ];
     
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
