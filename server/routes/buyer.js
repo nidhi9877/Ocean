@@ -564,8 +564,9 @@ router.get('/ships/:shipId/market-availability', authenticateToken, async (req, 
       if (!sWords.length || !pWords.length) return false;
       return pWords.every(pw => sWords.some(sw => {
         if (sw === pw) return true;
-        if (sw.length >= 3 && pw.length >= 3 && (sw.includes(pw) || pw.includes(sw))) return true;
-        return levenshtein(sw, pw) <= (pw.length <= 4 ? 1 : 2);
+        if (sw.includes(pw) || pw.includes(sw)) return true;
+        if (pw.length <= 4) return false;
+        return levenshtein(sw, pw) <= 1;
       }));
     };
 

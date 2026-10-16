@@ -604,16 +604,15 @@ export default function BuyerDashboard() {
     }
   };
 
-  // ── Download Ship Market Data in standard .xlsx format (confidential - no vendor contact info) ──
-  const handleDownloadShipData = async (ship, type = 'detailed') => {
+  // ── Download Equipment Availability Breakdown Excel (2 sheets: Available Items & Not Available Items) ──
+  const handleDownloadShipData = async (ship) => {
     if (!ship || !ship.id) {
       toast.error('Please choose a valid ship to download.');
       return;
     }
     setExportingCsv(true);
-    const toastId = toast.loading(`Preparing ${type === 'summary' ? 'equipment summary' : 'market inventory'} Excel for ${ship.ship_name}...`);
+    const toastId = toast.loading(`Preparing Equipment Availability Breakdown Excel for ${ship.ship_name}...`);
     try {
-      // Fetch structured market data JSON from server
       const res = await axios.get(`${API}/buyer/ships/${ship.id}/market-availability`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -621,116 +620,80 @@ export default function BuyerDashboard() {
       const equipmentList = data.equipment || [];
       const sanitizedName = (ship.ship_name || 'Ship').replace(/[^a-zA-Z0-9_-]/g, '_');
 
-      const wb = XLSX.utils.book_new();
-
-      if (type === 'summary') {
-        const rows = equipmentList.map((eq, i) => ({
-          '#': i + 1,
-          'Ship Name': ship.ship_name,
-          'Ship IMO': ship.imo_number || 'N/A',
-          'Ship Type': ship.ship_type || 'N/A',
-          'Equipment': eq.equipment,
-          'Specified Manufacturer': eq.manufacturer || 'N/A',
-          'Specified Model': eq.model || 'N/A',
-          'Availability': eq.compatibility_status === 'compatible' ? 'Available' : (eq.compatibility_status === 'incompatible' ? 'Different Specs' : 'Not in Market'),
-          'Number of Sellers': eq.available_listings_count || 0,
-          'Total Spares Qty': eq.total_available_quantity || 0,
-          'Compatible Options Found': eq.equipment_only_listings_count || 0,
-          'Compatible Options Spares Qty': eq.equipment_only_total_quantity || 0,
-          'Market Status Details': eq.compatibility_reason || 'N/A'
-        }));
-
-        const ws = XLSX.utils.json_to_sheet(rows);
-        XLSX.utils.book_append_sheet(wb, ws, 'Equipment Summary');
-        XLSX.writeFile(wb, `${sanitizedName}_equipment_summary.xlsx`);
-      } else {
-        // Detailed inventory Excel — STRICT CONFIDENTIALITY: NO vendor/supplier personal or contact info
-        const rows = [];
-        equipmentList.forEach(eq => {
-          const availStatus = eq.compatibility_status === 'compatible'
-            ? 'Available'
-            : (eq.compatibility_status === 'incompatible' ? 'Different Specs' : 'Not in Market');
-
-          if (eq.products && eq.products.length > 0) {
-            eq.products.forEach(p => {
-              rows.push({
-                'Ship Name': ship.ship_name,
-                'Ship IMO': ship.imo_number || 'N/A',
-                'Ship Type': ship.ship_type || 'N/A',
-                'Equipment': eq.equipment,
-                'Specified Manufacturer': eq.manufacturer || 'N/A',
-                'Specified Model': eq.model || 'N/A',
-                'Availability': availStatus,
-                'Match Type': 'Exact Compatible Match',
-                'Part Name': p.product_name || 'N/A',
-                'Part No.': p.part_number || 'N/A',
-                'Market Brand': p.brand || 'N/A',
-                'Model': p.model_number || 'N/A',
-                'QTY': p.quantity || 0,
-                'Unit Price (USD)': p.price || '0.00',
-                'Location': p.location || 'N/A',
-                'Business Type': p.service_type || 'Supply',
-                'Condition': p.equipment_condition || 'New',
-                'Warranty': p.warranty || '—'
-              });
-            });
-          }
-
-          if (eq.equipment_only_products && eq.equipment_only_products.length > 0) {
-            eq.equipment_only_products.forEach(p => {
-              rows.push({
-                'Ship Name': ship.ship_name,
-                'Ship IMO': ship.imo_number || 'N/A',
-                'Ship Type': ship.ship_type || 'N/A',
-                'Equipment': eq.equipment,
-                'Specified Manufacturer': eq.manufacturer || 'N/A',
-                'Specified Model': eq.model || 'N/A',
-                'Availability': availStatus,
-                'Match Type': 'Alternative Compatible Option',
-                'Part Name': p.product_name || 'N/A',
-                'Part No.': p.part_number || 'N/A',
-                'Market Brand': p.brand || 'N/A',
-                'Model': p.model_number || 'N/A',
-                'QTY': p.quantity || 0,
-                'Unit Price (USD)': p.price || '0.00',
-                'Location': p.location || 'N/A',
-                'Business Type': p.service_type || 'Supply',
-                'Condition': p.equipment_condition || 'New',
-                'Warranty': p.warranty || '—'
-              });
-            });
-          }
-
-          if ((!eq.products || eq.products.length === 0) && (!eq.equipment_only_products || eq.equipment_only_products.length === 0)) {
-            rows.push({
-              'Ship Name': ship.ship_name,
-              'Ship IMO': ship.imo_number || 'N/A',
-              'Ship Type': ship.ship_type || 'N/A',
-              'Equipment': eq.equipment,
-              'Specified Manufacturer': eq.manufacturer || 'N/A',
-              'Specified Model': eq.model || 'N/A',
-              'Availability': 'Not in Market',
-              'Match Type': 'No Market Listings',
-              'Part Name': 'No spare parts currently listed in market',
-              'Part Number': 'N/A',
-              'Market Brand': 'N/A',
-              'Market Model Number': 'N/A',
-              'Available Spares Qty': 0,
-              'Unit Price (USD)': 'N/A',
-              'Stock Location': 'N/A',
-              'Service Type': 'N/A'
-            });
+      const getUniqueBrands = (items) => {
+        const seen = new Set();
+        const list = [];
+        (items || []).forEach(p => {
+          const brand = (p.brand || '').trim();
+          if (brand && !seen.has(brand.toLowerCase())) {
+            seen.add(brand.toLowerCase());
+            list.push(brand);
           }
         });
+        return list;
+      };
 
-        const ws = XLSX.utils.json_to_sheet(rows);
-        XLSX.utils.book_append_sheet(wb, ws, 'Market Inventory');
-        XLSX.writeFile(wb, `${sanitizedName}_market_inventory.xlsx`);
-      }
+      const getUniquePartNames = (items) => {
+        const seen = new Set();
+        const list = [];
+        (items || []).forEach(p => {
+          const name = p.product_name?.trim();
+          if (name && !seen.has(name.toLowerCase())) {
+            seen.add(name.toLowerCase());
+            list.push(name);
+          }
+        });
+        return list;
+      };
 
-      toast.success(`✅ Downloaded ${sanitizedName}_market_${type === 'summary' ? 'summary' : 'inventory'}.xlsx!`, { id: toastId });
+      // Sheet 1: Available Items (unchanged, exactly as shown in screenshot)
+      const availableList = equipmentList.filter(eq => eq.compatibility_status === 'compatible');
+      const availableRows = availableList.map((eq, i) => {
+        const uniqueParts = getUniquePartNames(eq.products);
+        return {
+          '#': i + 1,
+          'Equipment': eq.equipment,
+          'Manufacturer': eq.manufacturer || '—',
+          'Number of Sellers': eq.available_listings_count || 0,
+          'Total Spares Qty': eq.total_available_quantity || 0,
+          'Available Parts Preview': uniqueParts.length > 0 ? uniqueParts.join(', ') : '—'
+        };
+      });
+
+      // Sheet 2: Not Available Items (Compatible Options)
+      const unavailableList = equipmentList.filter(eq => eq.compatibility_status !== 'compatible');
+      const unavailableRows = unavailableList.map((eq, i) => {
+        const brands = getUniqueBrands(eq.equipment_only_products);
+        return {
+          '#': i + 1,
+          'Equipment': eq.equipment,
+          'Number of Sellers': eq.equipment_only_listings_count || 0,
+          'Available Quantity/Set': eq.equipment_only_total_quantity || 0,
+          'Available Brand': brands.length > 0 ? brands.join(', ') : '—'
+        };
+      });
+
+      const wb = XLSX.utils.book_new();
+
+      const wsAvailable = XLSX.utils.json_to_sheet(
+        availableRows.length > 0
+          ? availableRows
+          : [{ '#': 1, 'Equipment': 'None', 'Manufacturer': '—', 'Number of Sellers': 0, 'Total Spares Qty': 0, 'Available Parts Preview': '—' }]
+      );
+      XLSX.utils.book_append_sheet(wb, wsAvailable, 'Available Items');
+
+      const wsUnavailable = XLSX.utils.json_to_sheet(
+        unavailableRows.length > 0
+          ? unavailableRows
+          : [{ '#': 1, 'Equipment': 'None', 'Number of Sellers': 0, 'Available Quantity/Set': 0, 'Available Brand': '—' }]
+      );
+      XLSX.utils.book_append_sheet(wb, wsUnavailable, 'Not Available Items');
+
+      XLSX.writeFile(wb, `${sanitizedName}_equipment_availability_breakdown.xlsx`);
+
+      toast.success(`✅ Downloaded ${sanitizedName}_equipment_availability_breakdown.xlsx!`, { id: toastId });
     } catch (err) {
-      console.error('Failed to download ship market data:', err);
+      console.error('Failed to download ship availability breakdown:', err);
       toast.error('Failed to download data. Please try again.', { id: toastId });
     } finally {
       setExportingCsv(false);
@@ -1132,7 +1095,7 @@ export default function BuyerDashboard() {
                 {selectedShip && (
                   <button
                     type="button"
-                    onClick={() => handleDownloadShipData(selectedShip, 'detailed')}
+                    onClick={() => handleDownloadShipData(selectedShip)}
                     disabled={exportingCsv}
                     className="btn btn-secondary"
                     style={{
@@ -1150,10 +1113,10 @@ export default function BuyerDashboard() {
                       transition:'all 0.2s',
                       fontFamily:"'Inter',sans-serif"
                     }}
-                    title={`Download market spare parts & inventory for ${selectedShip.ship_name} in Excel (.xlsx)`}
+                    title={`Download Equipment Availability Breakdown for ${selectedShip.ship_name} in Excel (.xlsx)`}
                   >
                     <span>📥</span>
-                    <span>{exportingCsv ? 'Downloading...' : 'Download Ship Data'}</span>
+                    <span>{exportingCsv ? 'Downloading...' : 'Download Breakdown (.xlsx)'}</span>
                   </button>
                 )}
 
@@ -2870,11 +2833,24 @@ export default function BuyerDashboard() {
                     const unavailableItems = allEquipment.filter(eq => eq.compatibility_status !== 'compatible');
                     const displayedTabItems = exportBreakdownTab === 'available' ? availableItems : unavailableItems;
 
+                    const getUniqueBrands = (items) => {
+                      const seen = new Set();
+                      const list = [];
+                      (items || []).forEach(p => {
+                        const brand = (p.brand || '').trim();
+                        if (brand && !seen.has(brand.toLowerCase())) {
+                          seen.add(brand.toLowerCase());
+                          list.push(brand);
+                        }
+                      });
+                      return list;
+                    };
+
                     const getUniquePartNames = (items) => {
                       const seen = new Set();
                       const list = [];
                       (items || []).forEach(p => {
-                        const name = p.product_name?.trim();
+                        const name = (p.product_name || '').trim();
                         if (name && !seen.has(name.toLowerCase())) {
                           seen.add(name.toLowerCase());
                           list.push(name);
@@ -2986,43 +2962,41 @@ export default function BuyerDashboard() {
                             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.82rem' }}>
                               <thead>
                                 <tr style={{ background:'var(--bg-surface)', borderBottom:'2px solid var(--border-color)', position:'sticky', top:0, zIndex:2 }}>
-                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)', width:'40px' }}>#</th>
-                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Equipment</th>
-                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Manufacturer</th>
-                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Number of Sellers</th>
-                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Total Spares Qty</th>
-                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Available Parts Preview</th>
+                                  <th style={{ padding:'0.65rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)', width:'40px' }}>#</th>
+                                  <th style={{ padding:'0.65rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Equipment</th>
+                                  <th style={{ padding:'0.65rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Manufacturer</th>
+                                  <th style={{ padding:'0.65rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Number of Sellers</th>
+                                  <th style={{ padding:'0.65rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Total Spares Qty</th>
+                                  <th style={{ padding:'0.65rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Available Parts Preview</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {availableItems.map((eq, i) => (
-                                  <tr key={eq.id || i} style={{ borderBottom:'1px solid var(--border-color)' }}>
-                                    <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-muted)' }}>{i + 1}</td>
-                                    <td style={{ padding:'0.55rem 0.75rem', fontWeight:'600', color:'var(--text-primary)' }}>{eq.equipment}</td>
-                                    <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-secondary)' }}>
-                                      {eq.manufacturer || '—'}
-                                    </td>
-                                    <td style={{ padding:'0.55rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-primary)' }}>
-                                      {eq.available_listings_count} seller{eq.available_listings_count !== 1 ? 's' : ''}
-                                    </td>
-                                    <td style={{ padding:'0.55rem 0.75rem', textAlign:'center', fontWeight:'700', color:'#059669' }}>
-                                      {eq.total_available_quantity} units
-                                    </td>
-                                    <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-secondary)', fontSize:'0.78rem' }}>
-                                      {(() => {
-                                        const uniqueParts = getUniquePartNames(eq.products);
-                                        return uniqueParts.length > 0 ? (
+                                {availableItems.map((eq, i) => {
+                                  const uniqueParts = getUniquePartNames(eq.products);
+                                  return (
+                                    <tr key={eq.id || i} style={{ borderBottom:'1px solid var(--border-color)' }}>
+                                      <td style={{ padding:'0.6rem 0.75rem', color:'var(--text-muted)' }}>{i + 1}</td>
+                                      <td style={{ padding:'0.6rem 0.75rem', fontWeight:'600', color:'var(--text-primary)' }}>{eq.equipment}</td>
+                                      <td style={{ padding:'0.6rem 0.75rem', color:'var(--text-secondary)' }}>{eq.manufacturer || '—'}</td>
+                                      <td style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-primary)' }}>
+                                        {eq.available_listings_count} seller{eq.available_listings_count !== 1 ? 's' : ''}
+                                      </td>
+                                      <td style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'700', color:'#059669' }}>
+                                        {eq.total_available_quantity} units
+                                      </td>
+                                      <td style={{ padding:'0.6rem 0.75rem', color:'var(--text-secondary)', fontSize:'0.82rem' }}>
+                                        {uniqueParts.length > 0 ? (
                                           <span title={uniqueParts.join(', ')}>
                                             {uniqueParts.slice(0, 3).join(', ')}
                                             {uniqueParts.length > 3 && ` + ${uniqueParts.length - 3} more`}
                                           </span>
                                         ) : (
                                           <span style={{ color:'var(--text-muted)' }}>—</span>
-                                        );
-                                      })()}
-                                    </td>
-                                  </tr>
-                                ))}
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>
@@ -3032,67 +3006,36 @@ export default function BuyerDashboard() {
                             <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.82rem' }}>
                               <thead>
                                 <tr style={{ background:'var(--bg-surface)', borderBottom:'2px solid var(--border-color)', position:'sticky', top:0, zIndex:2 }}>
-                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)', width:'40px' }}>#</th>
-                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Equipment</th>
-                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Manufacturer</th>
-                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Compatible Options</th>
-                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Number of Sellers</th>
-                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Total Spares Qty</th>
-                                  <th style={{ padding:'0.6rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Available Parts Preview</th>
+                                  <th style={{ padding:'0.65rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)', width:'40px' }}>#</th>
+                                  <th style={{ padding:'0.65rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Equipment</th>
+                                  <th style={{ padding:'0.65rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Number of Sellers</th>
+                                  <th style={{ padding:'0.65rem 0.75rem', textAlign:'center', fontWeight:'600', color:'var(--text-muted)' }}>Available Quantity/Set</th>
+                                  <th style={{ padding:'0.65rem 0.75rem', textAlign:'left', fontWeight:'600', color:'var(--text-muted)' }}>Available Brand</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {unavailableItems.map((eq, i) => {
                                   const isAlt = eq.compatibility_status === 'incompatible';
                                   const rowBg = isAlt ? 'rgba(245,158,11,0.06)' : 'rgba(239,68,68,0.06)';
+                                  const brands = getUniqueBrands(eq.equipment_only_products);
                                   return (
                                     <tr key={eq.id || i} style={{ borderBottom:'1px solid var(--border-color)', background: rowBg }}>
-                                      <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-muted)' }}>{i + 1}</td>
-                                      <td style={{ padding:'0.55rem 0.75rem', fontWeight:'600', color:'var(--text-primary)' }}>{eq.equipment}</td>
-                                      <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-secondary)' }}>
-                                        {eq.manufacturer || '—'}
-                                      </td>
-                                      <td style={{ padding:'0.55rem 0.75rem', textAlign:'center' }}>
-                                        {eq.equipment_only_listings_count > 0 ? (
-                                          <span style={{
-                                            display:'inline-flex',
-                                            alignItems:'center',
-                                            gap:'0.25rem',
-                                            background:'rgba(245,158,11,0.15)',
-                                            color:'#d97706',
-                                            padding:'0.2rem 0.6rem',
-                                            borderRadius:'1rem',
-                                            fontSize:'0.72rem',
-                                            fontWeight:'700'
-                                          }}>
-                                            🔍 {eq.equipment_only_listings_count} Option{eq.equipment_only_listings_count !== 1 ? 's' : ''}
-                                          </span>
-                                        ) : (
-                                          <span style={{ color:'var(--text-muted)', fontSize:'0.78rem' }}>None</span>
-                                        )}
-                                      </td>
-                                      <td style={{ padding:'0.55rem 0.75rem', textAlign:'center', fontWeight:'600', color: eq.equipment_only_listings_count > 0 ? '#d97706' : 'var(--text-muted)' }}>
+                                      <td style={{ padding:'0.6rem 0.75rem', color:'var(--text-muted)' }}>{i + 1}</td>
+                                      <td style={{ padding:'0.6rem 0.75rem', fontWeight:'600', color:'var(--text-primary)' }}>{eq.equipment}</td>
+                                      <td style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'600', color: eq.equipment_only_listings_count > 0 ? '#d97706' : 'var(--text-muted)' }}>
                                         {eq.equipment_only_listings_count > 0 ? `${eq.equipment_only_listings_count} seller${eq.equipment_only_listings_count !== 1 ? 's' : ''}` : '0'}
                                       </td>
-                                      <td style={{ padding:'0.55rem 0.75rem', textAlign:'center', fontWeight:'700', color: eq.equipment_only_total_quantity > 0 ? '#d97706' : 'var(--text-muted)' }}>
+                                      <td style={{ padding:'0.6rem 0.75rem', textAlign:'center', fontWeight:'700', color: eq.equipment_only_total_quantity > 0 ? '#d97706' : 'var(--text-muted)' }}>
                                         {eq.equipment_only_total_quantity > 0 ? `${eq.equipment_only_total_quantity} units` : '0'}
                                       </td>
-                                      <td style={{ padding:'0.55rem 0.75rem', color:'var(--text-secondary)', fontSize:'0.78rem' }}>
-                                        {(() => {
-                                          const uniqueParts = getUniquePartNames(eq.equipment_only_products);
-                                          return uniqueParts.length > 0 ? (
-                                            <div>
-                                              <span style={{ color:'#d97706', fontWeight:'500' }} title={uniqueParts.join(', ')}>
-                                                {uniqueParts.slice(0, 3).join(', ')}
-                                                {uniqueParts.length > 3 && ` + ${uniqueParts.length - 3} more`}
-                                              </span>
-                                            </div>
-                                          ) : (
-                                            <span style={{ color:'#dc2626', fontStyle:'italic' }}>
-                                              {eq.compatibility_reason || 'No compatible parts or sellers in market'}
-                                            </span>
-                                          );
-                                        })()}
+                                      <td style={{ padding:'0.6rem 0.75rem', color:'var(--text-secondary)', fontSize:'0.82rem' }}>
+                                        {brands.length > 0 ? (
+                                          <span style={{ color:'#d97706', fontWeight:'600' }}>{brands.join(', ')}</span>
+                                        ) : (
+                                          <span style={{ color:'#dc2626', fontStyle:'italic' }}>
+                                            {eq.compatibility_reason || 'Not in Market'}
+                                          </span>
+                                        )}
                                       </td>
                                     </tr>
                                   );
@@ -3124,7 +3067,7 @@ export default function BuyerDashboard() {
               gap:'0.75rem'
             }}>
               <span style={{ fontSize:'0.78rem', color:'var(--text-muted)', display:'flex', alignItems:'center', gap:'0.35rem' }}>
-                <span>💡</span> Download contains equipment specifications and live market spare parts inventory in standard Excel (.xlsx) format.
+                <span>💡</span> Excel file contains two sheets: "Available Items" and "Not Available Items".
               </span>
               <div style={{ display:'flex', gap:'0.6rem' }}>
                 <button
@@ -3135,40 +3078,23 @@ export default function BuyerDashboard() {
                 >
                   Close
                 </button>
-                                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => handleDownloadShipData(exportModalShip, 'summary')}
-                  disabled={exportingCsv}
-                  style={{
-                    padding:'0.5rem 1.15rem',
-                    fontSize:'0.85rem',
-                    display:'inline-flex',
-                    alignItems:'center',
-                    gap:'0.4rem',
-                    color:'#059669',
-                    borderColor:'rgba(5,150,105,0.4)',
-                    fontWeight:'600'
-                  }}
-                >
-                  <span>📊</span> Equipment Summary (.xlsx)
-                </button>
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={() => handleDownloadShipData(exportModalShip, 'detailed')}
+                  onClick={() => handleDownloadShipData(exportModalShip)}
                   disabled={exportingCsv}
                   style={{
-                    padding:'0.5rem 1.35rem',
-                    fontSize:'0.85rem',
+                    padding:'0.55rem 1.4rem',
+                    fontSize:'0.88rem',
                     background:'linear-gradient(135deg, #059669, #10b981)',
                     display:'inline-flex',
                     alignItems:'center',
-                    gap:'0.4rem',
-                    fontWeight:'600'
+                    gap:'0.45rem',
+                    fontWeight:'600',
+                    boxShadow:'0 2px 8px rgba(5,150,105,0.25)'
                   }}
                 >
-                  <span>📥</span> {exportingCsv ? 'Downloading...' : 'Download Detailed Excel (.xlsx)'}
+                  <span>📥</span> {exportingCsv ? 'Downloading...' : 'Download Equipment Availability Breakdown (.xlsx)'}
                 </button>
               </div>
             </div>
