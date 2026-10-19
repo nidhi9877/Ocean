@@ -12,6 +12,30 @@ import 'jspdf-autotable';
 
 const API = '/api';
 
+/* ── Provider (Seller) Dashboard — column definitions for drag-and-drop reordering ──
+   `key`  = the underlying data field on each product object
+   `label` = the visible header text
+   The `#` (row number) and `Delete` columns are fixed at the start/end and
+   are NOT reorderable. Only the 14 columns below can be dragged. */
+const PROVIDER_COL_DEFS = {
+  department:            { label: 'Department',     width: 100 },
+  category:              { label: 'Equipment',      width: 110 },
+  brand:                 { label: 'Manufacturer',   width: 110 },
+  model_number:          { label: 'Model',          width: 100 },
+  manufactured_at:       { label: 'Authorization',  width: 80  },
+  part_category:         { label: 'Category',       width: 95  },
+  product_name:          { label: 'Part Name',      width: 230 },
+  part_number:           { label: 'Part No.',       width: 105 },
+  location:              { label: 'Location',       width: 110 },
+  quantity:              { label: 'QTY',            width: 55  },
+  service_type:          { label: 'Business Type', width: 105 },
+  payment_mode:          { label: 'Payment Mode',  width: 100 },
+  equipment_condition:   { label: 'Condition',      width: 90  },
+  warranty:              { label: 'Warranty',       width: 90  },
+};
+const PROVIDER_DEFAULT_COL_ORDER = Object.keys(PROVIDER_COL_DEFS);
+const PROVIDER_COL_STORAGE_KEY = 'providerColumnOrder';
+
 export default function ProviderDashboard() {
   const { user, token } = useAuth();
   const [provider, setProvider] = useState(null);
@@ -29,6 +53,47 @@ export default function ProviderDashboard() {
   const [selectedDepartment, setSelectedDepartment] = useState('');
   // Unsaved-changes warning modal
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+
+  /* ── Drag-and-drop column reordering (persisted to localStorage) ── */
+  const [columnOrder, setColumnOrder] = useState(() => {
+    try {
+      const saved = localStorage.getItem(PROVIDER_COL_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Keep only valid keys; append any newly-added columns at the end
+        const valid = parsed.filter(k => PROVIDER_COL_DEFS[k]);
+        PROVIDER_DEFAULT_COL_ORDER.forEach(k => { if (!valid.includes(k)) valid.push(k); });
+        return valid.length ? valid : [...PROVIDER_DEFAULT_COL_ORDER];
+      }
+    } catch (e) { /* fall through to default */ }
+    return [...PROVIDER_DEFAULT_COL_ORDER];
+  });
+  const [draggingCol, setDraggingCol] = useState(null);
+  const [dragOverCol, setDragOverCol] = useState(null);
+
+  const handleColDragStart = (key) => setDraggingCol(key);
+  const handleColDragEnd = () => { setDraggingCol(null); setDragOverCol(null); };
+  const handleColDragOver = (e, key) => { e.preventDefault(); if (key !== draggingCol) setDragOverCol(key); };
+  const handleColDrop = (key) => {
+    if (!draggingCol || draggingCol === key) { setDraggingCol(null); setDragOverCol(null); return; }
+    setColumnOrder(prev => {
+      const newOrder = [...prev];
+      const fromIdx = newOrder.indexOf(draggingCol);
+      const toIdx = newOrder.indexOf(key);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      newOrder.splice(fromIdx, 1);
+      newOrder.splice(toIdx, 0, draggingCol);
+      localStorage.setItem(PROVIDER_COL_STORAGE_KEY, JSON.stringify(newOrder));
+      return newOrder;
+    });
+    setDraggingCol(null);
+    setDragOverCol(null);
+  };
+  const resetColumnOrder = () => {
+    setColumnOrder([...PROVIDER_DEFAULT_COL_ORDER]);
+    localStorage.removeItem(PROVIDER_COL_STORAGE_KEY);
+    toast.success('Column order reset to default');
+  };
   const navigate = useNavigate();
   const spreadsheetRef = useRef(null);
 
@@ -744,7 +809,10 @@ export default function ProviderDashboard() {
               ) : (
                 <div ref={spreadsheetRef} style={{ animation: 'slideUp 0.5s ease-out' }}>
                   {/* Search Bar - above toolbar */}
-                  <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+                  <div style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button className="reset-cols-btn" onClick={resetColumnOrder} title="Reset columns to the default order">
+                      ↺ Reset Columns
+                    </button>
                     <input 
                       type="text" 
                       placeholder="🔍 Search parts, categories, brands..." 
@@ -936,46 +1004,43 @@ export default function ProviderDashboard() {
                   {/* The Spreadsheet Grid */}
                   <div className="seller-products-table-wrap provider-products-table-wrap" style={{ borderTop: 'none', borderRadius: '0' }}>
                     <table className="data-table seller-products-table provider-products-table">
-                      {/* Column widths are managed here so the table renders the
-                          same regardless of content length. Total ≈ 1620px.
-                          Narrow columns (Authorization, QTY) are kept small;
-                          Part Name gets a wide column so the full name shows. */}
+                      {/* colgroup driven by columnOrder so drag-and-drop widths stay in sync */}
                       <colgroup>
-                        <col style={{ width: '40px' }} />   {/* # */}
-                        <col style={{ width: '100px' }} />  {/* Department */}
-                        <col style={{ width: '110px' }} />  {/* Equipment */}
-                        <col style={{ width: '110px' }} />  {/* Manufacturer */}
-                        <col style={{ width: '100px' }} />  {/* Model */}
-                        <col style={{ width: '80px' }} />   {/* Authorization (narrow) */}
-                        <col style={{ width: '95px' }} />   {/* Category */}
-                        <col style={{ width: '230px' }} />  {/* Part Name (wide, wraps) */}
-                        <col style={{ width: '105px' }} /> {/* Part No. */}
-                        <col style={{ width: '110px' }} />  {/* Location */}
-                        <col style={{ width: '55px' }} />  {/* QTY (narrow) */}
-                        <col style={{ width: '105px' }} /> {/* Business Type */}
-                        <col style={{ width: '100px' }} /> {/* Payment Mode */}
-                        <col style={{ width: '90px' }} />  {/* Condition */}
-                        <col style={{ width: '90px' }} />  {/* Warranty */}
-                        <col style={{ width: '70px' }} />  {/* Delete */}
+                        <col style={{ width: '40px' }} />{/* # — fixed */}
+                        {columnOrder.map(key => (
+                          <col key={key} style={{ width: PROVIDER_COL_DEFS[key]?.width + 'px' }} />
+                        ))}
+                        <col style={{ width: '70px' }} />{/* Delete — fixed */}
                       </colgroup>
                       <thead>
                         <tr>
-                          <th>#</th>
-                          <th>Department</th>
-                          <th>Equipment</th>
-                          <th>Manufacturer</th>
-                          <th>Model</th>
-                          <th style={{ textAlign: 'center' }}>Authorization</th>
-                          <th>Category</th>
-                          <th>Part Name</th>
-                          <th>Part No.</th>
-                          <th>Location</th>
-                          <th style={{ textAlign: 'center' }}>QTY</th>
-                          <th>Business Type</th>
-                          <th>Payment Mode</th>
-                          <th>Condition</th>
-                          <th>Warranty</th>
-                          <th style={{ width: '70px', minWidth: '70px', textAlign: 'center', color: 'var(--danger)' }}>Delete</th>
+                          {/* Row-number header — fixed, not draggable */}
+                          <th title="Row number">#</th>
+                          {/* Draggable column headers */}
+                          {columnOrder.map(key => {
+                            const def = PROVIDER_COL_DEFS[key];
+                            const isDragging = draggingCol === key;
+                            const isDragOver = dragOverCol === key;
+                            const isCenterCol = key === 'quantity' || key === 'manufactured_at';
+                            return (
+                              <th
+                                key={key}
+                                draggable
+                                onDragStart={() => handleColDragStart(key)}
+                                onDragEnd={handleColDragEnd}
+                                onDragOver={e => handleColDragOver(e, key)}
+                                onDragLeave={() => setDragOverCol(null)}
+                                onDrop={() => handleColDrop(key)}
+                                className={[isDragging ? 'col-dragging' : '', isDragOver ? 'col-drag-over' : ''].filter(Boolean).join(' ')}
+                                title={`${def.label} — drag to reorder`}
+                                style={{ textAlign: isCenterCol ? 'center' : undefined, cursor: 'grab' }}
+                              >
+                                {def.label}
+                              </th>
+                            );
+                          })}
+                          {/* Delete header — fixed, not draggable */}
+                          <th style={{ textAlign: 'center', color: 'var(--danger)' }}>Delete</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1006,6 +1071,162 @@ export default function ProviderDashboard() {
                             isSelected ? 'spreadsheet-row-selected' : '',
                             Number(product.quantity) < 2 ? 'low-stock-row' : ''
                           ].filter(Boolean).join(' ');
+
+                          /* renderCell: returns the correct <td> for a given column key */
+                          const renderCell = (key) => {
+                            if (isEditingThisRow) {
+                              /* ── EDITING cells ── */
+                              switch (key) {
+                                case 'department':
+                                  return (
+                                    <td key={key}>
+                                      <input className="inline-edit-input" list="provider-department-list" placeholder="Dept"
+                                        value={editDataMap[product.id]?.department ?? ''}
+                                        onChange={e => handleBulkEditChange(product.id, 'department', e.target.value)} />
+                                    </td>
+                                  );
+                                case 'category':
+                                  return <td key={key}>{editInput(product.id, 'category')}</td>;
+                                case 'brand':
+                                  return <td key={key}>{editInput(product.id, 'brand')}</td>;
+                                case 'model_number':
+                                  return <td key={key}>{editInput(product.id, 'model_number')}</td>;
+                                case 'manufactured_at': {
+                                  const raw = editDataMap[product.id]?.manufactured_at;
+                                  const normalized = !raw ? 'No' : (() => { const s = String(raw).trim().toLowerCase(); return (s === 'yes' || s === 'true' || s === 'y') ? 'Yes' : (s === 'no' || s === 'false' || s === 'n') ? 'No' : raw; })();
+                                  return (
+                                    <td key={key}>
+                                      <select className="inline-edit-input" value={normalized} onChange={e => handleBulkEditChange(product.id, 'manufactured_at', e.target.value)}>
+                                        <option value="Yes">Yes</option>
+                                        <option value="No">No</option>
+                                      </select>
+                                    </td>
+                                  );
+                                }
+                                case 'part_category': {
+                                  const raw = editDataMap[product.id]?.part_category;
+                                  const normalized = !raw ? 'Spare Part' : (() => { const s = String(raw).trim().toLowerCase(); return (s === 'complete set' || s === 'completeset') ? 'Complete Set' : 'Spare Part'; })();
+                                  return (
+                                    <td key={key}>
+                                      <select className="inline-edit-input" value={normalized} onChange={e => handleBulkEditChange(product.id, 'part_category', e.target.value)}>
+                                        <option value="Spare Part">Spare Part</option>
+                                        <option value="Complete Set">Complete Set</option>
+                                      </select>
+                                    </td>
+                                  );
+                                }
+                                case 'product_name':
+                                  return (
+                                    <td key={key}>
+                                      <input className="inline-edit-input" placeholder="Enter part name"
+                                        value={editDataMap[product.id]?.product_name ?? ''}
+                                        onChange={e => handleBulkEditChange(product.id, 'product_name', e.target.value)} />
+                                    </td>
+                                  );
+                                case 'part_number':
+                                  return <td key={key}>{editInput(product.id, 'part_number')}</td>;
+                                case 'location':
+                                  return <td key={key}>{editInput(product.id, 'location')}</td>;
+                                case 'quantity':
+                                  return <td key={key}>{editInput(product.id, 'quantity', { width: '55px', textAlign: 'center' })}</td>;
+                                case 'service_type':
+                                  return (
+                                    <td key={key}>
+                                      <select className="inline-edit-input" value={editDataMap[product.id]?.service_type || 'Supply'} onChange={e => handleBulkEditChange(product.id, 'service_type', e.target.value)}>
+                                        <option value="Supply">Supply</option>
+                                        <option value="Supply and Service">Supply and Service</option>
+                                      </select>
+                                    </td>
+                                  );
+                                case 'payment_mode':
+                                  return (
+                                    <td key={key}>
+                                      <select className="inline-edit-input" value={editDataMap[product.id]?.payment_mode || 'pre-payment'} onChange={e => handleBulkEditChange(product.id, 'payment_mode', e.target.value)}>
+                                        <option value="pre-payment">pre-payment</option>
+                                        <option value="credit">credit</option>
+                                      </select>
+                                    </td>
+                                  );
+                                case 'equipment_condition':
+                                  return (
+                                    <td key={key}>
+                                      <select className="inline-edit-input" value={editDataMap[product.id]?.equipment_condition || 'New'} onChange={e => handleBulkEditChange(product.id, 'equipment_condition', e.target.value)}>
+                                        <option value="New">New</option>
+                                        <option value="Refurbished">Refurbished</option>
+                                      </select>
+                                    </td>
+                                  );
+                                case 'warranty':
+                                  return <td key={key}>{editInput(product.id, 'warranty', { width: '85px' })}</td>;
+                                default:
+                                  return <td key={key}>—</td>;
+                              }
+                            } else {
+                              /* ── DISPLAY cells ── */
+                              switch (key) {
+                                case 'department':
+                                  return (
+                                    <td key={key}>
+                                      <span style={{ display:'inline-block', padding:'0.15rem 0.5rem', borderRadius:'4px', fontSize:'0.75rem', fontWeight:600, background:'#e0e7ff', color:'#3730a3' }}>
+                                        {highlightText(product.department || 'General', searchQuery)}
+                                      </span>
+                                    </td>
+                                  );
+                                case 'category':
+                                  return <td key={key}>{highlightText(product.category, searchQuery)}</td>;
+                                case 'brand':
+                                  return <td key={key}>{highlightText(product.brand, searchQuery)}</td>;
+                                case 'model_number':
+                                  return <td key={key}>{highlightText(product.model_number, searchQuery)}</td>;
+                                case 'manufactured_at': {
+                                  const val = product.manufactured_at;
+                                  const s = String(val || '').trim().toLowerCase();
+                                  const isYes = s === 'yes' || s === 'true' || s === 'y';
+                                  const isNo = s === 'no' || s === 'false' || s === 'n';
+                                  return (
+                                    <td key={key} style={{ textAlign: 'center' }}>
+                                      {isYes ? <span style={{ color:'#16a34a', fontWeight:600, background:'rgba(22,163,74,0.1)', padding:'0.15rem 0.5rem', borderRadius:'4px' }}>Yes</span>
+                                        : (isNo || !val) ? <span style={{ color:'#64748b', background:'rgba(100,116,139,0.1)', padding:'0.15rem 0.5rem', borderRadius:'4px' }}>No</span>
+                                        : highlightText(product.manufactured_at, searchQuery)}
+                                    </td>
+                                  );
+                                }
+                                case 'part_category':
+                                  return (
+                                    <td key={key}>
+                                      <span style={{ display:'inline-block', padding:'0.15rem 0.5rem', borderRadius:'4px', fontSize:'0.78rem', fontWeight:600, background:(product.part_category==='Complete Set')?'rgba(59,130,246,0.12)':'rgba(16,185,129,0.12)', color:(product.part_category==='Complete Set')?'#2563eb':'#059669' }}>
+                                        {highlightText(product.part_category || 'Spare Part', searchQuery)}
+                                      </span>
+                                    </td>
+                                  );
+                                case 'product_name':
+                                  return <td key={key} className="part-name-cell" style={{ fontWeight:600 }} title={product.product_name || ''}>{highlightText(product.product_name, searchQuery)}</td>;
+                                case 'part_number':
+                                  return <td key={key}>{highlightText(product.part_number, searchQuery)}</td>;
+                                case 'location':
+                                  return <td key={key}><span className="location-cell" title={product.location || ''}>{highlightText(product.location, searchQuery)}</span></td>;
+                                case 'quantity':
+                                  return <td key={key} style={{ textAlign:'center', color:Number(product.quantity)<2?'#ef4444':'inherit', fontWeight:Number(product.quantity)<2?'bold':'normal' }}>{highlightText(product.quantity, searchQuery)}</td>;
+                                case 'service_type':
+                                  return <td key={key}>{highlightText(product.service_type || 'Supply', searchQuery)}</td>;
+                                case 'payment_mode':
+                                  return <td key={key}>{highlightText(product.payment_mode || 'pre-payment', searchQuery)}</td>;
+                                case 'equipment_condition':
+                                  return (
+                                    <td key={key}>
+                                      <span style={{ display:'inline-block', padding:'0.2rem 0.55rem', borderRadius:'4px', fontSize:'0.8rem', fontWeight:600, background:(product.equipment_condition==='Refurbished')?'rgba(234,179,8,0.15)':'rgba(34,197,94,0.15)', color:(product.equipment_condition==='Refurbished')?'#b45309':'#15803d' }}>
+                                        {highlightText(product.equipment_condition || 'New', searchQuery)}
+                                      </span>
+                                    </td>
+                                  );
+                                case 'warranty':
+                                  return <td key={key}>{highlightText(product.warranty || '—', searchQuery)}</td>;
+                                default:
+                                  return <td key={key}>—</td>;
+                              }
+                            }
+                          };
+
                           return (
                           <tr
                             key={product.id}
@@ -1017,182 +1238,16 @@ export default function ProviderDashboard() {
                             }}
                             onDoubleClick={() => startEditingRow(product)}
                           >
+                            {/* Fixed row-number cell */}
                             <td>{idx + 1}</td>
-
-                            {isEditingThisRow ? (
-                              <>
-                                <td>
-                                  <input
-                                    className="inline-edit-input"
-                                    list="provider-department-list"
-                                    placeholder="Dept"
-                                    value={editDataMap[product.id]?.department ?? ''}
-                                    onChange={(e) => handleBulkEditChange(product.id, 'department', e.target.value)}
-                                  />
-                                </td>
-                                <td>{editInput(product.id, 'category')}</td>
-                                <td>{editInput(product.id, 'brand')}</td>
-                                <td>{editInput(product.id, 'model_number')}</td>
-                                <td>
-                                  <select
-                                    className="inline-edit-input"
-                                    value={
-                                      (() => {
-                                        const raw = editDataMap[product.id]?.manufactured_at;
-                                        if (!raw) return 'No';
-                                        const s = String(raw).trim().toLowerCase();
-                                        return (s === 'yes' || s === 'true' || s === 'y') ? 'Yes' : (s === 'no' || s === 'false' || s === 'n') ? 'No' : raw;
-                                      })()
-                                    }
-                                    onChange={(e) => handleBulkEditChange(product.id, 'manufactured_at', e.target.value)}
-                                  >
-                                    <option value="Yes">Yes</option>
-                                    <option value="No">No</option>
-                                  </select>
-                                </td>
-                                <td>
-                                  <select
-                                    className="inline-edit-input"
-                                    value={
-                                      (() => {
-                                        const raw = editDataMap[product.id]?.part_category;
-                                        if (!raw) return 'Spare Part';
-                                        const s = String(raw).trim().toLowerCase();
-                                        if (s === 'complete set' || s === 'completeset') return 'Complete Set';
-                                        return 'Spare Part';
-                                      })()
-                                    }
-                                    onChange={(e) => handleBulkEditChange(product.id, 'part_category', e.target.value)}
-                                  >
-                                    <option value="Spare Part">Spare Part</option>
-                                    <option value="Complete Set">Complete Set</option>
-                                  </select>
-                                </td>
-                                <td>
-                                  <input
-                                    className="inline-edit-input"
-                                    placeholder="Enter part name"
-                                    value={editDataMap[product.id]?.product_name ?? ''}
-                                    onChange={(e) => handleBulkEditChange(product.id, 'product_name', e.target.value)}
-                                  />
-                                </td>
-                                <td>{editInput(product.id, 'part_number')}</td>
-                                <td>{editInput(product.id, 'location')}</td>
-                                <td>{editInput(product.id, 'quantity', { width: '55px', textAlign: 'center' })}</td>
-                                <td>
-                                  <select className="inline-edit-input" value={editDataMap[product.id]?.service_type || 'Supply'} onChange={(e) => handleBulkEditChange(product.id, 'service_type', e.target.value)}>
-                                    <option value="Supply">Supply</option>
-                                    <option value="Supply and Service">Supply and Service</option>
-                                  </select>
-                                </td>
-                                <td>
-                                  <select className="inline-edit-input" value={editDataMap[product.id]?.payment_mode || 'pre-payment'} onChange={(e) => handleBulkEditChange(product.id, 'payment_mode', e.target.value)}>
-                                    <option value="pre-payment">pre-payment</option>
-                                    <option value="credit">credit</option>
-                                  </select>
-                                </td>
-                                <td>
-                                  <select
-                                    className="inline-edit-input"
-                                    value={editDataMap[product.id]?.equipment_condition || 'New'}
-                                    onChange={(e) => handleBulkEditChange(product.id, 'equipment_condition', e.target.value)}
-                                  >
-                                    <option value="New">New</option>
-                                    <option value="Refurbished">Refurbished</option>
-                                  </select>
-                                </td>
-                                <td>{editInput(product.id, 'warranty', { width: '85px' })}</td>
-                                <td style={{ textAlign: 'center', backgroundColor: '#fee2e2' }}>
-                                  <button
-                                    className="table-action-btn delete-btn"
-                                    onClick={(e) => { e.stopPropagation(); deleteProduct(product.id); }}
-                                    disabled={deleting}
-                                    title="Delete row"
-                                  >
-                                    🗑️
-                                  </button>
-                                </td>
-                              </>
-                            ) : (
-                              <>
-                                <td>
-                                  <span style={{
-                                    display: 'inline-block',
-                                    padding: '0.15rem 0.5rem',
-                                    borderRadius: '4px',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 600,
-                                    background: '#e0e7ff',
-                                    color: '#3730a3'
-                                  }}>
-                                    {highlightText(product.department || 'General', searchQuery)}
-                                  </span>
-                                </td>
-                                <td>{highlightText(product.category, searchQuery)}</td>
-                                <td>{highlightText(product.brand, searchQuery)}</td>
-                                <td>{highlightText(product.model_number, searchQuery)}</td>
-                                <td>
-                                  {(() => {
-                                    const val = product.manufactured_at;
-                                    const s = String(val || '').trim().toLowerCase();
-                                    const isYes = s === 'yes' || s === 'true' || s === 'y';
-                                    const isNo = s === 'no' || s === 'false' || s === 'n';
-                                    if (isYes) {
-                                      return <span style={{ color: '#16a34a', fontWeight: 600, background: 'rgba(22,163,74,0.1)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>Yes</span>;
-                                    }
-                                    if (isNo || !val) {
-                                      return <span style={{ color: '#64748b', background: 'rgba(100,116,139,0.1)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>No</span>;
-                                    }
-                                    return highlightText(product.manufactured_at, searchQuery);
-                                  })()}
-                                </td>
-                                <td>
-                                  <span style={{
-                                    display: 'inline-block',
-                                    padding: '0.15rem 0.5rem',
-                                    borderRadius: '4px',
-                                    fontSize: '0.78rem',
-                                    fontWeight: 600,
-                                    background: (product.part_category === 'Complete Set') ? 'rgba(59, 130, 246, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                                    color: (product.part_category === 'Complete Set') ? '#2563eb' : '#059669'
-                                  }}>
-                                    {highlightText(product.part_category || 'Spare Part', searchQuery)}
-                                  </span>
-                                </td>
-                                <td className="part-name-cell" style={{ fontWeight: 600 }} title={product.product_name || ''}>{highlightText(product.product_name, searchQuery)}</td>
-                                <td>{highlightText(product.part_number, searchQuery)}</td>
-                                <td><span className="location-cell" title={product.location || ''}>{highlightText(product.location, searchQuery)}</span></td>
-                                <td style={{ textAlign: 'center', color: Number(product.quantity) < 2 ? '#ef4444' : 'inherit', fontWeight: Number(product.quantity) < 2 ? 'bold' : 'normal' }}>
-                                  {highlightText(product.quantity, searchQuery)}
-                                </td>
-                                <td>{highlightText(product.service_type || 'Supply', searchQuery)}</td>
-                                <td>{highlightText(product.payment_mode || 'pre-payment', searchQuery)}</td>
-                                <td>
-                                  <span style={{
-                                    display: 'inline-block',
-                                    padding: '0.2rem 0.55rem',
-                                    borderRadius: '4px',
-                                    fontSize: '0.8rem',
-                                    fontWeight: 600,
-                                    background: (product.equipment_condition === 'Refurbished') ? 'rgba(234, 179, 8, 0.15)' : 'rgba(34, 197, 94, 0.15)',
-                                    color: (product.equipment_condition === 'Refurbished') ? '#b45309' : '#15803d'
-                                  }}>
-                                    {highlightText(product.equipment_condition || 'New', searchQuery)}
-                                  </span>
-                                </td>
-                                <td>{highlightText(product.warranty || '—', searchQuery)}</td>
-                                <td style={{ textAlign: 'center', backgroundColor: '#fee2e2' }}>
-                                  <button
-                                    className="table-action-btn delete-btn"
-                                    onClick={(e) => { e.stopPropagation(); deleteProduct(product.id); }}
-                                    disabled={deleting}
-                                    title="Delete row"
-                                  >
-                                    🗑️
-                                  </button>
-                                </td>
-                              </>
-                            )}
+                            {/* Dynamic columns in user-defined order */}
+                            {columnOrder.map(key => renderCell(key))}
+                            {/* Fixed delete cell */}
+                            <td style={{ textAlign: 'center', backgroundColor: '#fee2e2' }}>
+                              <button className="table-action-btn delete-btn"
+                                onClick={e => { e.stopPropagation(); deleteProduct(product.id); }}
+                                disabled={deleting} title="Delete row">🗑️</button>
+                            </td>
                           </tr>
                         )})}
                       </tbody>

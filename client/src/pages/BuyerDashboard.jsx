@@ -9,6 +9,29 @@ import MarineNewsTicker from '../components/MarineNewsTicker';
 
 const API = '/api';
 
+/* ── Buyer Dashboard — column definitions for drag-and-drop reordering ──
+   The keys are the header labels (they are unique and already used as keys
+   in the tableHeaders map). 'Seller ID' (when present) and 'Action' are
+   fixed at the start/end and are NOT reorderable. Only the 13 columns
+   below can be dragged. */
+const BUYER_COL_DEFS = {
+  'Equipment':     { label: 'Equipment' },
+  'Manufacturer':  { label: 'Manufacturer' },
+  'Model':         { label: 'Model' },
+  'Category':      { label: 'Category' },
+  'Part Name':     { label: 'Part Name' },
+  'Part No.':      { label: 'Part No.' },
+  'Location':      { label: 'Location' },
+  'QTY':           { label: 'QTY' },
+  'Business Type': { label: 'Business Type' },
+  'Payment':       { label: 'Payment' },
+  'Condition':     { label: 'Condition' },
+  'Warranty':      { label: 'Warranty' },
+  'Last Updated':  { label: 'Last Updated' },
+};
+const BUYER_DEFAULT_COL_ORDER = Object.keys(BUYER_COL_DEFS);
+const BUYER_COL_STORAGE_KEY = 'buyerColumnOrder';
+
 const getEmailClientUrl = (clientType, to, subject, body, cc, bcc) => {
   const encTo = encodeURIComponent(to);
   const encSubject = encodeURIComponent(subject);
@@ -189,6 +212,46 @@ export default function BuyerDashboard() {
     equipment: [], manufacturer: [], modelNumber: '', partNumber: '',
     stockLocation: [], minQty: 1, serviceType: '', partCategory: '', condition: '',
   });
+
+  /* ── Drag-and-drop column reordering (persisted to localStorage) ── */
+  const [columnOrder, setColumnOrder] = useState(() => {
+    try {
+      const saved = localStorage.getItem(BUYER_COL_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const valid = parsed.filter(k => BUYER_COL_DEFS[k]);
+        BUYER_DEFAULT_COL_ORDER.forEach(k => { if (!valid.includes(k)) valid.push(k); });
+        return valid.length ? valid : [...BUYER_DEFAULT_COL_ORDER];
+      }
+    } catch (e) { /* fall through to default */ }
+    return [...BUYER_DEFAULT_COL_ORDER];
+  });
+  const [draggingCol, setDraggingCol] = useState(null);
+  const [dragOverCol, setDragOverCol] = useState(null);
+
+  const handleColDragStart = (key) => setDraggingCol(key);
+  const handleColDragEnd = () => { setDraggingCol(null); setDragOverCol(null); };
+  const handleColDragOver = (e, key) => { e.preventDefault(); if (key !== draggingCol) setDragOverCol(key); };
+  const handleColDrop = (key) => {
+    if (!draggingCol || draggingCol === key) { setDraggingCol(null); setDragOverCol(null); return; }
+    setColumnOrder(prev => {
+      const newOrder = [...prev];
+      const fromIdx = newOrder.indexOf(draggingCol);
+      const toIdx = newOrder.indexOf(key);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      newOrder.splice(fromIdx, 1);
+      newOrder.splice(toIdx, 0, draggingCol);
+      localStorage.setItem(BUYER_COL_STORAGE_KEY, JSON.stringify(newOrder));
+      return newOrder;
+    });
+    setDraggingCol(null);
+    setDragOverCol(null);
+  };
+  const resetColumnOrder = () => {
+    setColumnOrder([...BUYER_DEFAULT_COL_ORDER]);
+    localStorage.removeItem(BUYER_COL_STORAGE_KEY);
+    toast.success('Column order reset to default');
+  };
 
   // Automatically update search seed on query or filter changes to randomize items and seller IDs
   useEffect(() => {
@@ -1483,6 +1546,9 @@ export default function BuyerDashboard() {
                     ⚡ Show All {selectedShip.ship_name} Equipment
                   </button>
                 )}
+                <button className="reset-cols-btn" onClick={resetColumnOrder} title="Reset columns to the default order">
+                  ↺ Reset Columns
+                </button>
               </div>
               {(() => {
                 const isSearchActive = Boolean(searchQuery.trim() || activeFilterCount > 0);
@@ -1511,7 +1577,8 @@ export default function BuyerDashboard() {
 
                 const tableHeaders = [
                   ...(isSearchActive ? ['Seller ID'] : []),
-                  'Equipment', 'Manufacturer', 'Model', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment', 'Condition', 'Warranty', 'Last Updated', 'Action'
+                  ...columnOrder,
+                  'Action'
                 ];
 
                 /* Column-width map for buyer table.
@@ -1527,8 +1594,11 @@ export default function BuyerDashboard() {
                       'QTY': 55, 'Business Type': 110, 'Payment': 95, 'Condition': 90,
                       'Warranty': 90, 'Last Updated': 95, 'Action': 150 };
 
+                /* Columns that are reorderable (everything except Seller ID & Action) */
+                const isDraggableHeader = (h) => columnOrder.includes(h);
+
                 return (
-              <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', fontSize:'0.9rem',
+              <table className="buyer-products-table" style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', fontSize:'0.9rem',
                               minWidth: isSearchActive ? 1490 : 1570,
                               tableLayout: 'fixed' }}>
                 <colgroup>
@@ -1538,22 +1608,37 @@ export default function BuyerDashboard() {
                 </colgroup>
                 <thead>
                   <tr style={{ borderBottom:'2px solid var(--border-color)' }}>
-                    {tableHeaders.map(h => (
-                      <th key={h} style={{
-                        padding: '0.6rem 0.75rem',
-                        fontWeight: '700',
-                        /* Single consistent font size across ALL headers */
-                        fontSize: '0.72rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.4px',
-                        color: 'var(--text-muted)',
-                        whiteSpace: 'normal',
-                        wordBreak: 'break-word',
-                        lineHeight: '1.3',
-                        background: 'var(--bg-surface)',
-                        borderBottom: '2px solid var(--border-color)'
-                      }}>{h}</th>
-                    ))}
+                    {tableHeaders.map(h => {
+                      const draggable = isDraggableHeader(h);
+                      const isDragging = draggingCol === h;
+                      const isDragOver = dragOverCol === h;
+                      return (
+                        <th key={h}
+                          draggable={draggable}
+                          onDragStart={draggable ? () => handleColDragStart(h) : undefined}
+                          onDragEnd={draggable ? handleColDragEnd : undefined}
+                          onDragOver={draggable ? (e) => handleColDragOver(e, h) : undefined}
+                          onDragLeave={draggable ? () => setDragOverCol(null) : undefined}
+                          onDrop={draggable ? () => handleColDrop(h) : undefined}
+                          className={[isDragging ? 'col-dragging' : '', isDragOver ? 'col-drag-over' : ''].filter(Boolean).join(' ')}
+                          style={{
+                            padding: '0.6rem 0.75rem',
+                            fontWeight: '700',
+                            fontSize: '0.72rem',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.4px',
+                            color: 'var(--text-muted)',
+                            whiteSpace: 'normal',
+                            wordBreak: 'break-word',
+                            lineHeight: '1.3',
+                            background: 'var(--bg-surface)',
+                            borderBottom: '2px solid var(--border-color)',
+                            cursor: draggable ? 'grab' : 'default',
+                          }}
+                          title={draggable ? `${h} — drag to reorder` : h}
+                        >{h}</th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -1562,73 +1647,93 @@ export default function BuyerDashboard() {
                     const sending = sendingIds.has(p.id);
                     const pid = p.provider_id ?? p.seller_id ?? p.user_id;
                     const sellerLabel = sellerIdMap[pid] || '—';
+
+                    /* renderCell: returns the correct <td> for a given header */
+                    const renderCell = (h) => {
+                      switch (h) {
+                        case 'Seller ID':
+                          return (
+                            <td key={h} style={{ padding:'0.75rem' }}>
+                              <span style={{
+                                display:'inline-flex', alignItems:'center', justifyContent:'center',
+                                padding:'0.22rem 0.65rem', borderRadius:'1rem',
+                                fontSize:'0.75rem', fontWeight:'700',
+                                background:'linear-gradient(135deg,rgba(37,99,235,0.12),rgba(99,102,241,0.12))',
+                                color:'var(--accent-primary)', border:'1px solid rgba(37,99,235,0.22)',
+                                whiteSpace:'nowrap', letterSpacing:'0.02em'
+                              }}>{sellerLabel}</span>
+                            </td>
+                          );
+                        case 'Equipment':
+                          return <td key={h} style={{ padding:'0.75rem' }}>{p.category||'-'}</td>;
+                        case 'Manufacturer':
+                          return <td key={h} style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.brand||'-'}</td>;
+                        case 'Model':
+                          return <td key={h} style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.model_number||'-'}</td>;
+                        case 'Category':
+                          return (
+                            <td key={h} style={{ padding:'0.75rem' }}>
+                              <span style={{ display:'inline-block', padding:'0.15rem 0.5rem', borderRadius:'4px', fontSize:'0.78rem', fontWeight:600, background:(p.part_category==='Complete Set')?'rgba(59,130,246,0.12)':'rgba(16,185,129,0.12)', color:(p.part_category==='Complete Set')?'#2563eb':'#059669' }}>
+                                {p.part_category || 'Spare Part'}
+                              </span>
+                            </td>
+                          );
+                        case 'Part Name':
+                          return <td key={h} style={{ padding:'0.75rem', fontWeight:'500', whiteSpace:'normal', wordBreak:'break-word', lineHeight:'1.4' }} title={p.product_name||''}>{p.product_name||'-'}</td>;
+                        case 'Part No.':
+                          return <td key={h} style={{ padding:'0.75rem', fontFamily:'monospace', color:'var(--text-secondary)' }}>{p.part_number||'-'}</td>;
+                        case 'Location':
+                          return <td key={h} style={{ padding:'0.75rem' }} title={p.location||''}>{p.location||'-'}</td>;
+                        case 'QTY':
+                          return <td key={h} style={{ padding:'0.75rem', textAlign:'center', color:'var(--accent-primary)', fontWeight:'bold' }}>{p.quantity||'-'}</td>;
+                        case 'Business Type':
+                          return <td key={h} style={{ padding:'0.75rem' }}>{p.service_type || 'Supply'}</td>;
+                        case 'Payment':
+                          return <td key={h} style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.payment_mode || 'pre-payment'}</td>;
+                        case 'Condition':
+                          return (
+                            <td key={h} style={{ padding:'0.75rem' }}>
+                              <span style={{ display:'inline-block', padding:'0.2rem 0.55rem', borderRadius:'4px', fontSize:'0.78rem', fontWeight:600, background:(p.equipment_condition==='Refurbished')?'rgba(234,179,8,0.15)':'rgba(34,197,94,0.15)', color:(p.equipment_condition==='Refurbished')?'#b45309':'#15803d' }}>
+                                {p.equipment_condition || 'New'}
+                              </span>
+                            </td>
+                          );
+                        case 'Warranty':
+                          return <td key={h} style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.warranty || '—'}</td>;
+                        case 'Last Updated':
+                          return (
+                            <td key={h} style={{ padding:'0.75rem', fontSize:'0.85rem', color:'var(--text-secondary)' }}>
+                              {p.updated_at ? new Date(p.updated_at).toLocaleDateString() : p.created_at ? new Date(p.created_at).toLocaleDateString() : '-'}
+                            </td>
+                          );
+                        case 'Action':
+                          return (
+                            <td key={h} style={{ padding:'0.75rem' }}>
+                              <button className="btn btn-primary" disabled={sending}
+                                style={{ padding:'0.4rem 0.8rem', fontSize:'0.85rem', display:'inline-flex', alignItems:'center', gap:'0.4rem', minWidth:130, opacity:sending?0.7:1, cursor:sending?'not-allowed':'pointer' }}
+                                onClick={() => openComposeModal(p)}>
+                                {sending ? (<><span className="spinner" style={{ width:14, height:14, borderWidth:2 }}/> Sending...</>) : (<>✉️ Send Inquiry</>)}
+                              </button>
+                            </td>
+                          );
+                        default:
+                          return <td key={h} style={{ padding:'0.75rem' }}>—</td>;
+                      }
+                    };
+
                     return (
                       <tr key={p.id} style={{ borderBottom:'1px solid var(--border-color)', transition:'background 0.15s' }}
                           onMouseEnter={e=>e.currentTarget.style.background='var(--bg-card-hover)'}
                           onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                        {isSearchActive && (
-                          <td style={{ padding:'0.75rem' }}>
-                            <span style={{
-                              display:'inline-flex', alignItems:'center', justifyContent:'center',
-                              padding:'0.22rem 0.65rem', borderRadius:'1rem',
-                              fontSize:'0.75rem', fontWeight:'700',
-                              background:'linear-gradient(135deg,rgba(37,99,235,0.12),rgba(99,102,241,0.12))',
-                              color:'var(--accent-primary)', border:'1px solid rgba(37,99,235,0.22)',
-                              whiteSpace:'nowrap', letterSpacing:'0.02em'
-                            }}>{sellerLabel}</span>
-                          </td>
-                        )}
-                        <td style={{ padding:'0.75rem' }}>{p.category||'-'}</td>
-                        <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.brand||'-'}</td>
-                        <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.model_number||'-'}</td>
-                        <td style={{ padding:'0.75rem' }}>
-                          <span style={{
-                            display: 'inline-block',
-                            padding: '0.15rem 0.5rem',
-                            borderRadius: '4px',
-                            fontSize: '0.78rem',
-                            fontWeight: 600,
-                            background: (p.part_category === 'Complete Set') ? 'rgba(59, 130, 246, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                            color: (p.part_category === 'Complete Set') ? '#2563eb' : '#059669'
-                          }}>
-                            {p.part_category || 'Spare Part'}
-                          </span>
-                        </td>
-                        <td style={{ padding:'0.75rem', fontWeight:'500', whiteSpace:'normal', wordBreak:'break-word', lineHeight:'1.4' }} title={p.product_name || ''}>{p.product_name||'-'}</td>
-                        <td style={{ padding:'0.75rem', fontFamily:'monospace', color:'var(--text-secondary)' }}>{p.part_number||'-'}</td>
-                        <td style={{ padding:'0.75rem' }} title={p.location || ''}>{p.location||'-'}</td>
-                        <td style={{ padding:'0.75rem', textAlign:'center', color:'var(--accent-primary)', fontWeight:'bold' }}>{p.quantity||'-'}</td>
-                        <td style={{ padding:'0.75rem' }}>{p.service_type || 'Supply'}</td>
-                        <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.payment_mode || 'pre-payment'}</td>
-                        <td style={{ padding:'0.75rem' }}>
-                          <span style={{
-                            display: 'inline-block',
-                            padding: '0.2rem 0.55rem',
-                            borderRadius: '4px',
-                            fontSize: '0.78rem',
-                            fontWeight: 600,
-                            background: (p.equipment_condition === 'Refurbished') ? 'rgba(234, 179, 8, 0.15)' : 'rgba(34, 197, 94, 0.15)',
-                            color: (p.equipment_condition === 'Refurbished') ? '#b45309' : '#15803d'
-                          }}>
-                            {p.equipment_condition || 'New'}
-                          </span>
-                        </td>
-                        <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.warranty || '—'}</td>
-                        <td style={{ padding:'0.75rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                          {p.updated_at ? new Date(p.updated_at).toLocaleDateString() : p.created_at ? new Date(p.created_at).toLocaleDateString() : '-'}
-                        </td>
-                        <td style={{ padding:'0.75rem' }}>
-                          <button className="btn btn-primary" disabled={sending}
-                            style={{ padding:'0.4rem 0.8rem', fontSize:'0.85rem', display:'inline-flex', alignItems:'center', gap:'0.4rem', minWidth:130, opacity:sending?0.7:1, cursor:sending?'not-allowed':'pointer' }}
-                            onClick={() => openComposeModal(p)}>
-                            {sending ? (<><span className="spinner" style={{ width:14, height:14, borderWidth:2 }}/> Sending...</>) : (<>✉️ Send Inquiry</>)}
-                          </button>
-                        </td>
+                        {tableHeaders.map(h => renderCell(h))}
                       </tr>
                     );
                   })}
 
-                  {/* Incompatible spec rows (amber) — appended at bottom, filtered by query */}
+                  {/* Incompatible spec rows (amber) — appended at bottom, filtered by query.
+                      These rows use colSpan and are intentionally NOT reordered so the
+                      "Different Specs" badge + "Explore Compatible Options" button always
+                      render predictably regardless of the user's column order. */}
                   {specsFilterActive && savedSpecs.length > 0 && specClassification
                     .filter(sc => {
                       if (sc.status !== 'incompatible') return false;
@@ -1663,22 +1768,15 @@ export default function BuyerDashboard() {
                               setSearchQuery(sc.spec.equipment);
                               setSpecsFilterActive(false);
                               setHasSearched(true);
-                              // Activate compatible-options mode: only show Complete Sets, exclude original manufacturer
                               setCompatibleOptionsMode(true);
                               setCompatibleOptionsSpec({ equipment: sc.spec.equipment, manufacturer: sc.spec.manufacturer, model: sc.spec.model });
                               toast.success(`🔍 Showing Complete Set alternatives for "${sc.spec.equipment}" (${sc.spec.manufacturer || 'any'})...`);
                             }}
                             style={{
-                              padding:'0.45rem 1rem',
-                              fontSize:'0.82rem',
-                              borderRadius:'var(--radius-full)',
+                              padding:'0.45rem 1rem', fontSize:'0.82rem', borderRadius:'var(--radius-full)',
                               background:'linear-gradient(135deg, #f59e0b, #f97316)',
-                              display:'inline-flex',
-                              alignItems:'center',
-                              gap:'0.4rem',
-                              fontWeight:'600',
-                              whiteSpace:'nowrap',
-                              boxShadow:'0 2px 6px rgba(245,158,11,0.25)'
+                              display:'inline-flex', alignItems:'center', gap:'0.4rem',
+                              fontWeight:'600', whiteSpace:'nowrap', boxShadow:'0 2px 6px rgba(245,158,11,0.25)'
                             }}
                           >
                             🔍 Explore Compatible Options
@@ -1688,7 +1786,7 @@ export default function BuyerDashboard() {
                     ))
                   }
 
-                  {/* Not available spec rows (red) — displayed in prominent red, filtered by query */}
+                  {/* Not available spec rows (red) — same colSpan approach as above */}
                   {specsFilterActive && savedSpecs.length > 0 && specClassification
                     .filter(sc => {
                       if (sc.status !== 'not_available') return false;
@@ -1719,17 +1817,11 @@ export default function BuyerDashboard() {
                         <td colSpan={6} style={{ padding:'0.75rem' }}>
                           <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', flexWrap:'nowrap' }}>
                             <span style={{
-                              padding:'0.35rem 0.8rem',
-                              fontSize:'0.78rem',
-                              borderRadius:'var(--radius-full)',
-                              background:'rgba(239,68,68,0.12)',
-                              color:'#dc2626',
+                              padding:'0.35rem 0.8rem', fontSize:'0.78rem', borderRadius:'var(--radius-full)',
+                              background:'rgba(239,68,68,0.12)', color:'#dc2626',
                               border:'1px solid rgba(239,68,68,0.25)',
-                              display:'inline-flex',
-                              alignItems:'center',
-                              gap:'0.35rem',
-                              fontWeight:'600',
-                              whiteSpace:'nowrap'
+                              display:'inline-flex', alignItems:'center', gap:'0.35rem',
+                              fontWeight:'600', whiteSpace:'nowrap'
                             }}>
                               🚫 Not in Market
                             </span>

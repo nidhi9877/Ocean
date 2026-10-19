@@ -1165,6 +1165,54 @@ body {
   line-height: 1.35;
 }
 
+/* ── Drag-and-drop column reordering ── */
+/* Draggable headers show a grab cursor */
+.provider-products-table th[draggable="true"],
+.buyer-products-table th[draggable="true"] {
+  cursor: grab;
+}
+
+.provider-products-table th[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Header being dragged — faded */
+.provider-products-table th.col-dragging,
+.buyer-products-table th.col-dragging {
+  opacity: 0.35;
+  background: linear-gradient(180deg, #c5d6f1 0%, #b8cceb 100%) !important;
+}
+
+/* Header receiving a drop — blue left border + tint */
+.provider-products-table th.col-drag-over,
+.buyer-products-table th.col-drag-over {
+  border-left: 3px solid #4285f4 !important;
+  background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%) !important;
+}
+
+/* "Reset Columns" pill button — shared by both dashboards */
+.reset-cols-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  border-radius: var(--radius-full, 9999px);
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--accent-primary, #2563eb);
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.reset-cols-btn:hover {
+  background: rgba(37, 99, 235, 0.14);
+  border-color: rgba(37, 99, 235, 0.4);
+}
+
 /* Row number column — narrow like Excel */
 .provider-products-table th:first-child,
 .provider-products-table td:first-child {
