@@ -936,24 +936,46 @@ export default function ProviderDashboard() {
                   {/* The Spreadsheet Grid */}
                   <div className="seller-products-table-wrap provider-products-table-wrap" style={{ borderTop: 'none', borderRadius: '0' }}>
                     <table className="data-table seller-products-table provider-products-table">
+                      {/* Column widths are managed here so the table renders the
+                          same regardless of content length. Total ≈ 1620px.
+                          Narrow columns (Authorization, QTY) are kept small;
+                          Part Name gets a wide column so the full name shows. */}
+                      <colgroup>
+                        <col style={{ width: '40px' }} />   {/* # */}
+                        <col style={{ width: '100px' }} />  {/* Department */}
+                        <col style={{ width: '110px' }} />  {/* Equipment */}
+                        <col style={{ width: '110px' }} />  {/* Manufacturer */}
+                        <col style={{ width: '100px' }} />  {/* Model */}
+                        <col style={{ width: '80px' }} />   {/* Authorization (narrow) */}
+                        <col style={{ width: '95px' }} />   {/* Category */}
+                        <col style={{ width: '230px' }} />  {/* Part Name (wide, wraps) */}
+                        <col style={{ width: '105px' }} /> {/* Part No. */}
+                        <col style={{ width: '110px' }} />  {/* Location */}
+                        <col style={{ width: '55px' }} />  {/* QTY (narrow) */}
+                        <col style={{ width: '105px' }} /> {/* Business Type */}
+                        <col style={{ width: '100px' }} /> {/* Payment Mode */}
+                        <col style={{ width: '90px' }} />  {/* Condition */}
+                        <col style={{ width: '90px' }} />  {/* Warranty */}
+                        <col style={{ width: '70px' }} />  {/* Delete */}
+                      </colgroup>
                       <thead>
                         <tr>
                           <th>#</th>
-                          <th style={{ fontSize: '0.62rem', width: '95px', minWidth: '95px' }}>Department</th>
-                          <th style={{ fontSize: '0.62rem' }}>Equipment</th>
-                          <th style={{ fontSize: '0.56rem' }}>Manufacturer</th>
-                          <th style={{ fontSize: '0.56rem' }}>Model</th>
-                          <th style={{ fontSize: '0.54rem' }}>Authorization</th>
-                          <th style={{ fontSize: '0.62rem' }}>Category</th>
-                          <th style={{ fontSize: '0.62rem' }}>Part Name</th>
-                          <th style={{ fontSize: '0.58rem' }}>Part No.</th>
-                          <th style={{ fontSize: '0.56rem' }}>Location</th>
-                          <th style={{ fontSize: '0.62rem' }}>QTY</th>
-                          <th style={{ fontSize: '0.58rem' }}>Business Type</th>
-                          <th style={{ fontSize: '0.56rem' }}>Payment Mode</th>
-                          <th style={{ fontSize: '0.56rem' }}>Condition</th>
-                          <th style={{ fontSize: '0.56rem' }}>Warranty</th>
-                          <th style={{ width: '65px', minWidth: '65px', textAlign: 'center', color: 'var(--danger)', fontSize: '0.64rem' }}>Delete</th>
+                          <th>Department</th>
+                          <th>Equipment</th>
+                          <th>Manufacturer</th>
+                          <th>Model</th>
+                          <th style={{ textAlign: 'center' }}>Authorization</th>
+                          <th>Category</th>
+                          <th>Part Name</th>
+                          <th>Part No.</th>
+                          <th>Location</th>
+                          <th style={{ textAlign: 'center' }}>QTY</th>
+                          <th>Business Type</th>
+                          <th>Payment Mode</th>
+                          <th>Condition</th>
+                          <th>Warranty</th>
+                          <th style={{ width: '70px', minWidth: '70px', textAlign: 'center', color: 'var(--danger)' }}>Delete</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1137,7 +1159,7 @@ export default function ProviderDashboard() {
                                     {highlightText(product.part_category || 'Spare Part', searchQuery)}
                                   </span>
                                 </td>
-                                <td style={{ fontWeight: 600 }}>{highlightText(product.product_name, searchQuery)}</td>
+                                <td className="part-name-cell" style={{ fontWeight: 600 }} title={product.product_name || ''}>{highlightText(product.product_name, searchQuery)}</td>
                                 <td>{highlightText(product.part_number, searchQuery)}</td>
                                 <td><span className="location-cell" title={product.location || ''}>{highlightText(product.location, searchQuery)}</span></td>
                                 <td style={{ textAlign: 'center', color: Number(product.quantity) < 2 ? '#ef4444' : 'inherit', fontWeight: Number(product.quantity) < 2 ? 'bold' : 'normal' }}>

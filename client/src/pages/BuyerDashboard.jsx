@@ -1514,12 +1514,45 @@ export default function BuyerDashboard() {
                   'Equipment', 'Manufacturer', 'Model', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment', 'Condition', 'Warranty', 'Last Updated', 'Action'
                 ];
 
+                /* Column-width map for buyer table.
+                   Narrow cols: Seller ID, QTY, Category, Condition, Payment, Warranty
+                   Wide col: Part Name (wraps instead of truncating) */
+                const colWidths = isSearchActive
+                  ? { 'Seller ID': 90, 'Equipment': 110, 'Manufacturer': 110, 'Model': 100,
+                      'Category': 85, 'Part Name': 220, 'Part No.': 105, 'Location': 105,
+                      'QTY': 55, 'Business Type': 105, 'Payment': 95, 'Condition': 90,
+                      'Warranty': 90, 'Last Updated': 95, 'Action': 145 }
+                  : { 'Equipment': 120, 'Manufacturer': 120, 'Model': 105,
+                      'Category': 85, 'Part Name': 235, 'Part No.': 110, 'Location': 110,
+                      'QTY': 55, 'Business Type': 110, 'Payment': 95, 'Condition': 90,
+                      'Warranty': 90, 'Last Updated': 95, 'Action': 150 };
+
                 return (
-              <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', fontSize:'0.9rem', minWidth: isSearchActive ? 1200 : 1100 }}>
+              <table style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', fontSize:'0.9rem',
+                              minWidth: isSearchActive ? 1490 : 1570,
+                              tableLayout: 'fixed' }}>
+                <colgroup>
+                  {tableHeaders.map(h => (
+                    <col key={h} style={{ width: colWidths[h] || 100 }} />
+                  ))}
+                </colgroup>
                 <thead>
                   <tr style={{ borderBottom:'2px solid var(--border-color)' }}>
                     {tableHeaders.map(h => (
-                      <th key={h} style={{ padding:'0.75rem', fontWeight:'600', fontSize:'0.78rem', textTransform:'uppercase', letterSpacing:'0.5px', color:'var(--text-muted)', whiteSpace:'nowrap' }}>{h}</th>
+                      <th key={h} style={{
+                        padding: '0.6rem 0.75rem',
+                        fontWeight: '700',
+                        /* Single consistent font size across ALL headers */
+                        fontSize: '0.72rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.4px',
+                        color: 'var(--text-muted)',
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word',
+                        lineHeight: '1.3',
+                        background: 'var(--bg-surface)',
+                        borderBottom: '2px solid var(--border-color)'
+                      }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -1561,10 +1594,10 @@ export default function BuyerDashboard() {
                             {p.part_category || 'Spare Part'}
                           </span>
                         </td>
-                        <td style={{ padding:'0.75rem', fontWeight:'500' }}>{p.product_name||'-'}</td>
+                        <td style={{ padding:'0.75rem', fontWeight:'500', whiteSpace:'normal', wordBreak:'break-word', lineHeight:'1.4' }} title={p.product_name || ''}>{p.product_name||'-'}</td>
                         <td style={{ padding:'0.75rem', fontFamily:'monospace', color:'var(--text-secondary)' }}>{p.part_number||'-'}</td>
-                        <td style={{ padding:'0.75rem' }}>{p.location||'-'}</td>
-                        <td style={{ padding:'0.75rem', color:'var(--accent-primary)', fontWeight:'bold' }}>{p.quantity||'-'}</td>
+                        <td style={{ padding:'0.75rem' }} title={p.location || ''}>{p.location||'-'}</td>
+                        <td style={{ padding:'0.75rem', textAlign:'center', color:'var(--accent-primary)', fontWeight:'bold' }}>{p.quantity||'-'}</td>
                         <td style={{ padding:'0.75rem' }}>{p.service_type || 'Supply'}</td>
                         <td style={{ padding:'0.75rem', color:'var(--text-secondary)' }}>{p.payment_mode || 'pre-payment'}</td>
                         <td style={{ padding:'0.75rem' }}>

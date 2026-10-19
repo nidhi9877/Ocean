@@ -1118,7 +1118,11 @@ body {
 }
 
 .provider-products-table {
-  min-width: 1050px;
+  /* Total of all colgroup widths below = ~1610px.
+     Keep min-width aligned so the horizontal "sliding window" scroll
+     (overflow-x:auto on .provider-products-table-wrap) lets the user
+     slide to see every column even on small screens. */
+  min-width: 1620px;
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
@@ -1133,10 +1137,13 @@ body {
 
 .seller-products-table th,
 .provider-products-table th {
-  padding: 6px 4px;
-  font-size: 0.60rem;
+  padding: 6px 6px;
+  /* One consistent header font size — no more mixed 0.54/0.56/0.58/0.62rem */
+  font-size: 0.7rem;
   font-weight: 700;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.25;
   text-transform: uppercase;
   letter-spacing: normal;
   color: #333;
@@ -1146,6 +1153,16 @@ body {
   text-align: left;
   user-select: none;
   position: relative;
+}
+
+/* Part Name column — let the full text wrap so we never see "Antenn..." */
+.provider-products-table .part-name-cell,
+.seller-products-table .part-name-cell {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  word-break: break-word;
+  line-height: 1.35;
 }
 
 /* Row number column — narrow like Excel */
