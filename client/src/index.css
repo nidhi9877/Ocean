@@ -641,6 +641,10 @@ body {
   margin-bottom: 2rem;
 }
 
+.login-mobile-logo {
+  display: none;
+}
+
 .login-icon {
   font-size: 3rem;
   margin-bottom: 0.75rem;
@@ -1305,7 +1309,11 @@ select.inline-edit-input {
   border: 2px solid #8ea0bc;
   border-bottom: 1px solid #b0b8c8;
   border-radius: 4px 4px 0 0;
-  flex-wrap: wrap;
+  /* Fixed height so rows never shift when toolbar content switches */
+  min-height: 42px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .spreadsheet-toolbar .toolbar-btn {
@@ -1381,7 +1389,8 @@ select.inline-edit-input {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap; /* Never wrap — toolbar stays single-line */
+  overflow-x: auto;
 }
 
 .bulk-group {
@@ -1948,6 +1957,10 @@ select.inline-edit-input {
 
   .login-brand-panel {
     display: none;
+  }
+
+  .login-mobile-logo {
+    display: block !important;
   }
 
   .register-layout {

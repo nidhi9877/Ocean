@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -27,6 +27,8 @@ export default function ProviderDashboard() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
+  // Unsaved-changes warning modal
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const navigate = useNavigate();
   const spreadsheetRef = useRef(null);
 
@@ -34,25 +36,23 @@ export default function ProviderDashboard() {
     fetchProfile();
   }, []);
 
-  // Click outside spreadsheet to deselect all — like Excel
+  // Click outside spreadsheet — show save warning if edits are pending
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (spreadsheetRef.current && !spreadsheetRef.current.contains(e.target)) {
-        // Deselect single-clicked rows
+        // Always deselect highlighted rows
         setSelectedIds([]);
-        
-        // If editing individual rows (not bulk "Edit All" mode), discard edits when clicking outside
-        if (!isBulkEditing) {
-          setEditingIds([]);
-          setEditDataMap({});
-          // Remove any newly added unsaved temporary rows
-          setProducts(prev => prev.filter(p => !String(p.id).startsWith('temp_')));
+
+        // If there are unsaved individual-row edits, show warning instead of silently discarding
+        if (!isBulkEditing && editingIds.length > 0) {
+          setShowUnsavedModal(true);
+          return;
         }
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isBulkEditing]);
+  }, [isBulkEditing, editingIds]);
 
   const fetchProfile = async () => {
     try {
@@ -196,6 +196,7 @@ export default function ProviderDashboard() {
     setIsBulkEditing(false);
     setEditingIds([]);
     setEditDataMap({});
+    setShowUnsavedModal(false);
     // Remove any unsaved temporary rows
     setProducts(prev => prev.filter(p => !String(p.id).startsWith('temp_')));
   };
@@ -241,6 +242,31 @@ export default function ProviderDashboard() {
   };
 
   const saveBulkEdits = async () => {
+    // ── Validate all required fields before saving ──
+    const requiredFields = [
+      { key: 'category',      label: 'Equipment' },
+      { key: 'brand',         label: 'Manufacturer' },
+      { key: 'model_number',  label: 'Model' },
+      { key: 'product_name',  label: 'Part Name' },
+      { key: 'location',      label: 'Location' },
+      { key: 'quantity',      label: 'QTY' },
+    ];
+
+    for (let i = 0; i < editingIds.length; i++) {
+      const id = editingIds[i];
+      const row = editDataMap[id];
+      if (!row) continue;
+      for (const f of requiredFields) {
+        const val = row[f.key];
+        const isEmpty = val === undefined || val === null || String(val).trim() === '' || (f.key === 'quantity' && (Number(val) <= 0));
+        if (isEmpty) {
+          const rowNum = products.findIndex(p => p.id === id) + 1;
+          toast.error(`Row ${rowNum}: "${f.label}" is required and cannot be empty.`, { duration: 5000 });
+          return;
+        }
+      }
+    }
+
     setSaving(true);
     try {
       const updatedProducts = editingIds.map(id => editDataMap[id]);
@@ -253,6 +279,7 @@ export default function ProviderDashboard() {
       setIsBulkEditing(false);
       setEditingIds([]);
       setEditDataMap({});
+      toast.success('✅ All changes saved successfully!');
     } catch (err) {
       console.error('Failed to update products:', err);
       alert(err.response?.data?.error || 'Failed to save changes');
@@ -528,6 +555,16 @@ export default function ProviderDashboard() {
   };
 
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+
+  // Stable sort: computed once when products list changes — prevents rows jumping on selection
+  const sortedProducts = useMemo(() => {
+    return [...products].sort((a, b) => {
+      const aLow = Number(a.quantity) < 3 ? 0 : 1;
+      const bLow = Number(b.quantity) < 3 ? 0 : 1;
+      if (aLow !== bLow) return aLow - bLow;
+      return 0;
+    });
+  }, [products]);
 
   const editInput = (id, field, style = {}) => (
     <input
@@ -914,7 +951,7 @@ export default function ProviderDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {products.filter(p => {
+                        {sortedProducts.filter(p => {
                           if (selectedDepartment && p.department !== selectedDepartment) return false;
                           if (!searchQuery) return true;
                           const q = searchQuery.toLowerCase();
@@ -932,11 +969,6 @@ export default function ProviderDashboard() {
                             (p.warranty && p.warranty.toLowerCase().includes(q)) ||
                             (p.quantity !== undefined && p.quantity !== null && String(p.quantity).includes(q))
                           );
-                        }).sort((a, b) => {
-                          const aLow = Number(a.quantity) < 3 ? 0 : 1;
-                          const bLow = Number(b.quantity) < 3 ? 0 : 1;
-                          if (aLow !== bLow) return aLow - bLow;
-                          return 0; // maintain original order otherwise
                         }).map((product, idx) => {
                           const isEditingThisRow = isBulkEditing || editingIds.includes(product.id);
                           const isSelected = selectedIds.includes(product.id);
@@ -1134,6 +1166,58 @@ export default function ProviderDashboard() {
               )}
             </div>
             {/* Download Menu was here */}
+
+            {/* ── Unsaved Changes Warning Modal ── */}
+            {showUnsavedModal && (
+              <div style={{
+                position: 'fixed', inset: 0, zIndex: 9999,
+                background: 'rgba(0,0,0,0.45)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <div style={{
+                  background: 'var(--bg-surface)',
+                  borderRadius: '12px',
+                  padding: '2rem 2.25rem',
+                  maxWidth: '420px',
+                  width: '90%',
+                  boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>⚠️</div>
+                  <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.2rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
+                    Unsaved Changes
+                  </h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.75rem', lineHeight: 1.5 }}>
+                    You have edited {editingIds.length} row{editingIds.length > 1 ? 's' : ''} that haven't been saved yet.
+                    Do you want to save your changes before leaving?
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <button
+                      className="btn btn-primary"
+                      onClick={async () => { setShowUnsavedModal(false); await saveBulkEdits(); }}
+                      disabled={saving}
+                      style={{ minWidth: '110px' }}
+                    >
+                      {saving ? '⏳ Saving…' : '💾 Save'}
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={cancelBulkEdits}
+                      style={{ minWidth: '110px' }}
+                    >
+                      🗑️ Discard
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setShowUnsavedModal(false)}
+                      style={{ minWidth: '110px' }}
+                    >
+                      ✕ Keep Editing
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {showUploadModal && (
               <UploadModal 

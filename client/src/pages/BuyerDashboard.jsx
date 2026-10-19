@@ -187,7 +187,7 @@ export default function BuyerDashboard() {
 
   const [filters, setFilters] = useState({
     equipment: [], manufacturer: [], modelNumber: '', partNumber: '',
-    stockLocation: [], minQty: 1, serviceType: '',
+    stockLocation: [], minQty: 1, serviceType: '', partCategory: '', condition: '',
   });
 
   // Automatically update search seed on query or filter changes to randomize items and seller IDs
@@ -781,6 +781,8 @@ export default function BuyerDashboard() {
     if (filters.stockLocation.length) c++;
     if (filters.minQty > 1) c++;
     if (filters.serviceType) c++;
+    if (filters.partCategory) c++;
+    if (filters.condition) c++;
     return c;
   }, [filters]);
 
@@ -897,6 +899,14 @@ export default function BuyerDashboard() {
       if (filters.minQty > 1 && Number(p.quantity) < filters.minQty) return false;
       const sType = p.service_type || 'Supply';
       if (filters.serviceType && sType !== filters.serviceType) return false;
+      if (filters.partCategory) {
+        const pCat = (p.part_category || '').trim().toLowerCase();
+        if (pCat !== filters.partCategory.toLowerCase()) return false;
+      }
+      if (filters.condition) {
+        const pCond = (p.equipment_condition || 'New').trim().toLowerCase();
+        if (pCond !== filters.condition.toLowerCase()) return false;
+      }
       return true;
     });
 
@@ -962,7 +972,7 @@ export default function BuyerDashboard() {
     }));
   };
 
-  const clearAll = () => { setFilters({ equipment:[], manufacturer:[], modelNumber:'', partNumber:'', stockLocation:[], minQty:1, serviceType:'' }); };
+  const clearAll = () => { setFilters({ equipment:[], manufacturer:[], modelNumber:'', partNumber:'', stockLocation:[], minQty:1, serviceType:'', partCategory:'', condition:'' }); };
 
   const handleSendInquiry = async (clientType) => {
     if (!selectedProduct) return;
@@ -1276,6 +1286,8 @@ export default function BuyerDashboard() {
               {filters.stockLocation.map(v => <Chip key={`sl-${v}`} label={`Location: ${v}`} onRemove={() => toggleCheckbox('stockLocation',v)} />)}
               {filters.minQty > 1 && <Chip label={`Min Qty: ${filters.minQty}`} onRemove={() => setFilters(f=>({...f,minQty:1}))} />}
               {filters.serviceType && <Chip label={`Service: ${filters.serviceType}`} onRemove={() => setFilters(f=>({...f,serviceType:''}))} />}
+              {filters.partCategory && <Chip label={`Category: ${filters.partCategory}`} onRemove={() => setFilters(f=>({...f,partCategory:''}))} />}
+              {filters.condition && <Chip label={`Condition: ${filters.condition}`} onRemove={() => setFilters(f=>({...f,condition:''}))} />}
               <button onClick={clearAll} style={{ background:'none', border:'none', color:'var(--danger)', fontSize:'0.8rem', fontWeight:'600', cursor:'pointer', padding:'0.25rem 0.5rem' }}>Clear All</button>
             </div>
           )}
@@ -1825,6 +1837,62 @@ export default function BuyerDashboard() {
                     <option value="Supply">Supply</option>
                     <option value="Supply and Service">Supply and Service</option>
                   </select>
+                </div>
+
+                {/* Category (Part Category) */}
+                <div>
+                  <SectionTitle icon="📂" label="Category" />
+                  <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
+                    {['', 'Spare Part', 'Complete Set'].map(opt => (
+                      <button
+                        key={opt || 'any'}
+                        type="button"
+                        onClick={() => setFilters(f => ({...f, partCategory: opt}))}
+                        style={{
+                          padding:'0.45rem 1rem',
+                          borderRadius:'var(--radius-full)',
+                          border:`1.5px solid ${filters.partCategory === opt ? 'var(--accent-primary)' : 'var(--border-color)'}`,
+                          background: filters.partCategory === opt ? 'var(--accent-primary)' : 'transparent',
+                          color: filters.partCategory === opt ? 'white' : 'var(--text-secondary)',
+                          fontSize:'0.84rem',
+                          fontWeight:'600',
+                          cursor:'pointer',
+                          transition:'all 0.15s',
+                          fontFamily:"'Inter',sans-serif"
+                        }}
+                      >
+                        {opt || 'Any'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Condition */}
+                <div>
+                  <SectionTitle icon="⚙️" label="Condition" />
+                  <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
+                    {['', 'New', 'Refurbished'].map(opt => (
+                      <button
+                        key={opt || 'any'}
+                        type="button"
+                        onClick={() => setFilters(f => ({...f, condition: opt}))}
+                        style={{
+                          padding:'0.45rem 1rem',
+                          borderRadius:'var(--radius-full)',
+                          border:`1.5px solid ${filters.condition === opt ? 'var(--accent-primary)' : 'var(--border-color)'}`,
+                          background: filters.condition === opt ? 'var(--accent-primary)' : 'transparent',
+                          color: filters.condition === opt ? 'white' : 'var(--text-secondary)',
+                          fontSize:'0.84rem',
+                          fontWeight:'600',
+                          cursor:'pointer',
+                          transition:'all 0.15s',
+                          fontFamily:"'Inter',sans-serif"
+                        }}
+                      >
+                        {opt || 'Any'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
               </div>

@@ -48,8 +48,19 @@ export default function LoginPage() {
       {/* Left Brand Panel */}
       <div className="login-brand-panel">
         <div className="login-brand-content">
-          <span className="login-brand-icon">⚓</span>
-          <h1 className="login-brand-title">MarineStockHub</h1>
+          <div style={{ marginBottom: '1.75rem', display: 'flex', justifyContent: 'center' }}>
+            <img
+              src="/transparent_logo.png"
+              alt="MarineStockHub"
+              style={{
+                maxHeight: '120px',
+                maxWidth: 'min(360px, 90%)',
+                width: 'auto',
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 10px 24px rgba(37, 99, 235, 0.15))'
+              }}
+            />
+          </div>
           <p className="login-brand-subtitle">
             The premier B2B marketplace connecting marine vessel operators with verified spare parts sellers worldwide.
           </p>
@@ -80,6 +91,18 @@ export default function LoginPage() {
           <div className="glass-card login-card">
             {/* Header */}
             <div className="login-header">
+              <img
+                src="/transparent_logo.png"
+                alt="MarineStockHub"
+                className="login-mobile-logo"
+                style={{
+                  maxHeight: '52px',
+                  maxWidth: '240px',
+                  width: 'auto',
+                  margin: '0 auto 1.25rem',
+                  objectFit: 'contain'
+                }}
+              />
               <span className="login-icon">🚢</span>
               <h1 className="login-title">Sign In</h1>
               <p className="login-subtitle">Access your MarineStockHub account</p>

@@ -13,8 +13,11 @@ export default function Navbar() {
   return (
     <nav className="navbar">
       <Link to={user?.role === 'seller' || user?.role === 'provider' ? '/seller/dashboard' : user?.role === 'management' ? '/management/dashboard' : '/buyer/dashboard'} className="navbar-brand">
-        <span className="navbar-logo">⚓</span>
-        <span className="navbar-title">MarineStockHub</span>
+        <img
+          src="/transparent_logo.png"
+          alt="MarineStockHub"
+          style={{ height: '42px', width: 'auto', objectFit: 'contain', display: 'block' }}
+        />
       </Link>
 
       <div className="navbar-links">

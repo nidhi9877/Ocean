@@ -20,6 +20,21 @@ export default function WelcomePage() {
 
   return (
     <div className="hero-section">
+      <div style={{ marginBottom: '1.75rem', display: 'flex', justifyContent: 'center' }}>
+        <img
+          src="/transparent_logo.png"
+          alt="MarineStockHub"
+          style={{
+            maxHeight: '130px',
+            maxWidth: 'min(440px, 90vw)',
+            width: 'auto',
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 10px 25px rgba(37, 99, 235, 0.12))',
+            animation: 'fadeIn 0.6s ease-out'
+          }}
+        />
+      </div>
+
       <div className="hero-badge">
         <span>⚓</span> Marine Spare Parts Marketplace
       </div>
