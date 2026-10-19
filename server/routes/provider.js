@@ -389,6 +389,7 @@ router.put('/products/:id', authenticateToken, async (req, res) => {
         payment_mode = ${req.body.payment_mode || 'pre-payment'},
         warranty = ${req.body.warranty || null},
         part_category = ${req.body.part_category || req.body.partCategory || 'Spare Part'},
+        department = ${req.body.department || null},
         updated_at = NOW()
       WHERE id = ${productId}
     `;
@@ -510,7 +511,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
       if (!p.id || String(p.id).startsWith('temp_')) {
         await sql`
           INSERT INTO products (
-            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode, warranty, part_category
+            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode, warranty, part_category, department
           )
           VALUES (
             ${providerId}, 
@@ -530,7 +531,8 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
             ${p.service_type || 'Supply'}, 
             ${p.payment_mode || 'pre-payment'}, 
             ${p.warranty || null},
-            ${p.part_category || p.partCategory || 'Spare Part'}
+            ${p.part_category || p.partCategory || 'Spare Part'},
+            ${p.department || null}
           )
         `;
       } else {
@@ -553,6 +555,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
             payment_mode = ${p.payment_mode || 'pre-payment'},
             warranty = ${p.warranty || null},
             part_category = ${p.part_category || p.partCategory || 'Spare Part'},
+            department = ${p.department || null},
             updated_at = NOW()
           WHERE id = ${p.id} AND provider_id = ${providerId}
         `;

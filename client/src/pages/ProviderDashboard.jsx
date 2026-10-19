@@ -63,11 +63,7 @@ export default function ProviderDashboard() {
       const fetchedProducts = res.data.products || [];
       setProducts(fetchedProducts);
       
-      // Auto-select first department if available and none selected
-      const deps = [...new Set(fetchedProducts.map(p => p.department).filter(Boolean))];
-      if (deps.length > 0) {
-        setSelectedDepartment(deps[0]);
-      }
+      // Default to "All Departments" (selectedDepartment remains empty string '')
       
       const lowStock = fetchedProducts.filter(p => Number(p.quantity) < 5);
       if (lowStock.length > 0) {
@@ -114,6 +110,7 @@ export default function ProviderDashboard() {
         service_type: p.service_type || 'Supply',
         payment_mode: p.payment_mode || 'pre-payment',
         warranty: p.warranty || '',
+        department: p.department || selectedDepartment || '',
         id: p.id
       };
     });
@@ -144,6 +141,7 @@ export default function ProviderDashboard() {
           service_type: p.service_type || 'Supply',
           payment_mode: p.payment_mode || 'pre-payment',
           warranty: p.warranty || '',
+          department: p.department || selectedDepartment || '',
           id: p.id
         };
       }
@@ -186,6 +184,7 @@ export default function ProviderDashboard() {
           service_type: product.service_type || 'Supply',
           payment_mode: product.payment_mode || 'pre-payment',
           warranty: product.warranty || '',
+          department: product.department || selectedDepartment || '',
           id: product.id
         }
       });
@@ -203,6 +202,8 @@ export default function ProviderDashboard() {
 
   const addNewRow = () => {
     const tempId = `temp_${Date.now()}`;
+    const allDepartments = [...new Set(products.map(p => p.department).filter(Boolean))];
+    const defaultDept = selectedDepartment || (allDepartments.length > 0 ? allDepartments[0] : 'General');
     const newRow = {
       id: tempId,
       product_name: '',
@@ -220,7 +221,8 @@ export default function ProviderDashboard() {
       equipment_condition: 'New',
       service_type: 'Supply',
       payment_mode: 'pre-payment',
-      warranty: ''
+      warranty: '',
+      department: defaultDept
     };
     
     // Add to products
@@ -442,10 +444,11 @@ export default function ProviderDashboard() {
   const downloadCSV = () => {
     if (products.length === 0) return;
     
-    // Headers: Equipment, Manufacturer, Model, Authorization, Category, Part Name, Part No., Location, QTY, Business Type, Payment Mode, Condition, Warranty
-    const headers = ['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
+    // Headers: Department, Equipment, Manufacturer, Model, Authorization, Category, Part Name, Part No., Location, QTY, Business Type, Payment Mode, Condition, Warranty
+    const headers = ['Department', 'Equipment', 'Manufacturer', 'Model', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
     
     const rows = products.map(p => [
+      p.department || '',
       p.category || '',
       p.brand || '',
       p.model_number || '',
@@ -500,8 +503,9 @@ export default function ProviderDashboard() {
 
   const downloadExcel = () => {
     if (products.length === 0) return;
-    const headers = ['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
+    const headers = ['Department', 'Equipment', 'Manufacturer', 'Model', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
     const rows = products.map(p => [
+      p.department || '',
       p.category || '',
       p.brand || '',
       p.model_number || '',
@@ -526,8 +530,9 @@ export default function ProviderDashboard() {
   const downloadPDF = () => {
     if (products.length === 0) return;
     const doc = new jsPDF();
-    const headers = [['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment', 'Condition', 'Warranty']];
+    const headers = [['Department', 'Equipment', 'Manufacturer', 'Model', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment', 'Condition', 'Warranty']];
     const rows = products.map(p => [
+      p.department || '',
       p.category || '',
       p.brand || '',
       p.model_number || '',
@@ -934,6 +939,7 @@ export default function ProviderDashboard() {
                       <thead>
                         <tr>
                           <th>#</th>
+                          <th style={{ fontSize: '0.62rem', width: '95px', minWidth: '95px' }}>Department</th>
                           <th style={{ fontSize: '0.62rem' }}>Equipment</th>
                           <th style={{ fontSize: '0.56rem' }}>Manufacturer</th>
                           <th style={{ fontSize: '0.56rem' }}>Model</th>
@@ -952,10 +958,11 @@ export default function ProviderDashboard() {
                       </thead>
                       <tbody>
                         {sortedProducts.filter(p => {
-                          if (selectedDepartment && p.department !== selectedDepartment) return false;
+                          if (selectedDepartment && p.department !== selectedDepartment && !String(p.id).startsWith('temp_')) return false;
                           if (!searchQuery) return true;
                           const q = searchQuery.toLowerCase();
                           return (
+                            (p.department && p.department.toLowerCase().includes(q)) ||
                             (p.product_name && p.product_name.toLowerCase().includes(q)) ||
                             (p.category && p.category.toLowerCase().includes(q)) ||
                             (p.part_category && p.part_category.toLowerCase().includes(q)) ||
@@ -992,6 +999,15 @@ export default function ProviderDashboard() {
 
                             {isEditingThisRow ? (
                               <>
+                                <td>
+                                  <input
+                                    className="inline-edit-input"
+                                    list="provider-department-list"
+                                    placeholder="Dept"
+                                    value={editDataMap[product.id]?.department ?? ''}
+                                    onChange={(e) => handleBulkEditChange(product.id, 'department', e.target.value)}
+                                  />
+                                </td>
                                 <td>{editInput(product.id, 'category')}</td>
                                 <td>{editInput(product.id, 'brand')}</td>
                                 <td>{editInput(product.id, 'model_number')}</td>
@@ -1077,6 +1093,19 @@ export default function ProviderDashboard() {
                               </>
                             ) : (
                               <>
+                                <td>
+                                  <span style={{
+                                    display: 'inline-block',
+                                    padding: '0.15rem 0.5rem',
+                                    borderRadius: '4px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    background: '#e0e7ff',
+                                    color: '#3730a3'
+                                  }}>
+                                    {highlightText(product.department || 'General', searchQuery)}
+                                  </span>
+                                </td>
                                 <td>{highlightText(product.category, searchQuery)}</td>
                                 <td>{highlightText(product.brand, searchQuery)}</td>
                                 <td>{highlightText(product.model_number, searchQuery)}</td>
@@ -1146,6 +1175,11 @@ export default function ProviderDashboard() {
                         )})}
                       </tbody>
                     </table>
+                    <datalist id="provider-department-list">
+                      {[...new Set(products.map(p => p.department).filter(Boolean))].map(dep => (
+                        <option key={dep} value={dep} />
+                      ))}
+                    </datalist>
                   </div>
 
                   {/* Status bar — like Excel's bottom bar */}

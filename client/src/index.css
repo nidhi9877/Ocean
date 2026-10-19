@@ -1304,16 +1304,28 @@ select.inline-edit-input {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
+  padding: 0 10px;
   background: linear-gradient(180deg, #f5f7fa 0%, #edf0f5 100%);
   border: 2px solid #8ea0bc;
   border-bottom: 1px solid #b0b8c8;
   border-radius: 4px 4px 0 0;
-  /* Fixed height so rows never shift when toolbar content switches */
-  min-height: 42px;
+  /* Strictly lock height so toolbar can NEVER expand or shift table rows */
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+  box-sizing: border-box;
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
+  /* Hide scrollbar completely so it never appears or takes up vertical space */
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.spreadsheet-toolbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .spreadsheet-toolbar .toolbar-btn {
@@ -1375,33 +1387,49 @@ select.inline-edit-input {
   height: 20px;
   background: #b0b8c8;
   margin: 0 4px;
+  flex-shrink: 0;
 }
 
 .spreadsheet-toolbar .toolbar-info {
-  font-size: 0.75rem;
+  font-size: 0.73rem;
   color: #555;
   font-weight: 600;
   margin-left: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-left: 8px;
 }
 
 /* ===== Bulk Setting Toolbar Row & Groups ===== */
 .bulk-toolbar-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: nowrap; /* Never wrap — toolbar stays single-line */
+  height: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
+  /* Hide scrollbar completely so it never takes up vertical space */
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.bulk-toolbar-row::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .bulk-group {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   background: rgba(255, 255, 255, 0.9);
-  padding: 2px 7px;
+  padding: 2px 6px;
   border-radius: 4px;
   border: 1px solid #d1d5db;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
 }
 
 .bulk-selection-group {
@@ -1409,15 +1437,15 @@ select.inline-edit-input {
   border: none;
   box-shadow: none;
   padding: 0;
-  gap: 6px;
+  gap: 4px;
 }
 
 .bulk-selection-pill {
   background: #2563eb;
   color: #ffffff;
-  font-size: 0.73rem;
+  font-size: 0.70rem;
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 2px 7px;
   border-radius: 4px;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -1425,11 +1453,11 @@ select.inline-edit-input {
 }
 
 .bulk-group-title {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 700;
   color: #475569;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   white-space: nowrap;
   user-select: none;
 }
@@ -1441,8 +1469,8 @@ select.inline-edit-input {
 }
 
 .bulk-action-pill {
-  font-size: 0.72rem !important;
-  padding: 2px 7px !important;
+  font-size: 0.70rem !important;
+  padding: 2px 6px !important;
   background: #ffffff !important;
   border-color: #cbd5e1 !important;
   color: #334155 !important;
@@ -1488,8 +1516,8 @@ select.inline-edit-input {
   background: #f8fafc !important;
   border-color: #cbd5e1 !important;
   color: #64748b !important;
-  font-size: 0.72rem !important;
-  padding: 3px 7px !important;
+  font-size: 0.70rem !important;
+  padding: 2px 6px !important;
 }
 
 .toolbar-btn-subtle:hover {
