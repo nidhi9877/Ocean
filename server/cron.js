@@ -22,6 +22,11 @@ export function initCronJobs() {
         WHERE created_at < NOW() - INTERVAL '7 days'
         RETURNING id
       `;
+      const deletedSessions = await sql`
+        DELETE FROM user_sessions
+        WHERE last_active < NOW() - INTERVAL '10 minutes' OR created_at < NOW() - INTERVAL '24 hours'
+        RETURNING id
+      `;
       if (deletedInquiries.length > 0 || deletedSearches.length > 0) {
         console.log(`🧹 [${source} Cleanup] Deleted ${deletedInquiries.length} inquiry and ${deletedSearches.length} search record(s) older than 1 week (7 days).`);
       }

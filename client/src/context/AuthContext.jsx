@@ -87,6 +87,53 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // Sync auth state across browser tabs in real-time
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'marine_token') {
+        if (!e.newValue) {
+          setUser(null);
+          setToken(null);
+        } else {
+          setToken(e.newValue);
+          const savedUser = localStorage.getItem('marine_user');
+          try {
+            setUser(savedUser ? JSON.parse(savedUser) : null);
+          } catch {
+            setUser(null);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Periodic heartbeat to keep session active while browser tab is open
+  useEffect(() => {
+    if (!token) return;
+
+    const sendHeartbeat = async () => {
+      try {
+        await axios.post('/api/auth/heartbeat', {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (err) {
+        if (err.response?.status === 401) {
+          localStorage.removeItem('marine_token');
+          localStorage.removeItem('marine_user');
+          setUser(null);
+          setToken(null);
+          toast.error('Session expired or logged out.');
+        }
+      }
+    };
+
+    const interval = setInterval(sendHeartbeat, 25000);
+    return () => clearInterval(interval);
+  }, [token]);
+
   const login = (userData, authToken) => {
     setUser(userData);
     setToken(authToken);

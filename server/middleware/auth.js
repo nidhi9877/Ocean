@@ -23,9 +23,15 @@ export async function authenticateToken(req, res, next) {
   try {
     // If the token has a sessionId, verify it exists in the database
     if (decoded.sessionId) {
-      const sessions = await sql`SELECT id FROM user_sessions WHERE session_token = ${decoded.sessionId}`;
+      const sessions = await sql`SELECT id, last_active FROM user_sessions WHERE session_token = ${decoded.sessionId}`;
       if (sessions.length === 0) {
         return res.status(401).json({ error: 'Session expired or logged in from another device' });
+      }
+
+      // Keep last_active updated while user is actively making requests (throttled to every 20s)
+      const lastActive = sessions[0].last_active ? new Date(sessions[0].last_active).getTime() : 0;
+      if (Date.now() - lastActive > 20000) {
+        await sql`UPDATE user_sessions SET last_active = NOW() WHERE session_token = ${decoded.sessionId}`;
       }
     }
 

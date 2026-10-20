@@ -102,7 +102,8 @@ export async function initDatabase() {
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         session_token VARCHAR(255) UNIQUE NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        last_active TIMESTAMPTZ DEFAULT NOW()
       )
     `;
 
@@ -168,7 +169,8 @@ export async function initDatabase() {
         sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'approved'`,
         sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS country VARCHAR(100)`,
         sql`ALTER TABLE buyers ADD COLUMN IF NOT EXISTS country VARCHAR(100)`,
-        sql`ALTER TABLE buyer_specifications ADD COLUMN IF NOT EXISTS ship_id INTEGER REFERENCES buyer_ships(id) ON DELETE CASCADE`
+        sql`ALTER TABLE buyer_specifications ADD COLUMN IF NOT EXISTS ship_id INTEGER REFERENCES buyer_ships(id) ON DELETE CASCADE`,
+        sql`ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS last_active TIMESTAMPTZ DEFAULT NOW()`
       ]);
     } catch (e) {
       console.log('Columns likely already exist or minor error:', e.message);

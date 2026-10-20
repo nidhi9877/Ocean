@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { sql } from '../db.js';
 import dotenv from 'dotenv';
 import { validateCompanyEmail } from '../utils/emailValidator.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 dotenv.config();
 
@@ -109,21 +110,9 @@ router.post('/register', async (req, res) => {
       `;
     }
 
-    // --- Concurrent Session Limit Logic ---
+    // --- Single Session Management ---
     const sessionToken = crypto.randomUUID();
-    
-    // Check active sessions count
-    const activeSessions = await sql`SELECT id FROM user_sessions WHERE user_id = ${user.id} ORDER BY created_at ASC`;
-    if (activeSessions.length >= 5) {
-      // If 5 or more, delete the oldest to make room for this 6th one
-      const sessionsToDelete = activeSessions.slice(0, activeSessions.length - 4); // Keep exactly 4, so this new one makes 5
-      for (const sess of sessionsToDelete) {
-        await sql`DELETE FROM user_sessions WHERE id = ${sess.id}`;
-      }
-    }
-    
-    // Insert new session
-    await sql`INSERT INTO user_sessions (user_id, session_token) VALUES (${user.id}, ${sessionToken})`;
+    await sql`INSERT INTO user_sessions (user_id, session_token, last_active) VALUES (${user.id}, ${sessionToken}, NOW())`;
 
     // Generate JWT token with session ID
     const token = jwt.sign(
@@ -193,21 +182,25 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    // --- Concurrent Session Limit Logic ---
-    const sessionToken = crypto.randomUUID();
-    
-    // Check active sessions count
-    const activeSessions = await sql`SELECT id FROM user_sessions WHERE user_id = ${user.id} ORDER BY created_at ASC`;
-    if (activeSessions.length >= 5) {
-      // Delete oldest sessions to keep exactly 4 (so inserting this new one makes it 5)
-      const sessionsToDelete = activeSessions.slice(0, activeSessions.length - 4);
-      for (const sess of sessionsToDelete) {
-        await sql`DELETE FROM user_sessions WHERE id = ${sess.id}`;
-      }
+    // --- Single Active Session Enforced Logic ---
+    // Clean up stale or inactive sessions for this user (inactive > 2.5 minutes or older than 24 hours)
+    await sql`
+      DELETE FROM user_sessions 
+      WHERE user_id = ${user.id} 
+        AND (last_active < NOW() - INTERVAL '2 minutes 30 seconds' OR created_at < NOW() - INTERVAL '24 hours')
+    `;
+
+    // Check if an active session already exists for this user
+    const activeSessions = await sql`SELECT id, last_active FROM user_sessions WHERE user_id = ${user.id}`;
+    if (activeSessions.length > 0) {
+      return res.status(403).json({
+        error: 'This account is currently logged in on another device, browser, or tab. Only one session is allowed at a time. Please log out from the other session first.'
+      });
     }
-    
-    // Insert new session
-    await sql`INSERT INTO user_sessions (user_id, session_token) VALUES (${user.id}, ${sessionToken})`;
+
+    // Insert new active session
+    const sessionToken = crypto.randomUUID();
+    await sql`INSERT INTO user_sessions (user_id, session_token, last_active) VALUES (${user.id}, ${sessionToken}, NOW())`;
 
     const effectiveRole = isSeller ? 'seller' : user.role;
 
@@ -245,6 +238,18 @@ router.post('/logout', async (req, res) => {
   } catch (error) {
     // If token is invalid/expired, still consider it a successful logout from frontend perspective
     res.json({ message: 'Logged out successfully' });
+  }
+});
+
+// Heartbeat to keep session alive while browser tab is open
+router.post('/heartbeat', authenticateToken, async (req, res) => {
+  try {
+    if (req.user && req.user.sessionId) {
+      await sql`UPDATE user_sessions SET last_active = NOW() WHERE session_token = ${req.user.sessionId}`;
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Heartbeat update failed' });
   }
 });
 

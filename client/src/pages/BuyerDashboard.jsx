@@ -1226,34 +1226,7 @@ export default function BuyerDashboard() {
                   <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transition:'transform 0.2s', transform: showShipDropdown ? 'rotate(180deg)' : 'none' }}><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
 
-                {/* Direct Download Button right next to selector when a ship is chosen */}
-                {selectedShip && (
-                  <button
-                    type="button"
-                    onClick={() => handleDownloadShipData(selectedShip)}
-                    disabled={exportingCsv}
-                    className="btn btn-secondary"
-                    style={{
-                      display:'inline-flex',
-                      alignItems:'center',
-                      gap:'0.45rem',
-                      padding:'0.8rem 1.3rem',
-                      borderRadius:'var(--radius-full)',
-                      color:'#059669',
-                      borderColor:'rgba(5,150,105,0.4)',
-                      background:'rgba(5,150,105,0.08)',
-                      fontWeight:'600',
-                      fontSize:'0.88rem',
-                      cursor:'pointer',
-                      transition:'all 0.2s',
-                      fontFamily:"'Inter',sans-serif"
-                    }}
-                    title={`Download Equipment Availability Breakdown for ${selectedShip.ship_name} in Excel (.xlsx)`}
-                  >
-                    <span>📥</span>
-                    <span>{exportingCsv ? 'Downloading...' : 'Download Breakdown (.xlsx)'}</span>
-                  </button>
-                )}
+
 
                 {showShipDropdown && (
                   <>

@@ -37,7 +37,9 @@ export default function LoginPage() {
         navigate('/dashboard');
       }
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Login failed. Please try again.');
+      const errMsg = err.response?.data?.error || 'Login failed. Please try again.';
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }
@@ -107,6 +109,25 @@ export default function LoginPage() {
               <h1 className="login-title">Sign In</h1>
               <p className="login-subtitle">Access your MarineStockHub account</p>
             </div>
+
+            {error && (
+              <div style={{
+                padding: '0.85rem 1rem',
+                marginBottom: '1.25rem',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#ef4444',
+                fontSize: '0.88rem',
+                lineHeight: 1.4,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <span>⚠️</span>
+                <span>{error}</span>
+              </div>
+            )}
 
             {/* Login Form */}
             <form onSubmit={handleLogin}>
