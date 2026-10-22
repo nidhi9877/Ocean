@@ -106,7 +106,7 @@ router.post('/register', async (req, res) => {
       const finalCountry = providerCountry || country || null;
       await sql`
         INSERT INTO providers (user_id, company_name, contact_person, email, phone, address, description, payment_mode, country, status)
-        VALUES (${user.id}, ${companyName || username}, ${username}, ${email}, ${phone}, ${address || 'Not specified'}, ${companyType || ''}, ${paymentMode || 'pre-payment'}, ${finalCountry}, 'approved')
+        VALUES (${user.id}, ${companyName || username}, ${username}, ${email}, ${phone}, ${address || 'Not specified'}, ${companyType || ''}, ${paymentMode || 'pre-payment'}, ${finalCountry}, 'pending')
       `;
     }
 
@@ -182,7 +182,7 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    // --- Single Active Session Enforced Logic ---
+    // --- Session Management Logic ---
     // Clean up stale or inactive sessions for this user (inactive > 2.5 minutes or older than 24 hours)
     await sql`
       DELETE FROM user_sessions 
@@ -190,11 +190,16 @@ router.post('/login', async (req, res) => {
         AND (last_active < NOW() - INTERVAL '2 minutes 30 seconds' OR created_at < NOW() - INTERVAL '24 hours')
     `;
 
-    // Check if an active session already exists for this user
+    // management and admin roles allow up to 5 concurrent sessions; others only 1
+    const isPrivilegedRole = user.role === 'management' || user.role === 'admin';
+    const sessionLimit = isPrivilegedRole ? 5 : 1;
+
     const activeSessions = await sql`SELECT id, last_active FROM user_sessions WHERE user_id = ${user.id}`;
-    if (activeSessions.length > 0) {
+    if (activeSessions.length >= sessionLimit) {
       return res.status(403).json({
-        error: 'This account is currently logged in on another device, browser, or tab. Only one session is allowed at a time. Please log out from the other session first.'
+        error: isPrivilegedRole
+          ? `This account already has ${sessionLimit} active sessions. Please log out from one of the other sessions first.`
+          : 'This account is currently logged in on another device, browser, or tab. Only one session is allowed at a time. Please log out from the other session first.'
       });
     }
 

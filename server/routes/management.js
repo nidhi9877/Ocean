@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { sql } from '../db.js';
-import { authenticateToken, authenticateManagement } from '../middleware/auth.js';
+import { authenticateToken, authenticateManagement, authenticateAdminOrManagement } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -21,8 +21,8 @@ const getPendingSellers = async (req, res) => {
   }
 };
 
-router.get('/pending-sellers', authenticateToken, authenticateManagement, getPendingSellers);
-router.get('/pending-providers', authenticateToken, authenticateManagement, getPendingSellers);
+router.get('/pending-sellers', authenticateToken, authenticateAdminOrManagement, getPendingSellers);
+router.get('/pending-providers', authenticateToken, authenticateAdminOrManagement, getPendingSellers);
 
 // PUT approve seller
 const approveSeller = async (req, res) => {
@@ -36,8 +36,8 @@ const approveSeller = async (req, res) => {
   }
 };
 
-router.put('/sellers/:id/approve', authenticateToken, authenticateManagement, approveSeller);
-router.put('/providers/:id/approve', authenticateToken, authenticateManagement, approveSeller);
+router.put('/sellers/:id/approve', authenticateToken, authenticateAdminOrManagement, approveSeller);
+router.put('/providers/:id/approve', authenticateToken, authenticateAdminOrManagement, approveSeller);
 
 // PUT reject seller
 const rejectSeller = async (req, res) => {
@@ -51,7 +51,7 @@ const rejectSeller = async (req, res) => {
   }
 };
 
-router.put('/sellers/:id/reject', authenticateToken, authenticateManagement, rejectSeller);
-router.put('/providers/:id/reject', authenticateToken, authenticateManagement, rejectSeller);
+router.put('/sellers/:id/reject', authenticateToken, authenticateAdminOrManagement, rejectSeller);
+router.put('/providers/:id/reject', authenticateToken, authenticateAdminOrManagement, rejectSeller);
 
 export default router;

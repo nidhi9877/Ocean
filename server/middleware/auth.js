@@ -48,3 +48,18 @@ export function authenticateManagement(req, res, next) {
   }
   next();
 }
+
+export function authenticateAdmin(req, res, next) {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Access denied. Admin role required.' });
+  }
+  next();
+}
+
+// Allows either admin or management roles
+export function authenticateAdminOrManagement(req, res, next) {
+  if (!req.user || (req.user.role !== 'management' && req.user.role !== 'admin')) {
+    return res.status(403).json({ error: 'Access denied. Admin or Management role required.' });
+  }
+  next();
+}

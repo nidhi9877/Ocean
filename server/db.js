@@ -34,7 +34,7 @@ export async function initDatabase() {
         country VARCHAR(100),
         description TEXT,
         payment_mode VARCHAR(50) DEFAULT 'pre-payment',
-        status VARCHAR(50) DEFAULT 'approved',
+        status VARCHAR(50) DEFAULT 'pending',
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
@@ -166,7 +166,7 @@ export async function initDatabase() {
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS etd VARCHAR(100)`,
         sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS vessel_name VARCHAR(255)`,
         sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT 'pre-payment'`,
-        sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'approved'`,
+        sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`,
         sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS country VARCHAR(100)`,
         sql`ALTER TABLE buyers ADD COLUMN IF NOT EXISTS country VARCHAR(100)`,
         sql`ALTER TABLE buyer_specifications ADD COLUMN IF NOT EXISTS ship_id INTEGER REFERENCES buyer_ships(id) ON DELETE CASCADE`,
