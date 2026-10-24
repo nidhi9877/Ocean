@@ -8,6 +8,9 @@ async function alterDb() {
     
     console.log('Adding part_category column to products...');
     await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS part_category VARCHAR(50) DEFAULT 'Spare Part';`;
+
+    console.log('Adding serial_number column to products...');
+    await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS serial_number VARCHAR(100);`;
     
     console.log('Checking for management user...');
     const existing = await sql`SELECT id FROM users WHERE username = 'admin_management'`;

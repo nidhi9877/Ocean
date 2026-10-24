@@ -620,7 +620,7 @@ router.get('/ships/:shipId/market-availability', authenticateToken, async (req, 
         compatibility_reason = 'Equipment available in market but with different manufacturer/model than your ship specifications';
       } else {
         compatibility_status = 'not_available';
-        compatibility_reason = 'This equipment is not available in the market from any manufacturer or model';
+        compatibility_reason = 'Equipment is not available in MarineStockHub Marketplace';
       }
 
       totalMarketListings += compatibleProducts.length;
@@ -797,7 +797,7 @@ router.get('/ships/:shipId/market-availability', authenticateToken, async (req, 
               eq.manufacturer || 'N/A',
               eq.model || 'N/A',
               'NOT AVAILABLE IN MARKET',
-              'This equipment is not available in the market from any manufacturer or model',
+              'Equipment is not available in MarineStockHub Marketplace',
               'No Match',
               0,
               0,
