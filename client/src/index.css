@@ -1089,8 +1089,7 @@ body {
 /* ===== Excel-like Spreadsheet Table ===== */
 .provider-products-table-wrap {
   overflow-x: auto;
-  overflow-y: auto;
-  max-height: 75vh;
+  overflow-y: visible;
   scrollbar-width: thin;
   scrollbar-color: #b0b8c8 #f0f2f5;
   border: 2px solid #8ea0bc;
@@ -1118,14 +1117,81 @@ body {
 }
 
 .provider-products-table {
-  /* Total of all colgroup widths below = ~1610px.
+  /* Total of all colgroup widths including Serial Number = ~1730px.
      Keep min-width aligned so the horizontal "sliding window" scroll
      (overflow-x:auto on .provider-products-table-wrap) lets the user
      slide to see every column even on small screens. */
-  min-width: 1620px;
+  min-width: 1730px;
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
+}
+
+/* ===== Modern Pagination Controls ===== */
+.pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0.5rem 0.5rem 0.5rem;
+  flex-wrap: wrap;
+  font-family: 'Inter', sans-serif;
+}
+
+.pagination-info {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #64748b);
+  font-weight: 500;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--radius-md, 6px);
+  border: 1px solid var(--border-color, #cbd5e1);
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-primary, #1e293b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--bg-card, #f8fafc);
+  border-color: #059669;
+  color: #059669;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: var(--border-color, #e2e8f0);
+}
+
+.pagination-btn.active {
+  background: #059669;
+  border-color: #059669;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.28);
+}
+
+.pagination-ellipsis {
+  padding: 0 0.35rem;
+  color: var(--text-muted, #94a3b8);
+  font-size: 0.85rem;
 }
 
 /* Sticky header like Excel's frozen top row */

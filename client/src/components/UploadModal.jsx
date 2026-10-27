@@ -62,6 +62,7 @@ export default function UploadModal({ onClose, onSuccess }) {
     const colYearOfManufacturer = findCol(firstRow, ['authorization', 'authorized', 'yearofmanufacturer', 'year', 'manufacturedat']);
     const colPartName = findCol(firstRow, ['partname', 'productname', 'item']);
     const colPartNumer = findCol(firstRow, ['partno', 'partnumber', 'partnumer', 'pn']);
+    const colSerialNumber = findCol(firstRow, ['serialnumber', 'serialno', 'serialnum', 'serial', 'sn']);
     const colStockLocation = findCol(firstRow, ['location', 'stocklocation']);
     const colQunatity = findCol(firstRow, ['qty', 'quantity', 'qunatity', 'quantiy']);
     const colServiceType = findCol(firstRow, ['businesstype', 'servicetype', 'service', 'type']);
@@ -69,10 +70,17 @@ export default function UploadModal({ onClose, onSuccess }) {
     const colCondition = findCol(firstRow, ['condition', 'equipmentcondition', 'equipment_condition']);
     const colWarranty = findCol(firstRow, ['warranty', 'guarantee', 'warrantee']);
 
+    if (!colSerialNumber) {
+      setError('Missing compulsory column: "Serial No." (or "Serial Number"). Please include this column in your file.');
+      setLoading(false);
+      return;
+    }
+
     const validProducts = [];
     let skippedRows = 0;
 
-    for (const row of data) {
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
       const hasAnyData = Object.values(row).some(v => v && v.toString().trim());
       if (!hasAnyData) {
         skippedRows++;
@@ -84,6 +92,13 @@ export default function UploadModal({ onClose, onSuccess }) {
       if (!qty || qty <= 0) {
         skippedRows++;
         continue;
+      }
+
+      const serialVal = colSerialNumber ? String(row[colSerialNumber] || '').trim() : '';
+      if (!serialVal) {
+        setError(`Row ${i + 2}: "Serial No." is compulsory and cannot be empty.`);
+        setLoading(false);
+        return;
       }
 
       let partCategoryVal = 'Spare Part';
@@ -105,6 +120,7 @@ export default function UploadModal({ onClose, onSuccess }) {
         brand: colManufacturer ? (row[colManufacturer] || '') : '',
         modelNumber: colModelNumber ? (row[colModelNumber] || '') : '',
         partNumber: colPartNumer ? (row[colPartNumer] || '') : '',
+        serialNumber: serialVal,
         manufacturedAt: colYearOfManufacturer ? (row[colYearOfManufacturer] || '') : '',
         location: colStockLocation ? (row[colStockLocation] || '') : '',
         quantity: qty,
@@ -189,10 +205,10 @@ export default function UploadModal({ onClose, onSuccess }) {
   };
 
   const downloadSampleExcel = () => {
-    const headers = ['Equipment', 'Manufacturer', 'Model', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
+    const headers = ['Equipment', 'Manufacturer', 'Model', 'Serial No.', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
     const rows = [
-      ['Navigation', 'Raymarine', 'Axiom 9', 'Yes', 'Spare Part', 'GPS Chartplotter', 'E70366', 'Miami, FL', 5, 'Supply', 'pre-payment', 'New', '1 Year'],
-      ['Engine', 'Caterpillar', 'C32', 'No', 'Complete Set', 'Complete Set', '10R-1273', 'Houston, TX', 12, 'Supply and Service', 'pre-payment', 'Refurbished', '6 Months']
+      ['Navigation', 'Raymarine', 'Axiom 9', 'SN-RM-98421', 'Yes', 'Spare Part', 'GPS Chartplotter', 'E70366', 'Miami, FL', 5, 'Supply', 'pre-payment', 'New', '1 Year'],
+      ['Engine', 'Caterpillar', 'C32', 'SN-CAT-55120', 'No', 'Complete Set', 'Complete Set', '10R-1273', 'Houston, TX', 12, 'Supply and Service', 'pre-payment', 'Refurbished', '6 Months']
     ];
     
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);

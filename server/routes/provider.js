@@ -55,7 +55,7 @@ router.post('/register', authenticateToken, async (req, res) => {
         if (qty > 0) {
           await sql`
             INSERT INTO products (
-              provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode, warranty
+              provider_id, product_name, category, brand, model_number, part_number, serial_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode, warranty
             )
             VALUES (
               ${providerId}, 
@@ -64,6 +64,7 @@ router.post('/register', authenticateToken, async (req, res) => {
               ${product.brand || null}, 
               ${product.modelNumber || null}, 
               ${product.partNumber || null}, 
+              ${product.serialNumber || product.serial_number || null}, 
               ${product.manufacturedAt || null}, 
               ${product.location || null}, 
               ${product.price || 0}, 
@@ -122,7 +123,7 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
       if (qty > 0) {
         await sql`
           INSERT INTO products (
-            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode, department, warranty, part_category
+            provider_id, product_name, category, brand, model_number, part_number, serial_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode, department, warranty, part_category
           )
           VALUES (
             ${providerId}, 
@@ -131,6 +132,7 @@ router.post('/bulk-products', authenticateToken, async (req, res) => {
             ${p.brand || null}, 
             ${p.modelNumber || null}, 
             ${p.partNumber || null}, 
+            ${p.serialNumber || p.serial_number || null}, 
             ${p.manufacturedAt || null}, 
             ${p.location || null}, 
             ${p.price || 0}, 
@@ -377,6 +379,7 @@ router.put('/products/:id', authenticateToken, async (req, res) => {
         brand = ${brand || null},
         model_number = ${model_number || null},
         part_number = ${part_number || null},
+        serial_number = ${req.body.serial_number || req.body.serialNumber || null},
         manufactured_at = ${manufactured_at || null},
         location = ${location || null},
         price = ${price},
@@ -511,7 +514,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
       if (!p.id || String(p.id).startsWith('temp_')) {
         await sql`
           INSERT INTO products (
-            provider_id, product_name, category, brand, model_number, part_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode, warranty, part_category, department
+            provider_id, product_name, category, brand, model_number, part_number, serial_number, manufactured_at, location, price, quantity, description, additional_info, media_link, equipment_condition, service_type, payment_mode, warranty, part_category, department
           )
           VALUES (
             ${providerId}, 
@@ -520,6 +523,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
             ${p.brand || null}, 
             ${p.model_number || null}, 
             ${p.part_number || null}, 
+            ${p.serial_number || p.serialNumber || null}, 
             ${p.manufactured_at || null}, 
             ${p.location || null}, 
             ${p.price || 0}, 
@@ -543,6 +547,7 @@ router.post('/products/bulk-update', authenticateToken, async (req, res) => {
             brand = ${p.brand || null},
             model_number = ${p.model_number || null},
             part_number = ${p.part_number || null},
+            serial_number = ${p.serial_number || p.serialNumber || null},
             manufactured_at = ${p.manufactured_at || null},
             location = ${p.location || null},
             price = ${p.price || 0},

@@ -141,6 +141,31 @@ const seededShuffle = (array, seed) => {
   return arr;
 };
 
+const getPageNumbers = (current, total) => {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages = [];
+  if (current <= 4) {
+    for (let i = 1; i <= 5; i++) pages.push(i);
+    pages.push('...');
+    pages.push(total);
+  } else if (current >= total - 3) {
+    pages.push(1);
+    pages.push('...');
+    for (let i = total - 4; i <= total; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    pages.push('...');
+    pages.push(current - 1);
+    pages.push(current);
+    pages.push(current + 1);
+    pages.push('...');
+    pages.push(total);
+  }
+  return pages;
+};
+
 export default function BuyerDashboard() {
   const { user, token } = useAuth();
   const [allProducts, setAllProducts] = useState([]);
@@ -212,6 +237,14 @@ export default function BuyerDashboard() {
     equipment: [], manufacturer: [], modelNumber: '', partNumber: '',
     stockLocation: [], minQty: 1, serviceType: '', partCategory: '', condition: '',
   });
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
+  // Reset to page 1 when search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filters, specsFilterActive, selectedShipId, compatibleOptionsMode]);
 
   /* ── Drag-and-drop column reordering (persisted to localStorage) ── */
   const [columnOrder, setColumnOrder] = useState(() => {
@@ -890,7 +923,7 @@ export default function BuyerDashboard() {
         reason = 'Available in market but with different manufacturer/model';
       } else {
         status = 'not_available';
-        reason = 'Not available in the market from any manufacturer or model';
+        reason = 'Equipment is not available in MarineStockHub Marketplace';
       }
 
       return {
@@ -980,6 +1013,12 @@ export default function BuyerDashboard() {
     }
     return filtered;
   }, [hasSearched, searchQuery, filters, allProducts, specsFilterActive, savedSpecs, activeFilterCount, searchSeed, compatibleOptionsMode, compatibleOptionsSpec]);
+
+  const totalPages = Math.ceil(displayedProducts.length / itemsPerPage);
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return displayedProducts.slice(start, start + itemsPerPage);
+  }, [displayedProducts, currentPage]);
 
   const filteredEquipmentOpts = useMemo(() => {
     if (!equipmentSearch.trim()) {
@@ -1478,7 +1517,7 @@ export default function BuyerDashboard() {
           </div>
         ) : (
           <>
-            <div className="glass-card" style={{ padding:'1.25rem', overflowX:'auto' }}>
+            <div className="glass-card" style={{ padding:'1.25rem' }}>
 
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'0.75rem', marginBottom:'1rem' }}>
                 <p style={{ color:'var(--text-secondary)', fontSize:'0.95rem', margin:0 }}>
@@ -1571,52 +1610,54 @@ export default function BuyerDashboard() {
                 const isDraggableHeader = (h) => columnOrder.includes(h);
 
                 return (
-              <table className="buyer-products-table" style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', fontSize:'0.9rem',
-                              minWidth: isSearchActive ? 1490 : 1570,
-                              tableLayout: 'fixed' }}>
-                <colgroup>
-                  {tableHeaders.map(h => (
-                    <col key={h} style={{ width: colWidths[h] || 100 }} />
-                  ))}
-                </colgroup>
-                <thead>
-                  <tr style={{ borderBottom:'2px solid var(--border-color)' }}>
-                    {tableHeaders.map(h => {
-                      const draggable = isDraggableHeader(h);
-                      const isDragging = draggingCol === h;
-                      const isDragOver = dragOverCol === h;
-                      return (
-                        <th key={h}
-                          draggable={draggable}
-                          onDragStart={draggable ? () => handleColDragStart(h) : undefined}
-                          onDragEnd={draggable ? handleColDragEnd : undefined}
-                          onDragOver={draggable ? (e) => handleColDragOver(e, h) : undefined}
-                          onDragLeave={draggable ? () => setDragOverCol(null) : undefined}
-                          onDrop={draggable ? () => handleColDrop(h) : undefined}
-                          className={[isDragging ? 'col-dragging' : '', isDragOver ? 'col-drag-over' : ''].filter(Boolean).join(' ')}
-                          style={{
-                            padding: '0.6rem 0.75rem',
-                            fontWeight: '700',
-                            fontSize: '0.72rem',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.4px',
-                            color: 'var(--text-muted)',
-                            whiteSpace: 'normal',
-                            wordBreak: 'break-word',
-                            lineHeight: '1.3',
-                            background: 'var(--bg-surface)',
-                            borderBottom: '2px solid var(--border-color)',
-                            cursor: draggable ? 'grab' : 'default',
-                          }}
-                          title={draggable ? `${h} — drag to reorder` : h}
-                        >{h}</th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Compatible product rows (normal white rows) */}
-                  {displayedProducts.map(p => {
+                  <>
+                    <div style={{ overflowX:'auto', width:'100%' }}>
+                      <table className="buyer-products-table" style={{ width:'100%', borderCollapse:'collapse', textAlign:'left', fontSize:'0.9rem',
+                                      minWidth: isSearchActive ? 1490 : 1570,
+                                      tableLayout: 'fixed' }}>
+                        <colgroup>
+                          {tableHeaders.map(h => (
+                            <col key={h} style={{ width: colWidths[h] || 100 }} />
+                          ))}
+                        </colgroup>
+                        <thead>
+                          <tr style={{ borderBottom:'2px solid var(--border-color)' }}>
+                            {tableHeaders.map(h => {
+                              const draggable = isDraggableHeader(h);
+                              const isDragging = draggingCol === h;
+                              const isDragOver = dragOverCol === h;
+                              return (
+                                <th key={h}
+                                  draggable={draggable}
+                                  onDragStart={draggable ? () => handleColDragStart(h) : undefined}
+                                  onDragEnd={draggable ? handleColDragEnd : undefined}
+                                  onDragOver={draggable ? (e) => handleColDragOver(e, h) : undefined}
+                                  onDragLeave={draggable ? () => setDragOverCol(null) : undefined}
+                                  onDrop={draggable ? () => handleColDrop(h) : undefined}
+                                  className={[isDragging ? 'col-dragging' : '', isDragOver ? 'col-drag-over' : ''].filter(Boolean).join(' ')}
+                                  style={{
+                                    padding: '0.6rem 0.75rem',
+                                    fontWeight: '700',
+                                    fontSize: '0.72rem',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.4px',
+                                    color: 'var(--text-muted)',
+                                    whiteSpace: 'normal',
+                                    wordBreak: 'break-word',
+                                    lineHeight: '1.3',
+                                    background: 'var(--bg-surface)',
+                                    borderBottom: '2px solid var(--border-color)',
+                                    cursor: draggable ? 'grab' : 'default',
+                                  }}
+                                  title={draggable ? `${h} — drag to reorder` : h}
+                                >{h}</th>
+                              );
+                            })}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {/* Compatible product rows (normal white rows) */}
+                          {paginatedProducts.map(p => {
                     const sending = sendingIds.has(p.id);
                     const pid = p.provider_id ?? p.seller_id ?? p.user_id;
                     const sellerLabel = sellerIdMap[pid] || '—';
@@ -1799,7 +1840,7 @@ export default function BuyerDashboard() {
                               🚫 Not in Market
                             </span>
                             <span style={{ fontSize:'0.78rem', color:'#dc2626', fontStyle:'italic', lineHeight:'1.3', whiteSpace:'nowrap' }}>
-                              {sc.reason || 'Not available in the market from any manufacturer or model'}
+                              {sc.reason || 'Equipment is not available in MarineStockHub Marketplace'}
                             </span>
                           </div>
                         </td>
@@ -1808,8 +1849,51 @@ export default function BuyerDashboard() {
                   }
                 </tbody>
               </table>
-                );
-              })()}
+            </div>
+
+            {/* Modern Pagination Controls */}
+            {displayedProducts.length > itemsPerPage && (
+              <div className="pagination-container" style={{ marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+                <div className="pagination-info">
+                  Showing {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, displayedProducts.length)} of {displayedProducts.length} items
+                </div>
+                <div className="pagination-controls">
+                  <button
+                    type="button"
+                    className="pagination-btn"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </button>
+                  {getPageNumbers(currentPage, totalPages).map((p, pIdx) => (
+                    p === '...' ? (
+                      <span key={`ellipsis-${pIdx}`} className="pagination-ellipsis">…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        type="button"
+                        className={`pagination-btn ${currentPage === p ? 'active' : ''}`}
+                        onClick={() => setCurrentPage(p)}
+                      >
+                        {p}
+                      </button>
+                    )
+                  ))}
+                  <button
+                    type="button"
+                    className="pagination-btn"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        );
+      })()}
             </div>
           </>
         )}
@@ -3303,7 +3387,7 @@ export default function BuyerDashboard() {
                                           <span style={{ color:'#d97706', fontWeight:'600' }}>{brands.join(', ')}</span>
                                         ) : (
                                           <span style={{ color:'#dc2626', fontStyle:'italic' }}>
-                                            {eq.compatibility_reason || 'Not in Market'}
+                                            {eq.compatibility_reason || 'Equipment is not available in MarineStockHub Marketplace'}
                                           </span>
                                         )}
                                       </td>

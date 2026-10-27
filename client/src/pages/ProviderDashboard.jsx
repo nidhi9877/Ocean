@@ -12,16 +12,40 @@ import 'jspdf-autotable';
 
 const API = '/api';
 
+const getPageNumbers = (current, total) => {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages = [];
+  if (current <= 4) {
+    for (let i = 1; i <= 5; i++) pages.push(i);
+    pages.push('...');
+    pages.push(total);
+  } else if (current >= total - 3) {
+    pages.push(1);
+    pages.push('...');
+    for (let i = total - 4; i <= total; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    pages.push('...');
+    pages.push(current - 1);
+    pages.push(current);
+    pages.push(current + 1);
+    pages.push('...');
+    pages.push(total);
+  }
+  return pages;
+};
+
 /* ── Provider (Seller) Dashboard — column definitions for drag-and-drop reordering ──
    `key`  = the underlying data field on each product object
    `label` = the visible header text
    The `#` (row number) and `Delete` columns are fixed at the start/end and
-   are NOT reorderable. Only the 14 columns below can be dragged. */
+   are NOT reorderable. Only the 15 columns below can be dragged. */
 const PROVIDER_COL_DEFS = {
   department:            { label: 'Department',     width: 100 },
   category:              { label: 'Equipment',      width: 110 },
   brand:                 { label: 'Manufacturer',   width: 110 },
   model_number:          { label: 'Model',          width: 100 },
+  serial_number:         { label: 'Serial No.',     width: 110 },
   manufactured_at:       { label: 'Authorization',  width: 80  },
   part_category:         { label: 'Category',       width: 95  },
   product_name:          { label: 'Part Name',      width: 230 },
@@ -51,6 +75,15 @@ export default function ProviderDashboard() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
+  // Pagination: 15 items per page
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
+  // Reset to page 1 when search or department filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedDepartment]);
+
   // Unsaved-changes warning modal
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
 
@@ -165,6 +198,7 @@ export default function ProviderDashboard() {
         part_number: p.part_number || '',
         brand: p.brand || '',
         model_number: p.model_number || '',
+        serial_number: p.serial_number || '',
         location: p.location || '',
         quantity: p.quantity || 0,
         price: p.price || 0,
@@ -196,6 +230,7 @@ export default function ProviderDashboard() {
           part_number: p.part_number || '',
           brand: p.brand || '',
           model_number: p.model_number || '',
+          serial_number: p.serial_number || '',
           location: p.location || '',
           quantity: p.quantity || 0,
           price: p.price || 0,
@@ -239,6 +274,7 @@ export default function ProviderDashboard() {
           part_number: product.part_number || '',
           brand: product.brand || '',
           model_number: product.model_number || '',
+          serial_number: product.serial_number || '',
           location: product.location || '',
           quantity: product.quantity || 0,
           price: product.price || 0,
@@ -276,6 +312,7 @@ export default function ProviderDashboard() {
       part_category: 'Spare Part',
       brand: '',
       model_number: '',
+      serial_number: '',
       part_number: '',
       manufactured_at: 'No',
       location: '',
@@ -314,6 +351,7 @@ export default function ProviderDashboard() {
       { key: 'category',      label: 'Equipment' },
       { key: 'brand',         label: 'Manufacturer' },
       { key: 'model_number',  label: 'Model' },
+      { key: 'serial_number', label: 'Serial No.' },
       { key: 'product_name',  label: 'Part Name' },
       { key: 'location',      label: 'Location' },
       { key: 'quantity',      label: 'QTY' },
@@ -509,14 +547,15 @@ export default function ProviderDashboard() {
   const downloadCSV = () => {
     if (products.length === 0) return;
     
-    // Headers: Department, Equipment, Manufacturer, Model, Authorization, Category, Part Name, Part No., Location, QTY, Business Type, Payment Mode, Condition, Warranty
-    const headers = ['Department', 'Equipment', 'Manufacturer', 'Model', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
+    // Headers: Department, Equipment, Manufacturer, Model, Serial No., Authorization, Category, Part Name, Part No., Location, QTY, Business Type, Payment Mode, Condition, Warranty
+    const headers = ['Department', 'Equipment', 'Manufacturer', 'Model', 'Serial No.', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
     
     const rows = products.map(p => [
       p.department || '',
       p.category || '',
       p.brand || '',
       p.model_number || '',
+      p.serial_number || '',
       p.manufactured_at || '',
       p.part_category || 'Spare Part',
       p.product_name || '',
@@ -568,12 +607,13 @@ export default function ProviderDashboard() {
 
   const downloadExcel = () => {
     if (products.length === 0) return;
-    const headers = ['Department', 'Equipment', 'Manufacturer', 'Model', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
+    const headers = ['Department', 'Equipment', 'Manufacturer', 'Model', 'Serial No.', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment Mode', 'Condition', 'Warranty'];
     const rows = products.map(p => [
       p.department || '',
       p.category || '',
       p.brand || '',
       p.model_number || '',
+      p.serial_number || '',
       p.manufactured_at || '',
       p.part_category || 'Spare Part',
       p.product_name || '',
@@ -595,12 +635,13 @@ export default function ProviderDashboard() {
   const downloadPDF = () => {
     if (products.length === 0) return;
     const doc = new jsPDF();
-    const headers = [['Department', 'Equipment', 'Manufacturer', 'Model', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment', 'Condition', 'Warranty']];
+    const headers = [['Department', 'Equipment', 'Manufacturer', 'Model', 'Serial No.', 'Authorization', 'Category', 'Part Name', 'Part No.', 'Location', 'QTY', 'Business Type', 'Payment', 'Condition', 'Warranty']];
     const rows = products.map(p => [
       p.department || '',
       p.category || '',
       p.brand || '',
       p.model_number || '',
+      p.serial_number || '',
       p.manufactured_at || '',
       p.part_category || 'Spare Part',
       p.product_name || '',
@@ -635,6 +676,37 @@ export default function ProviderDashboard() {
       return 0;
     });
   }, [products]);
+
+  // Filtered products with search and department filtering
+  const filteredProducts = useMemo(() => {
+    return sortedProducts.filter(p => {
+      if (selectedDepartment && p.department !== selectedDepartment && !String(p.id).startsWith('temp_')) return false;
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        (p.department && p.department.toLowerCase().includes(q)) ||
+        (p.product_name && p.product_name.toLowerCase().includes(q)) ||
+        (p.category && p.category.toLowerCase().includes(q)) ||
+        (p.part_category && p.part_category.toLowerCase().includes(q)) ||
+        (p.brand && p.brand.toLowerCase().includes(q)) ||
+        (p.model_number && p.model_number.toLowerCase().includes(q)) ||
+        (p.serial_number && p.serial_number.toLowerCase().includes(q)) ||
+        (p.part_number && p.part_number.toLowerCase().includes(q)) ||
+        (p.location && p.location.toLowerCase().includes(q)) ||
+        (p.manufactured_at && String(p.manufactured_at).toLowerCase().includes(q)) ||
+        (p.service_type && p.service_type.toLowerCase().includes(q)) ||
+        (p.equipment_condition && p.equipment_condition.toLowerCase().includes(q)) ||
+        (p.warranty && p.warranty.toLowerCase().includes(q)) ||
+        (p.quantity !== undefined && p.quantity !== null && String(p.quantity).includes(q))
+      );
+    });
+  }, [sortedProducts, selectedDepartment, searchQuery]);
+
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredProducts.slice(start, start + itemsPerPage);
+  }, [filteredProducts, currentPage]);
 
   const editInput = (id, field, style = {}) => (
     <input
@@ -1044,26 +1116,7 @@ export default function ProviderDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {sortedProducts.filter(p => {
-                          if (selectedDepartment && p.department !== selectedDepartment && !String(p.id).startsWith('temp_')) return false;
-                          if (!searchQuery) return true;
-                          const q = searchQuery.toLowerCase();
-                          return (
-                            (p.department && p.department.toLowerCase().includes(q)) ||
-                            (p.product_name && p.product_name.toLowerCase().includes(q)) ||
-                            (p.category && p.category.toLowerCase().includes(q)) ||
-                            (p.part_category && p.part_category.toLowerCase().includes(q)) ||
-                            (p.brand && p.brand.toLowerCase().includes(q)) ||
-                            (p.model_number && p.model_number.toLowerCase().includes(q)) ||
-                            (p.part_number && p.part_number.toLowerCase().includes(q)) ||
-                            (p.location && p.location.toLowerCase().includes(q)) ||
-                            (p.manufactured_at && String(p.manufactured_at).toLowerCase().includes(q)) ||
-                            (p.service_type && p.service_type.toLowerCase().includes(q)) ||
-                            (p.equipment_condition && p.equipment_condition.toLowerCase().includes(q)) ||
-                            (p.warranty && p.warranty.toLowerCase().includes(q)) ||
-                            (p.quantity !== undefined && p.quantity !== null && String(p.quantity).includes(q))
-                          );
-                        }).map((product, idx) => {
+                        {paginatedProducts.map((product, idx) => {
                           const isEditingThisRow = isBulkEditing || editingIds.includes(product.id);
                           const isSelected = selectedIds.includes(product.id);
                           const rowClasses = [
@@ -1091,6 +1144,8 @@ export default function ProviderDashboard() {
                                   return <td key={key}>{editInput(product.id, 'brand')}</td>;
                                 case 'model_number':
                                   return <td key={key}>{editInput(product.id, 'model_number')}</td>;
+                                case 'serial_number':
+                                  return <td key={key}>{editInput(product.id, 'serial_number')}</td>;
                                 case 'manufactured_at': {
                                   const raw = editDataMap[product.id]?.manufactured_at;
                                   const normalized = !raw ? 'No' : (() => { const s = String(raw).trim().toLowerCase(); return (s === 'yes' || s === 'true' || s === 'y') ? 'Yes' : (s === 'no' || s === 'false' || s === 'n') ? 'No' : raw; })();
@@ -1178,6 +1233,8 @@ export default function ProviderDashboard() {
                                   return <td key={key}>{highlightText(product.brand, searchQuery)}</td>;
                                 case 'model_number':
                                   return <td key={key}>{highlightText(product.model_number, searchQuery)}</td>;
+                                case 'serial_number':
+                                  return <td key={key} style={{ fontWeight: 500 }}>{highlightText(product.serial_number || '—', searchQuery)}</td>;
                                 case 'manufactured_at': {
                                   const val = product.manufactured_at;
                                   const s = String(val || '').trim().toLowerCase();
@@ -1239,7 +1296,7 @@ export default function ProviderDashboard() {
                             onDoubleClick={() => startEditingRow(product)}
                           >
                             {/* Fixed row-number cell */}
-                            <td>{idx + 1}</td>
+                            <td>{(currentPage - 1) * itemsPerPage + idx + 1}</td>
                             {/* Dynamic columns in user-defined order */}
                             {columnOrder.map(key => renderCell(key))}
                             {/* Fixed delete cell */}
@@ -1258,6 +1315,47 @@ export default function ProviderDashboard() {
                       ))}
                     </datalist>
                   </div>
+
+                  {/* Pagination Controls */}
+                  {filteredProducts.length > itemsPerPage && (
+                    <div className="pagination-container">
+                      <div className="pagination-info">
+                        Showing {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, filteredProducts.length)} of {filteredProducts.length} items
+                      </div>
+                      <div className="pagination-controls">
+                        <button
+                          type="button"
+                          className="pagination-btn"
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={currentPage === 1}
+                        >
+                          Previous
+                        </button>
+                        {getPageNumbers(currentPage, totalPages).map((p, pIdx) => (
+                          p === '...' ? (
+                            <span key={`ellipsis-${pIdx}`} className="pagination-ellipsis">…</span>
+                          ) : (
+                            <button
+                              key={p}
+                              type="button"
+                              className={`pagination-btn ${currentPage === p ? 'active' : ''}`}
+                              onClick={() => setCurrentPage(p)}
+                            >
+                              {p}
+                            </button>
+                          )
+                        ))}
+                        <button
+                          type="button"
+                          className="pagination-btn"
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                          disabled={currentPage === totalPages}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Status bar — like Excel's bottom bar */}
                   <div className="spreadsheet-statusbar">
