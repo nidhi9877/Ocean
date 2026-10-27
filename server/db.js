@@ -141,6 +141,18 @@ export async function initDatabase() {
       )
     `;
 
+    // Password reset tokens — only the SHA-256 hash of the token is stored
+    await sql`
+      CREATE TABLE IF NOT EXISTS password_resets (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        token_hash VARCHAR(64) UNIQUE NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        used_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+
     // Execute ALTER TABLE in parallel
     try {
       await Promise.all([

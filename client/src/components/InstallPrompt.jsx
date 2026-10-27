@@ -49,7 +49,7 @@ export default function InstallPrompt() {
   if (isInstalled || isDismissed || !deferredPrompt) return null;
 
   return (
-    <div style={{
+    <div className="install-prompt-card" style={{
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',

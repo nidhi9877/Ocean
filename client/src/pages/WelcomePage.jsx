@@ -20,27 +20,19 @@ export default function WelcomePage() {
 
   return (
     <div className="hero-section">
-      <div style={{ marginBottom: '1.75rem', display: 'flex', justifyContent: 'center' }}>
-        <img
-          src="/transparent_logo.png"
-          alt="MarineStockHub"
-          style={{
-            maxHeight: '130px',
-            maxWidth: 'min(440px, 90vw)',
-            width: 'auto',
-            objectFit: 'contain',
-            filter: 'drop-shadow(0 10px 25px rgba(37, 99, 235, 0.12))',
-            animation: 'fadeIn 0.6s ease-out'
-          }}
-        />
-      </div>
+      <video autoPlay loop muted playsInline className="bg-video">
+        <source src="C:\Users\kunal\Ocean-main\vid.mp4" type="video/mp4" />
+      </video>
 
-      <div className="hero-badge">
-        <span>⚓</span> Marine Spare Parts Marketplace
-      </div>
+      <img
+        src="/transparent_logo.png"
+        alt="MarineStockHub"
+        className="hero-logo-img"
+      />
 
       <h1 className="hero-title">
-        Welcome To <span className="hero-title-gradient">MarineStockHub</span>
+        <span className="hero-title-welcome">Welcome To</span>
+        <span className="hero-title-gradient">MarineStockHub</span>
       </h1>
 
       <p className="hero-subtitle">
@@ -48,12 +40,10 @@ export default function WelcomePage() {
       </p>
 
       <div className="hero-cta">
-        <Link to="/login" className="btn btn-primary btn-lg" style={{ borderRadius: 'var(--radius-xl)' }}>
+        <Link to="/login" className="btn btn-primary btn-lg" style={{ borderRadius: 'var(--radius-full)' }}>
           Enter MarineStockHub →
         </Link>
       </div>
-
-
 
       <InstallPrompt />
     </div>

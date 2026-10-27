@@ -6,6 +6,7 @@ import { sql } from '../db.js';
 import dotenv from 'dotenv';
 import { validateCompanyEmail } from '../utils/emailValidator.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { sendPasswordResetEmail } from '../utils/email.js';
 
 dotenv.config();
 
@@ -243,6 +244,111 @@ router.post('/logout', async (req, res) => {
   } catch (error) {
     // If token is invalid/expired, still consider it a successful logout from frontend perspective
     res.json({ message: 'Logged out successfully' });
+  }
+});
+
+// ─── Forgot / Reset Password ────────────────────────────────────────────────────
+const RESET_TOKEN_TTL_MINUTES = 30;
+const hashResetToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
+
+// Request a reset link by username or registered email.
+// Always responds with the same message so attackers can't discover which accounts exist.
+router.post('/forgot-password', async (req, res) => {
+  const genericResponse = { message: 'If an account matches the details provided, a password reset link has been sent to its registered email.' };
+  try {
+    const identifier = (req.body.identifier || '').trim();
+    if (!identifier) {
+      return res.status(400).json({ error: 'Please enter your username or email' });
+    }
+
+    // Email lives on the buyers / providers tables, not on users
+    const accounts = await sql`
+      SELECT u.id, u.username, COALESCE(b.email, p.email) AS email
+      FROM users u
+      LEFT JOIN buyers b ON b.user_id = u.id
+      LEFT JOIN providers p ON p.user_id = u.id
+      WHERE u.username = ${identifier}
+         OR LOWER(b.email) = LOWER(${identifier})
+         OR LOWER(p.email) = LOWER(${identifier})
+    `;
+
+    for (const account of accounts) {
+      if (!account.email) continue;
+
+      // Throttle: at most one reset email per account per minute
+      const recent = await sql`
+        SELECT id FROM password_resets
+        WHERE user_id = ${account.id} AND created_at > NOW() - INTERVAL '1 minute'
+      `;
+      if (recent.length > 0) continue;
+
+      // Invalidate any older unused links, then issue a new one
+      await sql`DELETE FROM password_resets WHERE user_id = ${account.id} AND used_at IS NULL`;
+
+      const token = crypto.randomBytes(32).toString('hex');
+      await sql`
+        INSERT INTO password_resets (user_id, token_hash, expires_at)
+        VALUES (${account.id}, ${hashResetToken(token)}, NOW() + (${RESET_TOKEN_TTL_MINUTES} * INTERVAL '1 minute'))
+      `;
+
+      try {
+        await sendPasswordResetEmail({
+          to: account.email,
+          username: account.username,
+          token,
+          expiresInMinutes: RESET_TOKEN_TTL_MINUTES,
+        });
+      } catch (mailError) {
+        console.error('Forgot password: email send failed for user', account.id, mailError.message);
+      }
+    }
+
+    res.json(genericResponse);
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Set a new password using a token from the reset email
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ error: 'Reset token and new password are required' });
+    }
+
+    const hasText = /[A-Za-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecial = /[^A-Za-z0-9]/.test(password);
+    if (!hasText || !hasNumber || !hasSpecial || password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters and contain texts, numbers, and at least one special character' });
+    }
+
+    // Atomically consume the token so it can't be used twice
+    const consumed = await sql`
+      UPDATE password_resets
+      SET used_at = NOW()
+      WHERE token_hash = ${hashResetToken(token)} AND used_at IS NULL AND expires_at > NOW()
+      RETURNING user_id
+    `;
+    if (consumed.length === 0) {
+      return res.status(400).json({ error: 'This reset link is invalid or has expired. Please request a new one.' });
+    }
+
+    const userId = consumed[0].user_id;
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    await sql`UPDATE users SET password_hash = ${passwordHash} WHERE id = ${userId}`;
+    // Sign out everywhere so a compromised session can't continue
+    await sql`DELETE FROM user_sessions WHERE user_id = ${userId}`;
+
+    res.json({ message: 'Password reset successful. You can now sign in with your new password.' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

@@ -14,6 +14,8 @@ import ProviderInquiries from './pages/ProviderInquiries';
 import BuyerInquiries from './pages/BuyerInquiries';
 import WelcomePage from './pages/WelcomePage';
 import AdminDashboard from './pages/AdminDashboard';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 import { Toaster } from 'react-hot-toast';
 import './index.css';
@@ -76,6 +78,14 @@ function AppRoutes() {
             <LoginPage />
           )
         }
+      />
+      <Route
+        path="/forgot-password"
+        element={<ForgotPasswordPage />}
+      />
+      <Route
+        path="/reset-password"
+        element={<ResetPasswordPage />}
       />
       <Route
         path="/seller/register"

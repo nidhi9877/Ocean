@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -8,7 +9,30 @@ dotenv.config();
 // Free tier: 100 emails/day, 3000/month — more than enough for a marketplace MVP.
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// System sender — must be a verified domain in Resend, or use onboarding@resend.dev for testing
+// ─── SMTP Transport (preferred when configured) ─────────────────────────────────
+// When SMTP_HOST is set, mail is sent through the domain mailbox
+// (e.g. update@marinestockhub.com) instead of Resend.
+const smtpTransport = process.env.SMTP_HOST
+  ? nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT) || 465,
+      secure: (Number(process.env.SMTP_PORT) || 465) === 465,
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    })
+  : null;
+
+// Returns { data, error } like resend.emails.send so callers don't care which transport is used
+async function sendMail(mailOptions) {
+  if (!smtpTransport) return resend.emails.send(mailOptions);
+  try {
+    const info = await smtpTransport.sendMail(mailOptions);
+    return { data: { id: info.messageId }, error: null };
+  } catch (err) {
+    return { data: null, error: { message: err.message } };
+  }
+}
+
+// System sender — must match the SMTP mailbox, or a verified domain in Resend (onboarding@resend.dev for testing)
 const SYSTEM_FROM = process.env.SYSTEM_EMAIL_FROM || 'MarineStockHub Marketplace <onboarding@resend.dev>';
 
 // Base URL for CTA links (e.g., accept inquiry buttons in emails)
@@ -294,14 +318,14 @@ export async function sendInquiryEmail({
   if (cc) mailOptions.cc = cc;
   if (bcc) mailOptions.bcc = bcc;
 
-  const { data, error } = await resend.emails.send(mailOptions);
+  const { data, error } = await sendMail(mailOptions);
 
   if (error) {
     console.error('❌ Resend email error:', error);
     throw new Error(`Email delivery failed: ${error.message}`);
   }
 
-  console.log(`✅ Inquiry email sent to ${vendorEmail} (Resend ID: ${data?.id})`);
+  console.log(`✅ Inquiry email sent to ${vendorEmail} (Message ID: ${data?.id})`);
   return data;
 }
 
@@ -332,7 +356,7 @@ export async function sendProviderNotification(providerEmail, buyerName, product
     if (cc) mailOptions.cc = cc;
     if (bcc) mailOptions.bcc = bcc;
 
-    const { data, error } = await resend.emails.send(mailOptions);
+    const { data, error } = await sendMail(mailOptions);
 
     if (error) {
       console.error('Notification email error:', error);
@@ -342,4 +366,80 @@ export async function sendProviderNotification(providerEmail, buyerName, product
   } catch (error) {
     console.error('Error sending email notification:', error);
   }
+}
+
+
+// ─── Password Reset Email ────────────────────────────────────────────────────────
+// Sends a one-time reset link. FRONTEND_URL lets dev point at the Vite server
+// (e.g. http://localhost:5173); in production the API serves the client, so
+// BASE_URL is used as the fallback.
+const FRONTEND_URL = process.env.FRONTEND_URL || BASE_URL;
+
+export async function sendPasswordResetEmail({ to, username, token, expiresInMinutes }) {
+  const resetUrl = `${FRONTEND_URL}/reset-password?token=${encodeURIComponent(token)}`;
+  const currentYear = new Date().getFullYear();
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset your MarineStockHub password</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+          <tr>
+            <td style="background:linear-gradient(135deg,#0ea5e9 0%,#2563eb 100%);padding:32px 40px;text-align:center;">
+              <div style="font-size:32px;margin-bottom:6px;">⚓</div>
+              <h1 style="margin:0;font-size:24px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">MARINESTOCKHUB</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:36px 40px 8px 40px;color:#1e293b;">
+              <h2 style="margin:0 0 16px 0;font-size:20px;">Reset your password</h2>
+              <p style="margin:0 0 12px 0;font-size:15px;line-height:1.6;">Hello <strong>${username}</strong>,</p>
+              <p style="margin:0 0 24px 0;font-size:15px;line-height:1.6;">We received a request to reset the password for your MarineStockHub account. Click the button below to choose a new password. This link expires in <strong>${expiresInMinutes} minutes</strong> and can only be used once.</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 24px auto;">
+                <tr>
+                  <td style="background:#2563eb;border-radius:10px;">
+                    <a href="${resetUrl}" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">Reset Password</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0 0 8px 0;font-size:13px;color:#64748b;line-height:1.6;">If the button doesn't work, copy and paste this link into your browser:</p>
+              <p style="margin:0 0 24px 0;font-size:13px;word-break:break-all;"><a href="${resetUrl}" style="color:#2563eb;">${resetUrl}</a></p>
+              <p style="margin:0 0 24px 0;font-size:13px;color:#64748b;line-height:1.6;">If you didn't request a password reset, you can safely ignore this email — your password will not change.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 40px;border-top:1px solid #e2e8f0;text-align:center;font-size:12px;color:#94a3b8;">
+              © ${currentYear} MarineStockHub · This is an automated message, please do not reply.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const { data, error } = await sendMail({
+    from: SYSTEM_FROM,
+    to,
+    subject: 'Reset your MarineStockHub password',
+    html,
+    text: `Hello ${username},\n\nReset your MarineStockHub password using this link (expires in ${expiresInMinutes} minutes):\n${resetUrl}\n\nIf you didn't request this, ignore this email.`,
+  });
+
+  if (error) {
+    console.error('❌ Password reset email error:', error);
+    throw new Error(`Email delivery failed: ${error.message}`);
+  }
+
+  console.log(`✅ Password reset email sent to ${to} (Message ID: ${data?.id})`);
+  return data;
 }

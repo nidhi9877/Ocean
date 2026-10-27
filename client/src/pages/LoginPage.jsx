@@ -175,6 +175,23 @@ export default function LoginPage() {
                     {showPassword ? '👁️' : '👁️‍🗨️'}
                   </button>
                 </div>
+                <div style={{ textAlign: 'right', marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/forgot-password')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: 'var(--primary, #2563eb)'
+                    }}
+                  >
+                    Forgot password?
+                  </button>
+                </div>
               </div>
 
               <button
