@@ -1,7 +1,8 @@
 import { neon } from '@neondatabase/serverless';
 import dotenv from 'dotenv';
 
-dotenv.config();
+// Load server/.env regardless of the directory node was started from (e.g. `npm start` at repo root).
+dotenv.config({ path: new URL('./.env', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1') });
 
 const sql = neon(process.env.DATABASE_URL);
 
@@ -154,6 +155,35 @@ export async function initDatabase() {
       )
     `;
 
+    // One-time email verification codes for registration — only the SHA-256 hash is stored
+    await sql`
+      CREATE TABLE IF NOT EXISTS email_otps (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) NOT NULL,
+        code_hash VARCHAR(64) NOT NULL,
+        attempts INTEGER DEFAULT 0,
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+
+    // Evidence of Terms & Conditions acceptance — one row per acceptance, never updated
+    await sql`
+      CREATE TABLE IF NOT EXISTS terms_acceptances (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        username VARCHAR(100) NOT NULL,
+        role VARCHAR(20) NOT NULL,
+        email VARCHAR(255),
+        terms_version VARCHAR(64) NOT NULL,
+        content_hash VARCHAR(64) NOT NULL,
+        accepted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        ip_address VARCHAR(100),
+        user_agent TEXT
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_terms_acceptances_user ON terms_acceptances (user_id, accepted_at DESC)`;
+
     // Execute ALTER TABLE in parallel
     try {
       await Promise.all([
@@ -183,6 +213,12 @@ export async function initDatabase() {
         sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`,
         sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS country VARCHAR(100)`,
         sql`ALTER TABLE buyers ADD COLUMN IF NOT EXISTS country VARCHAR(100)`,
+        // Existing buyers are grandfathered as approved; new registrations insert 'pending' explicitly
+        sql`ALTER TABLE buyers ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'approved'`,
+        sql`ALTER TABLE buyers ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ`,
+        sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ`,
+        sql`ALTER TABLE buyers ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ`,
+        sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ`,
         sql`ALTER TABLE buyer_specifications ADD COLUMN IF NOT EXISTS ship_id INTEGER REFERENCES buyer_ships(id) ON DELETE CASCADE`,
         sql`ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS last_active TIMESTAMPTZ DEFAULT NOW()`
       ]);

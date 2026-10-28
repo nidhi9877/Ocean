@@ -16,6 +16,7 @@ import WelcomePage from './pages/WelcomePage';
 import AdminDashboard from './pages/AdminDashboard';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import TermsPage from './pages/TermsPage';
 
 import { Toaster } from 'react-hot-toast';
 import './index.css';
@@ -43,6 +44,7 @@ function ProtectedRoute({ children, allowedRole }) {
     if (!isAllowedSeller && !isAllowedExact) {
       if (isUserSeller) return <Navigate to="/seller/dashboard" replace />;
       if (user.role === 'management') return <Navigate to="/management/dashboard" replace />;
+      if (user.role === 'admin') return <Navigate to="/admin" replace />;
       return <Navigate to="/dashboard" replace />;
     }
   }
@@ -73,11 +75,15 @@ function AppRoutes() {
         path="/login"
         element={
           user ? (
-             <Navigate to={isUserSeller ? '/seller/dashboard' : user.role === 'management' ? '/management/dashboard' : '/dashboard'} replace />
+             <Navigate to={isUserSeller ? '/seller/dashboard' : user.role === 'management' ? '/management/dashboard' : user.role === 'admin' ? '/admin' : '/dashboard'} replace />
           ) : (
             <LoginPage />
           )
         }
+      />
+      <Route
+        path="/terms"
+        element={<TermsPage />}
       />
       <Route
         path="/forgot-password"
@@ -101,7 +107,11 @@ function AppRoutes() {
       />
       <Route
         path="/admin"
-        element={<AdminDashboard />}
+        element={
+          <ProtectedRoute allowedRole="admin">
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
       />
       <Route
         path="/seller/register-details"

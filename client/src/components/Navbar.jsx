@@ -12,7 +12,7 @@ export default function Navbar() {
 
   return (
     <nav className="navbar">
-      <Link to={user?.role === 'seller' || user?.role === 'provider' ? '/seller/dashboard' : user?.role === 'management' ? '/management/dashboard' : '/buyer/dashboard'} className="navbar-brand">
+      <Link to={user?.role === 'seller' || user?.role === 'provider' ? '/seller/dashboard' : user?.role === 'management' ? '/management/dashboard' : user?.role === 'admin' ? '/admin' : '/dashboard'} className="navbar-brand">
         <img
           src="/transparent_logo.png"
           alt="MarineStockHub"

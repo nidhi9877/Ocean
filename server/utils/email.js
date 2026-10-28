@@ -7,7 +7,7 @@ dotenv.config();
 // ─── Resend Client ──────────────────────────────────────────────────────────────
 // Uses the Resend API for transactional emails. Requires RESEND_API_KEY in .env.
 // Free tier: 100 emails/day, 3000/month — more than enough for a marketplace MVP.
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // ─── SMTP Transport (preferred when configured) ─────────────────────────────────
 // When SMTP_HOST is set, mail is sent through the domain mailbox
@@ -23,7 +23,10 @@ const smtpTransport = process.env.SMTP_HOST
 
 // Returns { data, error } like resend.emails.send so callers don't care which transport is used
 async function sendMail(mailOptions) {
-  if (!smtpTransport) return resend.emails.send(mailOptions);
+  if (!smtpTransport) {
+    if (!resend) return { data: null, error: { message: 'No email transport configured (set SMTP_* or RESEND_API_KEY)' } };
+    return resend.emails.send(mailOptions);
+  }
   try {
     const info = await smtpTransport.sendMail(mailOptions);
     return { data: { id: info.messageId }, error: null };
@@ -441,5 +444,137 @@ export async function sendPasswordResetEmail({ to, username, token, expiresInMin
   }
 
   console.log(`✅ Password reset email sent to ${to} (Message ID: ${data?.id})`);
+  return data;
+}
+
+
+// ─── Account Status Emails ───────────────────────────────────────────────────────
+// Sent to buyers / sellers when they register (pending) and when management
+// approves or rejects their account.
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => (
+  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+));
+
+const ACCOUNT_STATUS_COPY = {
+  pending: {
+    subject: 'We received your MarineStockHub registration',
+    heading: 'Registration received',
+    body: 'Thank you for registering. Our management team reviews every new account to keep the marketplace trusted and verified. You will receive another email as soon as your account has been reviewed — usually within 1 business day.',
+    cta: null,
+  },
+  approved: {
+    subject: 'Your MarineStockHub account has been approved',
+    heading: 'Your account is approved 🎉',
+    body: 'Good news — your account has been verified and approved by our management team. You can now sign in and start using MarineStockHub.',
+    cta: 'Sign In',
+  },
+  rejected: {
+    subject: 'Update on your MarineStockHub registration',
+    heading: 'Registration not approved',
+    body: 'After review, we were unable to approve your account at this time. If you believe this is a mistake or would like to provide more information, simply reply to this email or contact our support team.',
+    cta: null,
+  },
+};
+
+function buildSimpleEmailHTML({ heading, paragraphs, ctaLabel, ctaUrl }) {
+  const currentYear = new Date().getFullYear();
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+        <tr><td style="background:linear-gradient(135deg,#0ea5e9 0%,#2563eb 100%);padding:32px 40px;text-align:center;">
+          <div style="font-size:32px;margin-bottom:6px;">⚓</div>
+          <h1 style="margin:0;font-size:24px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">MARINESTOCKHUB</h1>
+        </td></tr>
+        <tr><td style="padding:36px 40px 24px 40px;color:#1e293b;">
+          <h2 style="margin:0 0 16px 0;font-size:20px;">${heading}</h2>
+          ${paragraphs.map(p => `<p style="margin:0 0 14px 0;font-size:15px;line-height:1.6;">${p}</p>`).join('')}
+          ${ctaLabel ? `
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:12px auto 8px auto;">
+            <tr><td style="background:#2563eb;border-radius:10px;">
+              <a href="${ctaUrl}" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">${ctaLabel}</a>
+            </td></tr>
+          </table>` : ''}
+        </td></tr>
+        <tr><td style="padding:20px 40px;border-top:1px solid #e2e8f0;text-align:center;font-size:12px;color:#94a3b8;">
+          © ${currentYear} MarineStockHub · Maritime Spare Parts Marketplace
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+export async function sendAccountStatusEmail({ to, username, role, status }) {
+  const copy = ACCOUNT_STATUS_COPY[status];
+  if (!to || !copy) return;
+
+  const roleLabel = role === 'buyer' ? 'buyer' : 'seller';
+  const html = buildSimpleEmailHTML({
+    heading: copy.heading,
+    paragraphs: [
+      `Hello <strong>${escapeHtml(username)}</strong>,`,
+      copy.body,
+      `Account type: <strong>${roleLabel}</strong> · Username: <strong>${escapeHtml(username)}</strong>`,
+    ],
+    ctaLabel: copy.cta,
+    ctaUrl: `${FRONTEND_URL}/login`,
+  });
+
+  const { data, error } = await sendMail({ from: SYSTEM_FROM, to, subject: copy.subject, html });
+  if (error) throw new Error(`Email delivery failed: ${error.message}`);
+  console.log(`✅ Account ${status} email sent to ${to} (Message ID: ${data?.id})`);
+  return data;
+}
+
+// Optional alert to the management inbox (MANAGEMENT_NOTIFY_EMAIL) for every new registration
+export async function sendNewRegistrationAlert({ to, username, role, email }) {
+  const roleLabel = role === 'buyer' ? 'Buyer' : 'Seller';
+  const html = buildSimpleEmailHTML({
+    heading: `New ${roleLabel.toLowerCase()} awaiting approval`,
+    paragraphs: [
+      `A new <strong>${roleLabel}</strong> account has registered and is waiting for review.`,
+      `Username: <strong>${escapeHtml(username)}</strong><br/>Email: <strong>${escapeHtml(email || 'N/A')}</strong>`,
+    ],
+    ctaLabel: 'Open Approval Queue',
+    ctaUrl: `${FRONTEND_URL}/management/dashboard`,
+  });
+
+  const { error } = await sendMail({ from: SYSTEM_FROM, to, subject: `New ${roleLabel} registration: ${username}`, html });
+  if (error) throw new Error(`Email delivery failed: ${error.message}`);
+}
+
+
+// ─── Registration OTP Email ──────────────────────────────────────────────────────
+export async function sendRegistrationOtpEmail({ to, username, code, expiresInMinutes }) {
+  const digits = code.split('').map(d =>
+    `<td style="width:44px;height:52px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;text-align:center;font-size:26px;font-weight:800;color:#0f172a;font-family:Consolas,'Courier New',monospace;">${d}</td><td style="width:6px;"></td>`
+  ).join('');
+
+  const html = buildSimpleEmailHTML({
+    heading: 'Verify your email address',
+    paragraphs: [
+      `Hello${username ? ` <strong>${escapeHtml(username)}</strong>` : ''},`,
+      'Use the verification code below to complete your MarineStockHub registration:',
+      `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px auto 4px auto;"><tr>${digits}</tr></table>`,
+      `This code expires in <strong>${expiresInMinutes} minutes</strong>. Never share it with anyone — MarineStockHub staff will never ask for it.`,
+      '<span style="color:#64748b;font-size:13px;">If you didn\'t try to register, you can safely ignore this email.</span>',
+    ],
+  });
+
+  const { data, error } = await sendMail({
+    from: SYSTEM_FROM,
+    to,
+    subject: `${code} is your MarineStockHub verification code`,
+    html,
+    text: `Your MarineStockHub verification code is ${code}. It expires in ${expiresInMinutes} minutes.`,
+  });
+  if (error) throw new Error(`Email delivery failed: ${error.message}`);
+  console.log(`✅ Registration OTP sent to ${to} (Message ID: ${data?.id})`);
   return data;
 }

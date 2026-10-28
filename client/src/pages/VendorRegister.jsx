@@ -4,6 +4,8 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import CountrySelect from '../components/CountrySelect';
+import EmailOtpModal from '../components/EmailOtpModal';
+import { TermsAcceptance } from '../components/Terms';
 
 const API = '/api';
 
@@ -20,6 +22,8 @@ export default function VendorRegister() {
     confirmPassword: ''
   });
   const [loading, setLoading] = useState(false);
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [termsVersion, setTermsVersion] = useState(null); // version of the T&C the applicant accepted
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -55,29 +59,62 @@ export default function VendorRegister() {
       return;
     }
 
+    if (!termsVersion) {
+      toast.error('Please read and accept the Terms & Conditions to continue.');
+      return;
+    }
+
     setLoading(true);
     try {
-      // 1. Register User Profile
-      const res = await axios.post(`${API}/auth/register`, {
+      await requestOtp();
+      setOtpOpen(true);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 1: email a verification code. Throws with a user-facing message on failure.
+  const requestOtp = async () => {
+    try {
+      const res = await axios.post(`${API}/auth/register/send-otp`, { email: formData.email.trim().toLowerCase(), username: formData.username.trim() });
+      toast.success(res.data.message || 'Verification code sent.');
+    } catch (err) {
+      throw new Error(err.response?.data?.error || 'Could not send verification code. Please try again.');
+    }
+  };
+
+  // Step 2: submit the registration together with the code
+  const completeRegistration = async (otp) => {
+    try {
+      await axios.post(`${API}/auth/register`, {
         username: formData.username,
         password: formData.password,
         role: 'seller',
-        email: formData.email,
+        email: formData.email.trim().toLowerCase(),
         phone: formData.phone,
         companyName: formData.companyName,
         companyType: formData.companyType,
         address: formData.address,
         country: formData.country,
-        paymentMode: formData.paymentMode
+        paymentMode: formData.paymentMode,
+        otp,
+        acceptedTerms: true,
+        termsVersion
       });
-      
-      toast.success('Registration successful! Your account is pending management approval.');
-      navigate('/login');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Registration failed. Please try again.');
-    } finally {
-      setLoading(false);
+      if (err.response?.data?.termsError) {
+        // Terms changed since they were accepted — the applicant must review the new version
+        setTermsVersion(null);
+        setOtpOpen(false);
+        toast.error(err.response.data.error);
+      }
+      throw new Error(err.response?.data?.error || 'Registration failed. Please try again.');
     }
+    setOtpOpen(false);
+    toast.success('Email verified! Your account is pending management approval — we will email you once it is reviewed.', { duration: 6000 });
+    navigate('/login');
   };
 
   return (
@@ -169,8 +206,9 @@ export default function VendorRegister() {
                 </div>
               </div>
               
+              <TermsAcceptance value={termsVersion} onChange={setTermsVersion} role="seller" />
               <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={loading} style={{ marginTop: '0.5rem' }}>
-                {loading ? <span className="spinner"></span> : 'Create Seller Account'}
+                {loading ? <span className="spinner"></span> : 'Verify Email & Register'}
               </button>
             </form>
             
@@ -182,6 +220,14 @@ export default function VendorRegister() {
           </div>
         </div>
       </div>
+      {otpOpen && (
+        <EmailOtpModal
+          email={formData.email.trim().toLowerCase()}
+          onVerify={completeRegistration}
+          onResend={requestOtp}
+          onClose={() => setOtpOpen(false)}
+        />
+      )}
     </div>
   );
 }

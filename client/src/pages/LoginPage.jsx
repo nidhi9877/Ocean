@@ -29,6 +29,9 @@ export default function LoginPage() {
       if (res.data.user.role === 'seller' || res.data.user.role === 'provider') {
         toast.success(`Welcome back, ${res.data.user.username}!`);
         navigate('/seller/dashboard');
+      } else if (res.data.user.role === 'admin') {
+        toast.success(`Welcome back, ${res.data.user.username}!`);
+        navigate('/admin');
       } else if (res.data.user.role === 'management') {
         toast.success(`Welcome back, ${res.data.user.username}!`);
         navigate('/management/dashboard');
@@ -229,6 +232,11 @@ export default function LoginPage() {
                 <span className="role-btn-label">Buyer</span>
                 <span className="role-btn-desc">Browse & purchase</span>
               </button>
+            </div>
+
+            <div style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              By using MarineStockHub you agree to our{' '}
+              <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>Terms &amp; Conditions</a>
             </div>
           </div>
         </div>

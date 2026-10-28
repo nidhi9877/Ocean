@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { validateCompanyEmail } from '../utils/emailValidator';
 import CountrySelect from '../components/CountrySelect';
+import EmailOtpModal from '../components/EmailOtpModal';
+import { TermsAcceptance } from '../components/Terms';
 
 const API = '/api';
 
@@ -18,7 +19,8 @@ export default function BuyerRegister() {
     confirmPassword: ''
   });
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [termsVersion, setTermsVersion] = useState(null); // version of the T&C the applicant accepted
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -61,26 +63,58 @@ export default function BuyerRegister() {
       return;
     }
 
-    setLoading(true);
+    if (!termsVersion) {
+      toast.error('Please read and accept the Terms & Conditions to continue.');
+      return;
+    }
 
+    setLoading(true);
     try {
-      const res = await axios.post(`${API}/auth/register`, { 
-        username: formData.username, 
-        password: formData.password, 
-        role: 'buyer',
-        email: formData.email.trim().toLowerCase(),
-        phone: formData.phone,
-        country: formData.country
-      });
-      
-      login(res.data.user, res.data.token);
-      toast.success('Registration successful! Welcome aboard.');
-      navigate('/dashboard');
+      await requestOtp();
+      setOtpOpen(true);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Registration failed. Please try again.');
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Step 1: email a verification code. Throws with a user-facing message on failure.
+  const requestOtp = async () => {
+    try {
+      const res = await axios.post(`${API}/auth/register/send-otp`, { email: formData.email.trim().toLowerCase(), username: formData.username.trim() });
+      toast.success(res.data.message || 'Verification code sent.');
+    } catch (err) {
+      throw new Error(err.response?.data?.error || 'Could not send verification code. Please try again.');
+    }
+  };
+
+  // Step 2: submit the registration together with the code
+  const completeRegistration = async (otp) => {
+    try {
+      await axios.post(`${API}/auth/register`, {
+        username: formData.username,
+        password: formData.password,
+        role: 'buyer',
+        email: formData.email.trim().toLowerCase(),
+        phone: formData.phone,
+        country: formData.country,
+        otp,
+        acceptedTerms: true,
+        termsVersion
+      });
+    } catch (err) {
+      if (err.response?.data?.termsError) {
+        // Terms changed since they were accepted — the applicant must review the new version
+        setTermsVersion(null);
+        setOtpOpen(false);
+        toast.error(err.response.data.error);
+      }
+      throw new Error(err.response?.data?.error || 'Registration failed. Please try again.');
+    }
+    setOtpOpen(false);
+    toast.success('Email verified! Your account is pending management approval — we will email you once it is reviewed.', { duration: 6000 });
+    navigate('/login');
   };
 
   return (
@@ -202,13 +236,14 @@ export default function BuyerRegister() {
                 >
                   ← Back to Login
                 </button>
+                <TermsAcceptance value={termsVersion} onChange={setTermsVersion} role="buyer" />
                 <button
                   type="submit"
                   className="btn btn-primary"
                   style={{ flex: 2 }}
                   disabled={loading}
                 >
-                  {loading ? <span className="spinner"></span> : 'Register as Buyer'}
+                  {loading ? <span className="spinner"></span> : 'Verify Email & Register'}
                 </button>
               </div>
 
@@ -216,6 +251,14 @@ export default function BuyerRegister() {
           </div>
         </div>
       </div>
+      {otpOpen && (
+        <EmailOtpModal
+          email={formData.email.trim().toLowerCase()}
+          onVerify={completeRegistration}
+          onResend={requestOtp}
+          onClose={() => setOtpOpen(false)}
+        />
+      )}
     </div>
   );
 }

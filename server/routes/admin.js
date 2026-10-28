@@ -1,15 +1,38 @@
 import { Router } from 'express';
 import { sql } from '../db.js';
+import { authenticateToken, authenticateAdmin } from '../middleware/auth.js';
+import { overviewHandler } from './management.js';
 
 const router = Router();
 
-// Get all users (excluding passwords of course)
+// Every admin endpoint exposes sensitive account data — admin login is required for all of them
+router.use(authenticateToken, authenticateAdmin);
+
+// Platform overview (same KPIs and trends as the management console)
+router.get('/overview', overviewHandler);
+
+// ─── Users & access ─────────────────────────────────────────────────────────────
+// Every login account with contact details, approval state and session activity
 router.get('/users', async (req, res) => {
   try {
     const users = await sql`
-      SELECT id, username, role, created_at 
-      FROM users 
-      ORDER BY created_at DESC
+      SELECT u.id, u.username, u.role, u.created_at, terms.terms_version, terms.accepted_at AS terms_accepted_at, terms.ip_address AS terms_ip,
+             COALESCE(b.email, p.email) AS email,
+             COALESCE(b.phone, p.phone) AS phone,
+             COALESCE(b.status, p.status, 'approved') AS status,
+             COALESCE(b.email_verified_at, p.email_verified_at) AS email_verified_at,
+             p.company_name,
+             (SELECT MAX(s.last_active) FROM user_sessions s WHERE s.user_id = u.id) AS last_seen,
+             (SELECT COUNT(*)::int FROM user_sessions s WHERE s.user_id = u.id
+                AND s.last_active > NOW() - INTERVAL '2 minutes 30 seconds') AS active_sessions
+      FROM users u
+      LEFT JOIN LATERAL (
+        SELECT ta.terms_version, ta.accepted_at, ta.ip_address FROM terms_acceptances ta
+        WHERE ta.user_id = u.id ORDER BY ta.accepted_at DESC LIMIT 1
+      ) terms ON true
+      LEFT JOIN buyers b ON b.user_id = u.id
+      LEFT JOIN providers p ON p.user_id = u.id
+      ORDER BY u.created_at DESC
     `;
     res.json(users);
   } catch (error) {
@@ -18,16 +41,40 @@ router.get('/users', async (req, res) => {
   }
 });
 
-// Get all sellers / providers
+// ─── Sellers ────────────────────────────────────────────────────────────────────
 const getSellers = async (req, res) => {
   try {
-    const providers = await sql`
-      SELECT p.*, u.username 
+    const sellers = await sql`
+      SELECT p.*, u.username, terms.terms_version, terms.accepted_at AS terms_accepted_at, terms.ip_address AS terms_ip,
+             COALESCE(stock.product_count, 0) AS product_count,
+             COALESCE(stock.units, 0) AS units,
+             COALESCE(stock.inventory_value, 0) AS inventory_value,
+             COALESCE(stock.category_count, 0) AS category_count,
+             COALESCE(inq.total, 0) AS inquiry_count,
+             COALESCE(inq.accepted, 0) AS accepted_count,
+             COALESCE(inq.pending, 0) AS pending_count,
+             (SELECT MAX(s.last_active) FROM user_sessions s WHERE s.user_id = u.id) AS last_seen
       FROM providers p
       JOIN users u ON p.user_id = u.id
+      LEFT JOIN LATERAL (
+        SELECT ta.terms_version, ta.accepted_at, ta.ip_address FROM terms_acceptances ta
+        WHERE ta.user_id = u.id ORDER BY ta.accepted_at DESC LIMIT 1
+      ) terms ON true
+      LEFT JOIN (
+        SELECT provider_id, COUNT(*)::int AS product_count, COALESCE(SUM(quantity), 0)::int AS units,
+               COALESCE(SUM(price * quantity), 0)::float AS inventory_value,
+               COUNT(DISTINCT category)::int AS category_count
+        FROM products GROUP BY provider_id
+      ) stock ON stock.provider_id = p.id
+      LEFT JOIN (
+        SELECT provider_id, COUNT(*)::int AS total,
+               COUNT(*) FILTER (WHERE status = 'accepted')::int AS accepted,
+               COUNT(*) FILTER (WHERE status = 'pending')::int AS pending
+        FROM inquiries GROUP BY provider_id
+      ) inq ON inq.provider_id = p.id
       ORDER BY p.created_at DESC
     `;
-    res.json(providers);
+    res.json(sellers);
   } catch (error) {
     console.error('Error fetching sellers:', error);
     res.status(500).json({ error: 'Failed to fetch sellers' });
@@ -37,13 +84,74 @@ const getSellers = async (req, res) => {
 router.get('/sellers', getSellers);
 router.get('/providers', getSellers);
 
-// Get all buyers
+// Full seller profile: listings and inquiries received
+router.get('/sellers/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const [profile] = await sql`
+      SELECT p.*, u.username, terms.terms_version, terms.accepted_at AS terms_accepted_at, terms.ip_address AS terms_ip,
+             (SELECT MAX(s.last_active) FROM user_sessions s WHERE s.user_id = u.id) AS last_seen
+      FROM providers p JOIN users u ON u.id = p.user_id
+      LEFT JOIN LATERAL (
+        SELECT ta.terms_version, ta.accepted_at, ta.ip_address FROM terms_acceptances ta
+        WHERE ta.user_id = u.id ORDER BY ta.accepted_at DESC LIMIT 1
+      ) terms ON true WHERE p.id = ${id}
+    `;
+    if (!profile) return res.status(404).json({ error: 'Seller not found' });
+
+    const [products, inquiries] = await Promise.all([
+      sql`
+        SELECT pr.id, pr.product_name, pr.part_number, pr.brand, pr.model_number, pr.category,
+               pr.equipment_condition, pr.price, pr.quantity, pr.location, pr.created_at,
+               (SELECT COUNT(*)::int FROM inquiries i WHERE i.product_id = pr.id) AS inquiry_count
+        FROM products pr WHERE pr.provider_id = ${id}
+        ORDER BY inquiry_count DESC, pr.created_at DESC
+      `,
+      sql`
+        SELECT i.id, i.status, i.target_price, i.destination_location, i.vessel_name, i.created_at,
+               pr.product_name, ub.username AS buyer_username, b.email AS buyer_email
+        FROM inquiries i
+        LEFT JOIN products pr ON pr.id = i.product_id
+        LEFT JOIN buyers b ON b.id = i.buyer_id
+        LEFT JOIN users ub ON ub.id = b.user_id
+        WHERE i.provider_id = ${id}
+        ORDER BY i.created_at DESC LIMIT 200
+      `,
+    ]);
+    res.json({ profile, products, inquiries });
+  } catch (error) {
+    console.error('Error fetching seller detail:', error);
+    res.status(500).json({ error: 'Failed to fetch seller' });
+  }
+});
+
+// ─── Buyers ─────────────────────────────────────────────────────────────────────
 router.get('/buyers', async (req, res) => {
   try {
     const buyers = await sql`
-      SELECT b.*, u.username 
+      SELECT b.*, u.username, terms.terms_version, terms.accepted_at AS terms_accepted_at, terms.ip_address AS terms_ip,
+             COALESCE(fleet.ship_count, 0) AS ship_count,
+             COALESCE(parts.part_count, 0) AS part_count,
+             COALESCE(parts.equipment_count, 0) AS equipment_count,
+             COALESCE(inq.total, 0) AS inquiry_count,
+             COALESCE(inq.accepted, 0) AS accepted_count,
+             (SELECT COUNT(*)::int FROM buyer_searches s WHERE s.buyer_id = b.id) AS search_count,
+             (SELECT MAX(s.last_active) FROM user_sessions s WHERE s.user_id = u.id) AS last_seen
       FROM buyers b
       JOIN users u ON b.user_id = u.id
+      LEFT JOIN LATERAL (
+        SELECT ta.terms_version, ta.accepted_at, ta.ip_address FROM terms_acceptances ta
+        WHERE ta.user_id = u.id ORDER BY ta.accepted_at DESC LIMIT 1
+      ) terms ON true
+      LEFT JOIN (SELECT buyer_id, COUNT(*)::int AS ship_count FROM buyer_ships GROUP BY buyer_id) fleet ON fleet.buyer_id = b.id
+      LEFT JOIN (
+        SELECT buyer_id, COUNT(*)::int AS part_count, COUNT(DISTINCT LOWER(TRIM(equipment)))::int AS equipment_count
+        FROM buyer_specifications GROUP BY buyer_id
+      ) parts ON parts.buyer_id = b.id
+      LEFT JOIN (
+        SELECT buyer_id, COUNT(*)::int AS total, COUNT(*) FILTER (WHERE status = 'accepted')::int AS accepted
+        FROM inquiries GROUP BY buyer_id
+      ) inq ON inq.buyer_id = b.id
       ORDER BY b.created_at DESC
     `;
     res.json(buyers);
@@ -53,14 +161,188 @@ router.get('/buyers', async (req, res) => {
   }
 });
 
-// Get all inquiries
+// Full buyer profile: fleet with every recorded part, inquiries and recent searches
+router.get('/buyers/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const [profile] = await sql`
+      SELECT b.*, u.username, terms.terms_version, terms.accepted_at AS terms_accepted_at, terms.ip_address AS terms_ip,
+             (SELECT MAX(s.last_active) FROM user_sessions s WHERE s.user_id = u.id) AS last_seen
+      FROM buyers b JOIN users u ON u.id = b.user_id
+      LEFT JOIN LATERAL (
+        SELECT ta.terms_version, ta.accepted_at, ta.ip_address FROM terms_acceptances ta
+        WHERE ta.user_id = u.id ORDER BY ta.accepted_at DESC LIMIT 1
+      ) terms ON true WHERE b.id = ${id}
+    `;
+    if (!profile) return res.status(404).json({ error: 'Buyer not found' });
+
+    const [ships, parts, inquiries, searches] = await Promise.all([
+      sql`SELECT id, ship_name, imo_number, ship_type, created_at FROM buyer_ships WHERE buyer_id = ${id} ORDER BY created_at`,
+      sql`SELECT id, ship_id, equipment, manufacturer, model, created_at FROM buyer_specifications WHERE buyer_id = ${id} ORDER BY equipment`,
+      sql`
+        SELECT i.id, i.status, i.target_price, i.destination_location, i.vessel_name, i.created_at,
+               pr.product_name, pr.part_number, p.company_name AS seller_company
+        FROM inquiries i
+        LEFT JOIN products pr ON pr.id = i.product_id
+        LEFT JOIN providers p ON p.id = i.provider_id
+        WHERE i.buyer_id = ${id}
+        ORDER BY i.created_at DESC LIMIT 200
+      `,
+      sql`
+        SELECT s.search_query, s.created_at, pr.product_name, pr.part_number
+        FROM buyer_searches s LEFT JOIN products pr ON pr.id = s.product_id
+        WHERE s.buyer_id = ${id}
+        ORDER BY s.created_at DESC LIMIT 50
+      `,
+    ]);
+
+    const fleet = ships.map(ship => ({ ...ship, parts: parts.filter(p => p.ship_id === ship.id) }));
+    const unassigned = parts.filter(p => !ships.some(s => s.id === p.ship_id));
+    res.json({ profile, fleet, unassignedParts: unassigned, inquiries, searches });
+  } catch (error) {
+    console.error('Error fetching buyer detail:', error);
+    res.status(500).json({ error: 'Failed to fetch buyer' });
+  }
+});
+
+// Flat registry of every part on every buyer vessel (for search / export)
+router.get('/fleet-parts', async (req, res) => {
+  try {
+    const rows = await sql`
+      SELECT bs.id, bs.equipment, bs.manufacturer, bs.model, bs.created_at,
+             s.ship_name, s.imo_number, s.ship_type,
+             b.id AS buyer_id, u.username AS buyer_username, b.email AS buyer_email, b.country AS buyer_country
+      FROM buyer_specifications bs
+      JOIN buyers b ON b.id = bs.buyer_id
+      JOIN users u ON u.id = b.user_id
+      LEFT JOIN buyer_ships s ON s.id = bs.ship_id
+      ORDER BY bs.created_at DESC
+      LIMIT 5000
+    `;
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching fleet parts:', error);
+    res.status(500).json({ error: 'Failed to fetch fleet parts' });
+  }
+});
+
+// ─── Parts intelligence ─────────────────────────────────────────────────────────
+// Demand = parts recorded on buyers' vessels (installed base) + inquiries + searches.
+// Supply = matching product listings. Equipment names are grouped case-insensitively.
+router.get('/parts-intelligence', async (req, res) => {
+  try {
+    const [summary, equipment, manufacturers, models, shipTypes, trendingProducts, risingEquipment, partsTrend, inquiryCategories] = await Promise.all([
+      sql`
+        SELECT (SELECT COUNT(*)::int FROM buyer_ships) AS ships,
+               (SELECT COUNT(*)::int FROM buyer_specifications) AS parts,
+               (SELECT COUNT(DISTINCT LOWER(TRIM(equipment)))::int FROM buyer_specifications) AS equipment_types,
+               (SELECT COUNT(DISTINCT buyer_id)::int FROM buyer_ships) AS buyers_with_fleet,
+               (SELECT COUNT(*)::int FROM buyer_searches WHERE created_at > NOW() - INTERVAL '7 days') AS searches_7d,
+               (SELECT COUNT(*)::int FROM inquiries WHERE created_at > NOW() - INTERVAL '30 days') AS inquiries_30d
+      `,
+      sql`
+        WITH eq AS (
+          SELECT LOWER(TRIM(equipment)) AS k, MIN(TRIM(equipment)) AS label,
+                 COUNT(*)::int AS records, COUNT(DISTINCT buyer_id)::int AS buyers,
+                 COUNT(DISTINCT ship_id)::int AS ships,
+                 COUNT(DISTINCT LOWER(TRIM(manufacturer)))::int AS manufacturers,
+                 MAX(created_at) AS last_added
+          FROM buyer_specifications
+          WHERE TRIM(equipment) <> ''
+          GROUP BY 1
+        )
+        SELECT eq.*,
+               (SELECT COUNT(*)::int FROM products p
+                 WHERE POSITION(eq.k IN LOWER(p.product_name)) > 0 OR POSITION(eq.k IN LOWER(COALESCE(p.category, ''))) > 0) AS listings,
+               (SELECT COALESCE(SUM(p.quantity), 0)::int FROM products p
+                 WHERE POSITION(eq.k IN LOWER(p.product_name)) > 0 OR POSITION(eq.k IN LOWER(COALESCE(p.category, ''))) > 0) AS units
+        FROM eq
+        ORDER BY ships DESC, records DESC, label
+      `,
+      sql`
+        SELECT MIN(TRIM(manufacturer)) AS label, COUNT(*)::int AS records,
+               COUNT(DISTINCT buyer_id)::int AS buyers, COUNT(DISTINCT ship_id)::int AS ships
+        FROM buyer_specifications
+        WHERE manufacturer IS NOT NULL AND TRIM(manufacturer) <> ''
+        GROUP BY LOWER(TRIM(manufacturer))
+        ORDER BY ships DESC, records DESC LIMIT 12
+      `,
+      sql`
+        SELECT MIN(TRIM(equipment)) AS equipment, MIN(TRIM(manufacturer)) AS manufacturer, MIN(TRIM(model)) AS model,
+               COUNT(DISTINCT ship_id)::int AS ships, COUNT(DISTINCT buyer_id)::int AS buyers
+        FROM buyer_specifications
+        WHERE model IS NOT NULL AND TRIM(model) <> ''
+        GROUP BY LOWER(TRIM(equipment)), LOWER(TRIM(COALESCE(manufacturer, ''))), LOWER(TRIM(model))
+        ORDER BY ships DESC, buyers DESC LIMIT 15
+      `,
+      sql`
+        SELECT COALESCE(NULLIF(TRIM(s.ship_type), ''), 'Unspecified') AS ship_type,
+               COUNT(DISTINCT s.id)::int AS ships, COUNT(bs.id)::int AS parts
+        FROM buyer_ships s LEFT JOIN buyer_specifications bs ON bs.ship_id = s.id
+        GROUP BY 1 ORDER BY ships DESC
+      `,
+      sql`
+        SELECT p.id, p.product_name, p.part_number, p.brand, p.category, p.quantity, pr.company_name,
+               COUNT(i.id) FILTER (WHERE i.created_at > NOW() - INTERVAL '30 days')::int AS inquiries_30d,
+               COUNT(i.id) FILTER (WHERE i.created_at <= NOW() - INTERVAL '30 days' AND i.created_at > NOW() - INTERVAL '60 days')::int AS inquiries_prev,
+               COUNT(DISTINCT i.buyer_id)::int AS buyers,
+               (SELECT COUNT(*)::int FROM buyer_searches s WHERE s.product_id = p.id AND s.created_at > NOW() - INTERVAL '7 days') AS searches_7d
+        FROM products p
+        JOIN providers pr ON pr.id = p.provider_id
+        LEFT JOIN inquiries i ON i.product_id = p.id
+        GROUP BY p.id, pr.company_name
+        HAVING COUNT(i.id) FILTER (WHERE i.created_at > NOW() - INTERVAL '30 days') > 0
+            OR (SELECT COUNT(*) FROM buyer_searches s WHERE s.product_id = p.id AND s.created_at > NOW() - INTERVAL '7 days') > 0
+        ORDER BY inquiries_30d DESC, searches_7d DESC
+        LIMIT 15
+      `,
+      sql`
+        SELECT MIN(TRIM(equipment)) AS label, COUNT(*)::int AS added, COUNT(DISTINCT ship_id)::int AS ships
+        FROM buyer_specifications
+        WHERE created_at > NOW() - INTERVAL '30 days' AND TRIM(equipment) <> ''
+        GROUP BY LOWER(TRIM(equipment))
+        ORDER BY added DESC LIMIT 10
+      `,
+      sql`
+        SELECT d::date AS day,
+               (SELECT COUNT(*)::int FROM buyer_specifications bs WHERE bs.created_at::date = d::date) AS count
+        FROM generate_series(CURRENT_DATE - INTERVAL '29 days', CURRENT_DATE, INTERVAL '1 day') d
+        ORDER BY d
+      `,
+      sql`
+        SELECT COALESCE(NULLIF(p.category, ''), 'Uncategorised') AS category, COUNT(*)::int AS count
+        FROM inquiries i JOIN products p ON p.id = i.product_id
+        GROUP BY 1 ORDER BY count DESC LIMIT 8
+      `,
+    ]);
+
+    res.json({
+      summary: summary[0],
+      topEquipment: equipment.slice(0, 15),
+      // High installed base but nothing (or almost nothing) listed — sourcing opportunities for sellers
+      supplyGaps: equipment.filter(e => e.listings === 0).slice(0, 10),
+      topManufacturers: manufacturers,
+      topModels: models,
+      shipTypes,
+      trendingProducts,
+      risingEquipment,
+      partsTrend,
+      inquiryCategories,
+    });
+  } catch (error) {
+    console.error('Error fetching parts intelligence:', error);
+    res.status(500).json({ error: 'Failed to fetch parts intelligence' });
+  }
+});
+
+// ─── Inquiries ──────────────────────────────────────────────────────────────────
 router.get('/inquiries', async (req, res) => {
   try {
     const inquiries = await sql`
-      SELECT i.*, 
+      SELECT i.*,
              p.product_name, p.category, p.part_number,
-             pr.company_name AS vendor_company, u_vendor.username AS vendor_username,
-             b.ship_name, b.email AS buyer_email, u_buyer.username AS buyer_username
+             pr.company_name AS vendor_company, u_vendor.username AS vendor_username, pr.email AS vendor_email,
+             b.email AS buyer_email, u_buyer.username AS buyer_username
       FROM inquiries i
       LEFT JOIN products p ON i.product_id = p.id
       LEFT JOIN providers pr ON i.provider_id = pr.id
@@ -76,14 +358,14 @@ router.get('/inquiries', async (req, res) => {
   }
 });
 
-// Get basic platform statistics
+// Basic platform statistics (kept for backward compatibility)
 router.get('/stats', async (req, res) => {
   try {
     const usersCount = await sql`SELECT COUNT(*) FROM users`;
     const providersCount = await sql`SELECT COUNT(*) FROM providers`;
     const productsCount = await sql`SELECT COUNT(*) FROM products`;
     const inquiriesCount = await sql`SELECT COUNT(*) FROM inquiries`;
-    
+
     res.json({
       totalUsers: parseInt(usersCount[0].count),
       totalSellers: parseInt(providersCount[0].count),

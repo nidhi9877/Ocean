@@ -6,16 +6,118 @@ import { sql } from '../db.js';
 import dotenv from 'dotenv';
 import { validateCompanyEmail } from '../utils/emailValidator.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { sendPasswordResetEmail } from '../utils/email.js';
+import { TERMS_VERSION, TERMS_CONTENT_HASH } from './legal.js';
+import { sendPasswordResetEmail, sendAccountStatusEmail, sendNewRegistrationAlert, sendRegistrationOtpEmail } from '../utils/email.js';
 
 dotenv.config();
 
 const router = Router();
 
-// Register a new user
+// ─── Registration email verification (OTP) ──────────────────────────────────────
+const OTP_TTL_MINUTES = 10;
+const OTP_MAX_ATTEMPTS = 5;
+const normaliseEmail = (email) => (typeof email === 'string' ? email.trim().toLowerCase() : '');
+const hashOtp = (email, code) => crypto.createHash('sha256').update(`${email}:${code}`).digest('hex');
+
+async function verifyRegistrationOtp(email, otp) {
+  const code = String(otp || '').trim();
+  if (!/^\d{6}$/.test(code)) {
+    return { ok: false, error: 'Please enter the 6-digit verification code sent to your email.' };
+  }
+  const [row] = await sql`
+    SELECT id, code_hash, attempts FROM email_otps
+    WHERE email = ${email} AND expires_at > NOW()
+    ORDER BY created_at DESC LIMIT 1
+  `;
+  if (!row) {
+    return { ok: false, error: 'Verification code has expired. Please request a new code.' };
+  }
+  if (row.attempts >= OTP_MAX_ATTEMPTS) {
+    return { ok: false, error: 'Too many incorrect attempts. Please request a new code.' };
+  }
+  const expected = Buffer.from(row.code_hash, 'hex');
+  const actual = Buffer.from(hashOtp(email, code), 'hex');
+  if (!crypto.timingSafeEqual(expected, actual)) {
+    await sql`UPDATE email_otps SET attempts = attempts + 1 WHERE id = ${row.id}`;
+    const left = OTP_MAX_ATTEMPTS - row.attempts - 1;
+    return { ok: false, error: left > 0 ? `Incorrect verification code. ${left} attempt${left === 1 ? '' : 's'} left.` : 'Too many incorrect attempts. Please request a new code.' };
+  }
+  await sql`DELETE FROM email_otps WHERE email = ${email}`;
+  return { ok: true };
+}
+
+// Step 1 of registration: email a 6-digit code to prove the address belongs to the applicant
+router.post('/register/send-otp', async (req, res) => {
+  try {
+    const email = normaliseEmail(req.body.email);
+    const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    const emailValidation = validateCompanyEmail(email);
+    if (!emailValidation.isValid) {
+      return res.status(400).json({ error: emailValidation.error });
+    }
+
+    // Fail early on duplicates so the applicant doesn't verify an email they can't use
+    if (username) {
+      const existingUser = await sql`SELECT id FROM users WHERE username = ${username}`;
+      if (existingUser.length > 0) {
+        return res.status(409).json({ error: 'Username already exists. Please choose a different username.' });
+      }
+    }
+    const existingEmail = await sql`
+      SELECT 1 FROM buyers WHERE LOWER(email) = ${email}
+      UNION ALL
+      SELECT 1 FROM providers WHERE LOWER(email) = ${email}
+    `;
+    if (existingEmail.length > 0) {
+      return res.status(409).json({ error: 'Email already exists. Please use a different email address.' });
+    }
+
+    // Throttle: one code per minute, at most 5 per hour, per email address
+    const [recent] = await sql`
+      SELECT
+        COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '1 minute')::int AS last_minute,
+        COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '1 hour')::int AS last_hour
+      FROM email_otps WHERE email = ${email}
+    `;
+    if (recent.last_minute > 0) {
+      return res.status(429).json({ error: 'Please wait a minute before requesting another code.' });
+    }
+    if (recent.last_hour >= 5) {
+      return res.status(429).json({ error: 'Too many codes requested for this email. Please try again in an hour.' });
+    }
+
+    const code = crypto.randomInt(0, 1_000_000).toString().padStart(6, '0');
+    // Older codes for this email are invalidated; rows from the last hour are kept (expired) for throttling
+    await sql`UPDATE email_otps SET expires_at = NOW() WHERE email = ${email} AND expires_at > NOW()`;
+    await sql`DELETE FROM email_otps WHERE created_at < NOW() - INTERVAL '1 day'`;
+    await sql`
+      INSERT INTO email_otps (email, code_hash, expires_at)
+      VALUES (${email}, ${hashOtp(email, code)}, NOW() + (${OTP_TTL_MINUTES} * INTERVAL '1 minute'))
+    `;
+
+    try {
+      await sendRegistrationOtpEmail({ to: email, username, code, expiresInMinutes: OTP_TTL_MINUTES });
+    } catch (mailError) {
+      console.error('Registration OTP email failed:', mailError.message);
+      return res.status(502).json({ error: 'Could not send the verification email. Please check the address and try again.' });
+    }
+
+    res.json({ message: `A verification code has been sent to ${email}.`, expiresInMinutes: OTP_TTL_MINUTES });
+  } catch (error) {
+    console.error('Send OTP error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Register a new user (step 2 — requires the emailed OTP)
 router.post('/register', async (req, res) => {
   try {
-    const { username, password, role, email, phone, imo_number, ship_name, ship_type, country } = req.body;
+    const { username, password, role, phone, imo_number, ship_name, ship_type, country, otp, acceptedTerms, termsVersion } = req.body;
+    const email = normaliseEmail(req.body.email);
 
     if (!username || !password || !role) {
       return res.status(400).json({ error: 'Username, password, and role are required' });
@@ -34,12 +136,20 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Role must be either "buyer" or "seller"' });
     }
 
+    // Terms & Conditions must be accepted, and against the wording currently published
+    if (acceptedTerms !== true) {
+      return res.status(400).json({ error: 'You must accept the Terms & Conditions to register.', termsError: true });
+    }
+    if (termsVersion !== TERMS_VERSION) {
+      return res.status(409).json({ error: 'Our Terms & Conditions have been updated. Please review and accept the latest version.', termsError: true, termsVersion: TERMS_VERSION });
+    }
+
     const isSeller = role === 'provider' || role === 'seller';
 
     // Additional validation for buyer and seller
     if (role === 'buyer' || isSeller) {
-      if (role === 'buyer' && (!email || !phone)) {
-        return res.status(400).json({ error: 'All buyer details (email, phone) are required' });
+      if (!email || !phone) {
+        return res.status(400).json({ error: 'Email and phone are required' });
       }
 
       if (email) {
@@ -71,12 +181,18 @@ router.post('/register', async (req, res) => {
 
     // Check if email already exists
     if (email) {
-      const existingBuyerEmail = await sql`SELECT user_id FROM buyers WHERE email = ${email}`;
-      const existingProviderEmail = await sql`SELECT user_id FROM providers WHERE email = ${email}`;
+      const existingBuyerEmail = await sql`SELECT user_id FROM buyers WHERE LOWER(email) = ${email}`;
+      const existingProviderEmail = await sql`SELECT user_id FROM providers WHERE LOWER(email) = ${email}`;
       
       if (existingBuyerEmail.length > 0 || existingProviderEmail.length > 0) {
         return res.status(409).json({ error: 'Email already exists. Please use a different email address.' });
       }
+    }
+
+    // Email ownership must be proven with the code sent by /register/send-otp
+    const otpCheck = await verifyRegistrationOtp(email, otp);
+    if (!otpCheck.ok) {
+      return res.status(400).json({ error: otpCheck.error, otpError: true });
     }
 
     // Hash password
@@ -96,8 +212,8 @@ router.post('/register', async (req, res) => {
     // If buyer, insert buyer details
     if (role === 'buyer') {
       await sql`
-        INSERT INTO buyers (user_id, email, phone, country)
-        VALUES (${user.id}, ${email}, ${phone}, ${country || null})
+        INSERT INTO buyers (user_id, email, phone, country, status, email_verified_at)
+        VALUES (${user.id}, ${email}, ${phone}, ${country || null}, 'pending', NOW())
       `;
     }
 
@@ -106,25 +222,31 @@ router.post('/register', async (req, res) => {
       const { companyName, companyType, address, paymentMode, country: providerCountry } = req.body;
       const finalCountry = providerCountry || country || null;
       await sql`
-        INSERT INTO providers (user_id, company_name, contact_person, email, phone, address, description, payment_mode, country, status)
-        VALUES (${user.id}, ${companyName || username}, ${username}, ${email}, ${phone}, ${address || 'Not specified'}, ${companyType || ''}, ${paymentMode || 'pre-payment'}, ${finalCountry}, 'pending')
+        INSERT INTO providers (user_id, company_name, contact_person, email, phone, address, description, payment_mode, country, status, email_verified_at)
+        VALUES (${user.id}, ${companyName || username}, ${username}, ${email}, ${phone}, ${address || 'Not specified'}, ${companyType || ''}, ${paymentMode || 'pre-payment'}, ${finalCountry}, 'pending', NOW())
       `;
     }
 
-    // --- Single Session Management ---
-    const sessionToken = crypto.randomUUID();
-    await sql`INSERT INTO user_sessions (user_id, session_token, last_active) VALUES (${user.id}, ${sessionToken}, NOW())`;
+    // Record the acceptance as evidence: who, which version, when, from where
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const ipAddress = (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor || '').split(',')[0].trim() || req.socket?.remoteAddress || null;
+    await sql`
+      INSERT INTO terms_acceptances (user_id, username, role, email, terms_version, content_hash, ip_address, user_agent)
+      VALUES (${user.id}, ${user.username}, ${effectiveRole}, ${email}, ${TERMS_VERSION}, ${TERMS_CONTENT_HASH},
+              ${ipAddress}, ${(req.headers['user-agent'] || '').slice(0, 500)})
+    `;
 
-    // Generate JWT token with session ID
-    const token = jwt.sign(
-      { id: user.id, username: user.username, role: effectiveRole, sessionId: sessionToken },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+    // No session is issued here: every new buyer / seller must be approved by management before signing in
+    sendAccountStatusEmail({ to: email, username: user.username, role: effectiveRole, status: 'pending' })
+      .catch(err => console.error('Registration acknowledgement email failed:', err.message));
+    if (process.env.MANAGEMENT_NOTIFY_EMAIL) {
+      sendNewRegistrationAlert({ to: process.env.MANAGEMENT_NOTIFY_EMAIL, username: user.username, role: effectiveRole, email })
+        .catch(err => console.error('Management registration alert failed:', err.message));
+    }
 
     res.status(201).json({
-      message: 'User registered successfully',
-      token,
+      message: 'Registration received. Your account is pending approval by management — you will be notified by email once it is reviewed.',
+      pendingApproval: true,
       user: { id: user.id, username: user.username, role: effectiveRole }
     });
   } catch (error) {
@@ -180,6 +302,17 @@ router.post('/login', async (req, res) => {
         } else if (status === 'rejected') {
           return res.status(403).json({ error: 'Account application was rejected.' });
         }
+      }
+    }
+
+    // Buyers also require management approval
+    if (user.role === 'buyer') {
+      const buyerData = await sql`SELECT status FROM buyers WHERE user_id = ${user.id}`;
+      const status = buyerData[0]?.status;
+      if (status === 'pending') {
+        return res.status(403).json({ error: 'Account pending approval by management.' });
+      } else if (status === 'rejected') {
+        return res.status(403).json({ error: 'Account application was rejected.' });
       }
     }
 
