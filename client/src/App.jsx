@@ -40,7 +40,8 @@ function ProtectedRoute({ children, allowedRole }) {
 
   if (allowedRole) {
     const isAllowedSeller = (allowedRole === 'seller' || allowedRole === 'provider') && isUserSeller;
-    const isAllowedExact = user.role === allowedRole;
+    // Resellers use the buyer area (search, ships, enquiries) with a prepaid wallet
+    const isAllowedExact = user.role === allowedRole || (allowedRole === 'buyer' && user.role === 'reseller');
     if (!isAllowedSeller && !isAllowedExact) {
       if (isUserSeller) return <Navigate to="/seller/dashboard" replace />;
       if (user.role === 'management') return <Navigate to="/management/dashboard" replace />;
@@ -104,6 +105,10 @@ function AppRoutes() {
       <Route
         path="/buyer/register"
         element={<BuyerRegister />}
+      />
+      <Route
+        path="/reseller/register"
+        element={<BuyerRegister key="reseller" role="reseller" />}
       />
       <Route
         path="/admin"

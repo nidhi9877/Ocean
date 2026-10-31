@@ -5,12 +5,33 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import MarineNewsTicker from '../components/MarineNewsTicker';
 import UploadModal from '../components/UploadModal';
+import SellerIntelligenceModal from '../components/SellerIntelligenceModal';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 const API = '/api';
+
+// Low-stock warning (red pop-up). Must match LOW_STOCK_THRESHOLD in server/cron.js,
+// which emails the same warning to sellers every day at 5 PM.
+const LOW_STOCK_THRESHOLD = 5;
+const LOW_STOCK_POPUP_MS = 10 * 1000;            // pop-up stays on screen for 10 s
+const LOW_STOCK_INTERVAL_MS = 90 * 60 * 1000;    // and comes back every 90 min
+
+const showLowStockPopup = (products) => {
+  const lowStock = products.filter(p => (Number(p.quantity) || 0) < LOW_STOCK_THRESHOLD);
+  if (lowStock.length === 0) return false;
+  const opts = (id) => ({ duration: LOW_STOCK_POPUP_MS, id, style: { fontSize: '0.9rem', padding: '12px 16px' } });
+  lowStock.slice(0, 3).forEach(p => {
+    const name = (p.product_name || '').trim() || (p.part_number ? `Part No. ${p.part_number}` : p.category || 'A product');
+    toast.error(`${name} is running low, you have only ${Number(p.quantity) || 0} left! Please refill or update your stock.`, opts(`low_stock_${p.id}`));
+  });
+  if (lowStock.length > 3) {
+    toast.error(`And ${lowStock.length - 3} more products are running low.`, opts('low_stock_more'));
+  }
+  return true;
+};
 
 const getPageNumbers = (current, total) => {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -73,6 +94,25 @@ export default function ProviderDashboard() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [deleting, setDeleting] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showIntelligence, setShowIntelligence] = useState(false);
+
+  // Low-stock pop-up: on arrival, then every 90 min. The last time it was shown is kept in
+  // localStorage so reloading the page or editing products doesn't bring it back early.
+  const productsRef = useRef(products);
+  productsRef.current = products;
+  const [productsLoaded, setProductsLoaded] = useState(false);
+  useEffect(() => {
+    if (!productsLoaded || !user) return;
+    const key = `lowStockPopupAt_${user.id}`;
+    const check = () => {
+      const last = Number(localStorage.getItem(key)) || 0;
+      if (Date.now() - last < LOW_STOCK_INTERVAL_MS) return;
+      if (showLowStockPopup(productsRef.current)) localStorage.setItem(key, String(Date.now()));
+    };
+    check();
+    const timer = setInterval(check, 60 * 1000);
+    return () => clearInterval(timer);
+  }, [productsLoaded, user]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
   // Pagination: 15 items per page
@@ -160,26 +200,10 @@ export default function ProviderDashboard() {
       setProvider(res.data.seller || res.data.provider);
       const fetchedProducts = res.data.products || [];
       setProducts(fetchedProducts);
+      setProductsLoaded(true);
       
       // Default to "All Departments" (selectedDepartment remains empty string '')
       
-      const lowStock = fetchedProducts.filter(p => Number(p.quantity) < 5);
-      if (lowStock.length > 0) {
-        lowStock.slice(0, 3).forEach(p => {
-          toast.error(`${p.product_name} is running low, you have only ${p.quantity} products left!`, { 
-            duration: 5000,
-            id: `low_stock_${p.id}`,
-            style: { fontSize: '0.9rem', padding: '12px 16px' }
-          });
-        });
-        if (lowStock.length > 3) {
-          toast.error(`And ${lowStock.length - 3} more products are running low.`, { 
-            duration: 5000,
-            id: 'low_stock_more',
-            style: { fontSize: '0.9rem', padding: '12px 16px' }
-          });
-        }
-      }
     } catch (err) {
       console.error('Failed to fetch profile:', err);
     } finally {
@@ -797,6 +821,15 @@ export default function ProviderDashboard() {
               onClick={() => navigate('/seller/inquiries')}
             >
               📨 View Inquiries
+            </button>
+
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowIntelligence(true)}
+              disabled={!provider}
+              style={{ color: '#2563eb', borderColor: 'rgba(37,99,235,0.4)', fontWeight: 600 }}
+            >
+              🧠 Seller Intelligence
             </button>
           </div>
         </div>
@@ -1442,6 +1475,7 @@ export default function ProviderDashboard() {
           </>
         )}
       </div>
+      {showIntelligence && <SellerIntelligenceModal token={token} onClose={() => setShowIntelligence(false)} />}
     </>
   );
 }

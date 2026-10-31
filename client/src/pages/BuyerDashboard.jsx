@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import axios from 'axios';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
+import ResellerWallet from '../components/ResellerWallet';
 import MarineNewsTicker from '../components/MarineNewsTicker';
 
 const API = '/api';
@@ -168,6 +169,10 @@ const getPageNumbers = (current, total) => {
 
 export default function BuyerDashboard() {
   const { user, token } = useAuth();
+  // Resellers pay per enquiry from a prepaid wallet
+  const isReseller = user?.role === 'reseller';
+  const walletRef = useRef(null);
+  const [walletInfo, setWalletInfo] = useState(null);
   const [allProducts, setAllProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [hasSearched, setHasSearched] = useState(true);
@@ -302,7 +307,8 @@ export default function BuyerDashboard() {
 
   // Load buyer's ships on mount
   const loadShips = useCallback(async () => {
-    if (!token) { setShipsLoading(false); return; }
+    // Resellers aren't ship owners — no fleet, so every ship-based panel stays hidden
+    if (!token || isReseller) { setShipsLoading(false); return; }
     try {
       const r = await axios.get(`${API}/buyer/ships`, { headers: { Authorization: `Bearer ${token}` } });
       const loadedShips = r.data || [];
@@ -318,7 +324,7 @@ export default function BuyerDashboard() {
       });
     } catch (e) { console.error('Failed to load ships:', e); }
     finally { setShipsLoading(false); }
-  }, [token, hasManuallyClearedShip]);
+  }, [token, hasManuallyClearedShip, isReseller]);
 
   useEffect(() => { loadShips(); }, [loadShips]);
 
@@ -1083,7 +1089,7 @@ export default function BuyerDashboard() {
     if (sendingIds.has(selectedProduct.id)) return;
     setSendingIds(prev => new Set(prev).add(selectedProduct.id));
     try {
-      await axios.post(`${API}/buyer/inquiries`, {
+      const inquiryRes = await axios.post(`${API}/buyer/inquiries`, {
         selections: [{ provider_id: selectedProduct.provider_id, product_id: selectedProduct.id }],
         destination_location: inquiryMeta.destination.trim(),
         delivery_requirements: {
@@ -1094,6 +1100,8 @@ export default function BuyerDashboard() {
         cc: emailData.cc ? emailData.cc.trim() : null,
         bcc: emailData.bcc ? emailData.bcc.trim() : null,
       }, { headers: { Authorization: `Bearer ${token}` } });
+      const charged = inquiryRes.data?.charged;
+      if (isReseller) walletRef.current?.refresh();
 
       const to = selectedProduct.provider_email || '';
       const cc = emailData.cc ? emailData.cc.trim() : '';
@@ -1107,9 +1115,14 @@ export default function BuyerDashboard() {
         window.open(emailUrl, '_blank', 'noreferrer');
       }
 
-      toast.success(`✅ Inquiry registered! Opening mail client to contact ${selectedProduct.company_name}...`, { duration: 5000 });
+      toast.success(`✅ Inquiry registered!${charged ? ` ₹${charged} deducted from your wallet (balance ₹${inquiryRes.data.walletBalance}).` : ''} Opening mail client to contact ${selectedProduct.company_name}...`, { duration: 6000 });
       setShowComposeModal(false);
     } catch (err) {
+      if (err.response?.status === 402) {
+        setShowComposeModal(false);
+        walletRef.current?.open(err.response.data.error);
+        return;
+      }
       toast.error(err.response?.data?.error || 'Failed to send inquiry.');
     } finally {
       setSendingIds(prev => { const n = new Set(prev); n.delete(selectedProduct.id); return n; });
@@ -1117,6 +1130,17 @@ export default function BuyerDashboard() {
   };
 
   const openComposeModal = (product) => {
+    if (isReseller && walletInfo) {
+      const { wallet, settings } = walletInfo;
+      if (!wallet.activated) {
+        walletRef.current?.open(`Recharge at least ₹${settings.min_initial_recharge} to activate your wallet and start sending enquiries.`);
+        return;
+      }
+      if (wallet.balance < settings.enquiry_price) {
+        walletRef.current?.open(`Each enquiry costs ₹${settings.enquiry_price}, but your balance is ₹${wallet.balance}. Please recharge to continue.`);
+        return;
+      }
+    }
     if (!inquiryMeta.destination.trim()) {
       toast.error('Please enter Destination Port in the inquiry details section.');
       return;
@@ -1171,11 +1195,12 @@ export default function BuyerDashboard() {
             <p style={{ color:'var(--text-secondary)', marginTop:'0.25rem' }}>Search marine spare parts and send inquiries directly to sellers.</p>
           </div>
           <div style={{ display:'flex', gap:'0.75rem', flexWrap:'wrap' }}>
-            <button onClick={() => setShowShipsModal(true)} className="btn btn-primary" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', background: ships.length > 0 ? 'linear-gradient(135deg, #059669, #10b981)' : undefined, position:'relative' }}>
+            {!isReseller && <button onClick={() => setShowShipsModal(true)} className="btn btn-primary" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', background: ships.length > 0 ? 'linear-gradient(135deg, #059669, #10b981)' : undefined, position:'relative' }}>
               <span>🚢</span> My Ships
               {ships.length > 0 && <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:20, height:20, borderRadius:'50%', background:'rgba(255,255,255,0.3)', fontSize:'0.7rem', fontWeight:'700' }}>{ships.length}</span>}
-            </button>
+            </button>}
             <a href="/buyer/inquiries" className="btn btn-primary" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem' }}><span>📨</span> My recents</a>
+            {isReseller && <ResellerWallet ref={walletRef} token={token} user={user} onChange={setWalletInfo} />}
           </div>
         </div>
 
@@ -2445,7 +2470,7 @@ export default function BuyerDashboard() {
       )}
 
       {/* ═══ SHIPS MANAGEMENT MODAL ═══ */}
-      {showShipsModal && (
+      {showShipsModal && !isReseller && (
         <div style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', animation:'fadeIn 0.2s' }}
              onClick={handleCloseShipsModal}>
           <div style={{ background:'var(--bg-card)', borderRadius:'var(--radius-lg)', boxShadow:'0 25px 60px rgba(0,0,0,0.25)', width:860, maxWidth:'95vw', maxHeight:'88vh', display:'flex', flexDirection:'column', overflow:'hidden', animation:'scaleIn 0.25s' }}

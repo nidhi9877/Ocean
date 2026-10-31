@@ -132,9 +132,12 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 8 characters and contain texts, numbers, and at least one special character' });
     }
 
-    if (!['buyer', 'provider', 'seller'].includes(role)) {
-      return res.status(400).json({ error: 'Role must be either "buyer" or "seller"' });
+    if (!['buyer', 'provider', 'seller', 'reseller'].includes(role)) {
+      return res.status(400).json({ error: 'Role must be "buyer", "seller" or "reseller"' });
     }
+    // Resellers work like buyers but pay per enquiry from a prepaid wallet. Like everyone else they
+    // need management approval to sign in; after that, enquiries stay locked until the first ₹500 recharge.
+    const isReseller = role === 'reseller';
 
     // Terms & Conditions must be accepted, and against the wording currently published
     if (acceptedTerms !== true) {
@@ -147,7 +150,7 @@ router.post('/register', async (req, res) => {
     const isSeller = role === 'provider' || role === 'seller';
 
     // Additional validation for buyer and seller
-    if (role === 'buyer' || isSeller) {
+    if (role === 'buyer' || isReseller || isSeller) {
       if (!email || !phone) {
         return res.status(400).json({ error: 'Email and phone are required' });
       }
@@ -209,12 +212,15 @@ router.post('/register', async (req, res) => {
 
     const user = result[0];
 
-    // If buyer, insert buyer details
-    if (role === 'buyer') {
+    // If buyer or reseller, insert buyer details (resellers use the buyer profile and dashboard)
+    if (role === 'buyer' || isReseller) {
       await sql`
         INSERT INTO buyers (user_id, email, phone, country, status, email_verified_at)
         VALUES (${user.id}, ${email}, ${phone}, ${country || null}, 'pending', NOW())
       `;
+    }
+    if (isReseller) {
+      await sql`INSERT INTO wallets (user_id) VALUES (${user.id}) ON CONFLICT (user_id) DO NOTHING`;
     }
 
     // If seller / provider, insert basic seller details
@@ -236,7 +242,7 @@ router.post('/register', async (req, res) => {
               ${ipAddress}, ${(req.headers['user-agent'] || '').slice(0, 500)})
     `;
 
-    // No session is issued here: every new buyer / seller must be approved by management before signing in
+    // No session is issued here: every new buyer / seller / reseller must be approved by management before signing in
     sendAccountStatusEmail({ to: email, username: user.username, role: effectiveRole, status: 'pending' })
       .catch(err => console.error('Registration acknowledgement email failed:', err.message));
     if (process.env.MANAGEMENT_NOTIFY_EMAIL) {
@@ -305,8 +311,8 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    // Buyers also require management approval
-    if (user.role === 'buyer') {
+    // Buyers and resellers also require management approval
+    if (user.role === 'buyer' || user.role === 'reseller') {
       const buyerData = await sql`SELECT status FROM buyers WHERE user_id = ${user.id}`;
       const status = buyerData[0]?.status;
       if (status === 'pending') {

@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import Navbar from '../components/Navbar';
 import { LineChart, BarChart, RankBars, SERIES } from '../components/MgmtCharts';
 import { DataTable, StatusPill, termsColumn, termsFields, termsLogColumns, fmtDate, fmtDateTime, fmtNum, fmtCompact, fmtPct, timeAgo, greeting, delta } from '../components/MgmtUI';
+import AdminResellers from '../components/AdminResellers';
 import './ManagementDashboard.css';
 
 const API = '/api';
@@ -183,6 +184,7 @@ export default function AdminDashboard() {
     { id: 'intelligence', icon: '🧠', label: 'Parts Intelligence' },
     { id: 'buyers',       icon: '🚢', label: 'Buyers',        count: buyers.length },
     { id: 'sellers',      icon: '🏭', label: 'Sellers',       count: sellers.length },
+    { id: 'resellers',    icon: '🤝', label: 'Resellers & Wallets', count: users.filter(u => u.role === 'reseller').length },
     { id: 'fleet',        icon: '⚙️', label: 'Fleet Registry', count: fleetParts.length },
     { id: 'inquiries',    icon: '✉️', label: 'Inquiries',     count: inquiries.length },
     { id: 'users',        icon: '🔐', label: 'Users & Access', count: users.length },
@@ -194,6 +196,7 @@ export default function AdminDashboard() {
     intelligence: 'What buyers have on their vessels, what they are asking for, and where supply falls short.',
     buyers: 'Every buyer with full contact details, fleet size and purchasing activity. Click a row for the full profile.',
     sellers: 'Every seller with contact details, inventory and inquiry performance. Click a row for listings.',
+    resellers: 'Reseller wallets — pricing per enquiry, balances and recharge history. Click a row to top up or correct a wallet.',
     fleet: 'Every part recorded on every buyer vessel — searchable and exportable.',
     inquiries: 'All inquiries with buyer and seller contact details.',
     users: 'All login accounts, verification state and session activity.',
@@ -473,6 +476,8 @@ export default function AdminDashboard() {
               statusOptions={['approved', 'pending', 'rejected']} onRowClick={(r) => setDrawer({ kind: 'seller', id: r.id })} exportName="sellers-full" />
           )}
 
+          {section === 'resellers' && <AdminResellers authH={authH} />}
+
           {section === 'fleet' && (
             <DataTable rows={fleetParts} columns={fleetColumns} searchKeys={['equipment', 'manufacturer', 'model', 'ship_name', 'imo_number', 'buyer_username', 'buyer_email', 'buyer_country']}
               onRowClick={(r) => setDrawer({ kind: 'buyer', id: r.buyer_id })} exportName="fleet-parts" emptyText="No parts recorded on buyer vessels yet." />
@@ -498,7 +503,7 @@ export default function AdminDashboard() {
 
           {section === 'users' && (
             <DataTable rows={users} columns={userColumns} searchKeys={['username', 'email', 'phone', 'company_name', 'role']}
-              statusKey="role" statusOptions={['buyer', 'seller', 'provider', 'management', 'admin']} exportName="users" />
+              statusKey="role" statusOptions={['buyer', 'reseller', 'seller', 'provider', 'management', 'admin']} exportName="users" />
           )}
         </main>
       </div>

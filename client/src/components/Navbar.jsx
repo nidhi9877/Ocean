@@ -24,7 +24,7 @@ export default function Navbar() {
         {user && (
           <span className="nav-user">
             <span>{user.username}</span>
-            <span className={`nav-user-badge ${user.role === 'seller' || user.role === 'provider' ? 'badge-seller' : user.role === 'management' ? 'badge-management' : 'badge-buyer'}`}>
+            <span className={`nav-user-badge ${user.role === 'seller' || user.role === 'provider' ? 'badge-seller' : user.role === 'management' ? 'badge-management' : user.role === 'reseller' ? 'badge-reseller' : 'badge-buyer'}`}>
               {user.role === 'provider' ? 'seller' : user.role}
             </span>
           </span>

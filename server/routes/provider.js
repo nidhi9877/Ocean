@@ -589,4 +589,111 @@ router.delete('/products', authenticateToken, async (req, res) => {
   }
 });
 
+// ─── GET /intelligence — Seller Intelligence ────────────────────────────────────
+// Stock totals for this seller plus, for every Equipment / Manufacturer / Model the
+// seller stocks, how many buyer vessels have it installed ("live ships") and how much
+// of the same thing the whole marketplace holds.
+// Matching is on normalised text (case, spaces and punctuation ignored): same
+// manufacturer + same model number. When the seller left the model blank, equipment
+// name is used in its place.
+router.get('/intelligence', authenticateToken, async (req, res) => {
+  try {
+    const providerRows = await sql`SELECT id FROM providers WHERE user_id = ${req.user.id}`;
+    if (providerRows.length === 0) return res.status(403).json({ error: 'Only registered sellers can view Seller Intelligence.' });
+    const providerId = providerRows[0].id;
+
+    const [marketProducts, specs] = await Promise.all([
+      sql`SELECT id, provider_id, product_name, part_number, category, brand, model_number, quantity, equipment_condition, part_category FROM products`,
+      sql`SELECT ship_id, equipment, manufacturer, model FROM buyer_specifications WHERE ship_id IS NOT NULL`,
+    ]);
+
+    const norm = (v) => String(v ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const kind = (p) => (norm(p.part_category) === 'completeset' ? 'set' : 'spare');
+    const isRefurb = (p) => norm(p.equipment_condition).includes('refurb');
+    const qty = (p) => Number(p.quantity) || 0;
+    // Model number identifies the equipment; fall back to equipment name when no model was given
+    const matchKey = (equipment, manufacturer, model) =>
+      norm(model) ? `m:${norm(manufacturer)}|${norm(model)}` : `e:${norm(manufacturer)}|${norm(equipment)}`;
+
+    // Installed base: distinct vessels per key
+    const shipsByKey = new Map();
+    for (const s of specs) {
+      for (const key of new Set([matchKey(s.equipment, s.manufacturer, s.model), matchKey(s.equipment, s.manufacturer, '')])) {
+        if (!shipsByKey.has(key)) shipsByKey.set(key, new Set());
+        shipsByKey.get(key).add(s.ship_id);
+      }
+    }
+
+    // Whole-market supply per type + key
+    const marketByKey = new Map();
+    for (const p of marketProducts) {
+      const key = `${kind(p)}#${matchKey(p.category, p.brand, p.model_number)}`;
+      const m = marketByKey.get(key) || { units: 0, listings: 0, sellers: new Set() };
+      m.units += qty(p);
+      m.listings += 1;
+      m.sellers.add(p.provider_id);
+      marketByKey.set(key, m);
+    }
+
+    const mine = marketProducts.filter(p => p.provider_id === providerId);
+
+    const summary = { total_units: 0, total_listings: mine.length, new_spares: 0, refurbished_spares: 0, new_sets: 0, refurbished_sets: 0 };
+    for (const p of mine) {
+      summary.total_units += qty(p);
+      const field = `${isRefurb(p) ? 'refurbished' : 'new'}_${kind(p) === 'set' ? 'sets' : 'spares'}`;
+      summary[field] += qty(p);
+    }
+
+    // Group this seller's stock into Equipment / Manufacturer / Model rows
+    const groups = new Map();
+    for (const p of mine) {
+      const t = kind(p);
+      const key = matchKey(p.category, p.brand, p.model_number);
+      const gk = `${t}#${key}`;
+      if (!groups.has(gk)) {
+        groups.set(gk, {
+          type: t, key,
+          equipment: (p.category || '').trim(), manufacturer: (p.brand || '').trim(), model: (p.model_number || '').trim(),
+          own_units: 0, own_listings: 0, names: new Map(),
+        });
+      }
+      const g = groups.get(gk);
+      g.own_units += qty(p);
+      g.own_listings += 1;
+      if (!g.equipment && p.category) g.equipment = p.category.trim();
+      const name = t === 'set'
+        ? [p.brand, p.model_number].map(v => (v || '').trim()).filter(Boolean).join(' ') || (p.product_name || '').trim()
+        : (p.product_name || '').trim() || (p.part_number ? `Part No. ${p.part_number.trim()}` : '');
+      if (name && !g.names.has(name.toLowerCase())) g.names.set(name.toLowerCase(), name);
+    }
+
+    const rows = [...groups.values()].map(g => {
+      const market = marketByKey.get(`${g.type}#${g.key}`) || { units: 0, listings: 0, sellers: new Set() };
+      return {
+        type: g.type,
+        equipment: g.equipment,
+        manufacturer: g.manufacturer,
+        model: g.model,
+        live_ships: shipsByKey.get(g.key)?.size || 0,
+        own_units: g.own_units,
+        own_listings: g.own_listings,
+        names: [...g.names.values()],
+        market_units: market.units,
+        market_listings: market.listings,
+        market_sellers: market.sellers.size,
+        other_sellers: [...market.sellers].filter(id => id !== providerId).length,
+      };
+    }).sort((a, b) => b.live_ships - a.live_ships || b.own_units - a.own_units || a.equipment.localeCompare(b.equipment));
+
+    res.json({
+      summary,
+      spares: rows.filter(r => r.type === 'spare'),
+      sets: rows.filter(r => r.type === 'set'),
+    });
+  } catch (error) {
+    console.error('Error building seller intelligence:', error);
+    res.status(500).json({ error: 'Failed to load Seller Intelligence' });
+  }
+});
+
 export default router;

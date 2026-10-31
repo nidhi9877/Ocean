@@ -1,5 +1,10 @@
 import cron from 'node-cron';
 import { sql } from './db.js';
+import { sendLowStockEmail } from './utils/email.js';
+
+// Must match LOW_STOCK_THRESHOLD in client/src/pages/ProviderDashboard.jsx (the red pop-up)
+export const LOW_STOCK_THRESHOLD = 5;
+const LOW_STOCK_EMAIL_TZ = process.env.LOW_STOCK_EMAIL_TZ || 'Asia/Kolkata';
 
 /**
  * MarineStockHub Background Cron Jobs
@@ -42,4 +47,49 @@ export function initCronJobs() {
   cron.schedule('0 * * * *', () => {
     cleanupExpiredRecords('Hourly Cron');
   });
+
+  // Every evening at 5 PM: email each approved seller the same low-stock warning the dashboard pops up
+  cron.schedule('0 17 * * *', () => {
+    sendDailyLowStockEmails();
+  }, { timezone: LOW_STOCK_EMAIL_TZ });
+  console.log(`📧 Daily low-stock emails scheduled for 5:00 PM (${LOW_STOCK_EMAIL_TZ})`);
+}
+
+export async function sendDailyLowStockEmails() {
+  try {
+    const rows = await sql`
+      SELECT pr.id AS provider_id, pr.email, pr.company_name, u.username,
+             p.product_name, p.part_number, p.category, p.brand, p.model_number, p.quantity
+      FROM products p
+      JOIN providers pr ON pr.id = p.provider_id
+      JOIN users u ON u.id = pr.user_id
+      WHERE COALESCE(p.quantity, 0) < ${LOW_STOCK_THRESHOLD}
+        AND COALESCE(pr.status, 'approved') = 'approved'
+      ORDER BY pr.id, p.quantity ASC, p.product_name
+    `;
+
+    const bySeller = new Map();
+    for (const r of rows) {
+      if (!bySeller.has(r.provider_id)) {
+        bySeller.set(r.provider_id, { to: r.email, username: r.username, companyName: r.company_name, products: [] });
+      }
+      bySeller.get(r.provider_id).products.push({
+        ...r,
+        name: (r.product_name || '').trim() || (r.part_number ? `Part No. ${r.part_number}` : r.category || 'Unnamed product'),
+      });
+    }
+
+    let sent = 0;
+    for (const seller of bySeller.values()) {
+      try {
+        await sendLowStockEmail({ ...seller, threshold: LOW_STOCK_THRESHOLD });
+        sent++;
+      } catch (err) {
+        console.error(`❌ [Low Stock Email] Failed for ${seller.to}:`, err.message);
+      }
+    }
+    console.log(`📧 [Low Stock Email] Sent ${sent}/${bySeller.size} seller email(s).`);
+  } catch (err) {
+    console.error('❌ [Low Stock Email] Job failed:', err.message);
+  }
 }

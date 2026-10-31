@@ -476,7 +476,7 @@ const ACCOUNT_STATUS_COPY = {
   },
 };
 
-function buildSimpleEmailHTML({ heading, paragraphs, ctaLabel, ctaUrl }) {
+function buildSimpleEmailHTML({ heading, paragraphs, ctaLabel, ctaUrl, bodyHtml = '' }) {
   const currentYear = new Date().getFullYear();
   return `
 <!DOCTYPE html>
@@ -493,6 +493,7 @@ function buildSimpleEmailHTML({ heading, paragraphs, ctaLabel, ctaUrl }) {
         <tr><td style="padding:36px 40px 24px 40px;color:#1e293b;">
           <h2 style="margin:0 0 16px 0;font-size:20px;">${heading}</h2>
           ${paragraphs.map(p => `<p style="margin:0 0 14px 0;font-size:15px;line-height:1.6;">${p}</p>`).join('')}
+          ${bodyHtml}
           ${ctaLabel ? `
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin:12px auto 8px auto;">
             <tr><td style="background:#2563eb;border-radius:10px;">
@@ -511,10 +512,14 @@ function buildSimpleEmailHTML({ heading, paragraphs, ctaLabel, ctaUrl }) {
 }
 
 export async function sendAccountStatusEmail({ to, username, role, status }) {
-  const copy = ACCOUNT_STATUS_COPY[status];
-  if (!to || !copy) return;
+  const base = ACCOUNT_STATUS_COPY[status];
+  if (!to || !base) return;
+  // Approved resellers are told how to unlock enquiries
+  const copy = role === 'reseller' && status === 'approved'
+    ? { ...base, body: `${base.body} To start sending enquiries to sellers, recharge your wallet with a minimum of ₹500 from your dashboard — a fixed amount is deducted each time you send an enquiry.` }
+    : base;
 
-  const roleLabel = role === 'buyer' ? 'buyer' : 'seller';
+  const roleLabel = role === 'buyer' || role === 'reseller' ? role : 'seller';
   const html = buildSimpleEmailHTML({
     heading: copy.heading,
     paragraphs: [
@@ -576,5 +581,42 @@ export async function sendRegistrationOtpEmail({ to, username, code, expiresInMi
   });
   if (error) throw new Error(`Email delivery failed: ${error.message}`);
   console.log(`✅ Registration OTP sent to ${to} (Message ID: ${data?.id})`);
+  return data;
+}
+
+
+// ─── Daily Low-Stock Email (sent by cron at 5 PM) ───────────────────────────────
+// Email version of the red low-stock pop-up on the seller dashboard.
+export async function sendLowStockEmail({ to, username, companyName, products, threshold }) {
+  if (!to || !products?.length) return;
+  const cell = 'padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:13px;text-align:left;';
+  const head = `${cell}background:#fef2f2;color:#991b1b;font-weight:700;`;
+  const rows = products.map(p => `
+    <tr>
+      <td style="${cell}font-weight:600;">${escapeHtml(p.name)}</td>
+      <td style="${cell}">${escapeHtml([p.category, p.brand, p.model_number].filter(Boolean).join(' · ') || '—')}</td>
+      <td style="${cell}">${escapeHtml(p.part_number || '—')}</td>
+      <td style="${cell}text-align:center;font-weight:800;color:#dc2626;">${Number(p.quantity) || 0}</td>
+    </tr>`).join('');
+
+  const html = buildSimpleEmailHTML({
+    heading: '⚠️ Low stock warning — please refill or update your stock',
+    paragraphs: [
+      `Hello <strong>${escapeHtml(companyName || username)}</strong>,`,
+      `<strong>${products.length}</strong> of your product${products.length === 1 ? ' is' : 's are'} running low (fewer than ${threshold} units left). Refill them, or update the quantity if your stock has changed, so buyers see accurate availability.`,
+    ],
+    bodyHtml: `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #fecaca;border-radius:10px;border-collapse:separate;overflow:hidden;margin:4px 0 18px 0;">
+        <tr><th style="${head}">Product</th><th style="${head}">Equipment · Maker · Model</th><th style="${head}">Part No.</th><th style="${head}text-align:center;">Qty left</th></tr>
+        ${rows}
+      </table>`,
+    ctaLabel: 'Update My Stock',
+    ctaUrl: `${FRONTEND_URL}/seller/dashboard`,
+  });
+
+  const subject = `Low stock alert: ${products.length} product${products.length === 1 ? '' : 's'} running low on MarineStockHub`;
+  const { data, error } = await sendMail({ from: SYSTEM_FROM, to, subject, html });
+  if (error) throw new Error(`Email delivery failed: ${error.message}`);
+  console.log(`✅ Low stock email sent to ${to} (${products.length} products, Message ID: ${data?.id})`);
   return data;
 }

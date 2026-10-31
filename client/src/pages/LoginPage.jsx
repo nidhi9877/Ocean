@@ -232,6 +232,17 @@ export default function LoginPage() {
                 <span className="role-btn-label">Buyer</span>
                 <span className="role-btn-desc">Browse & purchase</span>
               </button>
+
+              <button
+                type="button"
+                className="role-btn"
+                onClick={() => navigate('/reseller/register')}
+                disabled={loading}
+              >
+                <span className="role-btn-icon">🤝</span>
+                <span className="role-btn-label">Reseller</span>
+                <span className="role-btn-desc">Pay per enquiry</span>
+              </button>
             </div>
 
             <div style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>

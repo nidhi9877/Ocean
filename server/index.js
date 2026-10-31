@@ -12,6 +12,7 @@ import buyerRoutes from './routes/buyer.js';
 import managementRoutes from './routes/management.js';
 import newsRoutes from './routes/news.js';
 import legalRoutes from './routes/legal.js';
+import walletRoutes from './routes/wallet.js';
 import { initCronJobs } from './cron.js';
 
 dotenv.config();
@@ -34,6 +35,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/buyer', buyerRoutes);
 app.use('/api/management', managementRoutes);
 app.use('/api/legal', legalRoutes);
+app.use('/api/wallet', walletRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/marine-news', newsRoutes);
 

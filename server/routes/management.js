@@ -34,7 +34,7 @@ router.get('/pending-providers', ...guard, getPendingSellers);
 router.get('/pending-buyers', ...guard, async (req, res) => {
   try {
     const buyers = await sql`
-      SELECT b.id, b.email, b.phone, b.country, b.status, b.created_at, u.username, terms.terms_version, terms.accepted_at AS terms_accepted_at, terms.ip_address AS terms_ip
+      SELECT b.id, b.email, b.phone, b.country, b.status, b.created_at, u.username, u.role, terms.terms_version, terms.accepted_at AS terms_accepted_at, terms.ip_address AS terms_ip
       FROM buyers b
       JOIN users u ON b.user_id = u.id
       LEFT JOIN LATERAL (
@@ -80,7 +80,7 @@ router.get('/all-buyers', ...guard, async (req, res) => {
   try {
     const buyers = await sql`
       SELECT b.id, b.email, b.phone, b.country, b.imo_number,
-             b.ship_name, b.ship_type, b.status, b.created_at, b.reviewed_at, u.username, terms.terms_version, terms.accepted_at AS terms_accepted_at, terms.ip_address AS terms_ip,
+             b.ship_name, b.ship_type, b.status, b.created_at, b.reviewed_at, u.username, u.role, terms.terms_version, terms.accepted_at AS terms_accepted_at, terms.ip_address AS terms_ip,
              (SELECT COUNT(*)::int FROM inquiries i WHERE i.buyer_id = b.id) AS inquiry_count,
              (SELECT COUNT(*)::int FROM buyer_ships s WHERE s.buyer_id = b.id) AS ship_count
       FROM buyers b
@@ -286,8 +286,8 @@ const reviewAccount = (table, status) => async (req, res) => {
       await sql`DELETE FROM user_sessions WHERE user_id = ${userId}`;
     }
 
-    const [user] = await sql`SELECT username FROM users WHERE id = ${userId}`;
-    sendAccountStatusEmail({ to: email, username: user?.username, role: table === 'buyers' ? 'buyer' : 'seller', status })
+    const [user] = await sql`SELECT username, role FROM users WHERE id = ${userId}`;
+    sendAccountStatusEmail({ to: email, username: user?.username, role: table === 'buyers' ? (user?.role === 'reseller' ? 'reseller' : 'buyer') : 'seller', status })
       .catch(err => console.error(`Account ${status} email failed:`, err.message));
 
     const label = table === 'buyers' ? 'Buyer' : 'Seller';

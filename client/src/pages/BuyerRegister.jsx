@@ -9,7 +9,8 @@ import { TermsAcceptance } from '../components/Terms';
 
 const API = '/api';
 
-export default function BuyerRegister() {
+export default function BuyerRegister({ role = 'buyer' }) {
+  const isReseller = role === 'reseller';
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -95,7 +96,7 @@ export default function BuyerRegister() {
       await axios.post(`${API}/auth/register`, {
         username: formData.username,
         password: formData.password,
-        role: 'buyer',
+        role,
         email: formData.email.trim().toLowerCase(),
         phone: formData.phone,
         country: formData.country,
@@ -113,7 +114,9 @@ export default function BuyerRegister() {
       throw new Error(err.response?.data?.error || 'Registration failed. Please try again.');
     }
     setOtpOpen(false);
-    toast.success('Email verified! Your account is pending management approval — we will email you once it is reviewed.', { duration: 6000 });
+    toast.success(isReseller
+      ? 'Email verified! Your reseller account is pending management approval — once approved, recharge your wallet (min ₹500) to start sending enquiries.'
+      : 'Email verified! Your account is pending management approval — we will email you once it is reviewed.', { duration: 7000 });
     navigate('/login');
   };
 
@@ -125,7 +128,9 @@ export default function BuyerRegister() {
           <span className="login-brand-icon">🚢</span>
           <h2 className="login-brand-title" style={{ fontSize: '2rem' }}>Welcome Aboard</h2>
           <p className="login-brand-subtitle">
-            Register as a buyer to discover and procure marine spare parts from verified sellers.
+            {isReseller
+              ? 'Register as a reseller to source marine spare parts from verified sellers. Pay per enquiry from a prepaid wallet.'
+              : 'Register as a buyer to discover and procure marine spare parts from verified sellers.'}
           </p>
           <div className="login-brand-features" style={{ marginTop: '2rem' }}>
             <div className="login-brand-feature">
@@ -150,7 +155,7 @@ export default function BuyerRegister() {
           <div className="glass-card provider-form-card" style={{ maxWidth: '640px', margin: '0 auto' }}>
             
             <div className="form-header" style={{ textAlign: 'center' }}>
-              <h2>Buyer Registration</h2>
+              <h2>{isReseller ? 'Reseller Registration' : 'Buyer Registration'}</h2>
               <p>Create your account to start purchasing marine spare parts.</p>
             </div>
 
@@ -226,21 +231,24 @@ export default function BuyerRegister() {
 
 
 
-              <div style={{ display: 'flex', gap: '1rem' }}>
+              <div style={{ marginBottom: '1.25rem' }}>
+                <TermsAcceptance value={termsVersion} onChange={setTermsVersion} role={role} />
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => navigate('/login')}
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, minWidth: 160 }}
                   disabled={loading}
                 >
                   ← Back to Login
                 </button>
-                <TermsAcceptance value={termsVersion} onChange={setTermsVersion} role="buyer" />
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  style={{ flex: 2 }}
+                  style={{ flex: 2, minWidth: 220 }}
                   disabled={loading}
                 >
                   {loading ? <span className="spinner"></span> : 'Verify Email & Register'}

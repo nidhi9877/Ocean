@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import '../pages/Terms.css';
 
@@ -140,16 +141,19 @@ export function TermsAcceptance({ value, onChange, role }) {
         <span>
           I have read and agree to the{' '}
           <button type="button" className="tc-inline-link" onClick={() => setOpen(true)}>Terms &amp; Conditions</button>
-          {role === 'seller' ? ', including the Supplier / Vendor Agreement (Part B)' : role === 'buyer' ? ', including the Buyer Terms (Part C)' : ''}
+          {role === 'seller' ? ', including the Supplier / Vendor Agreement (Part B)' : (role === 'buyer' || role === 'reseller') ? ', including the Buyer Terms (Part C)' : ''}
           {' '}of MarineStockHub, operated by Khalasi Marine OPC Private Limited.
         </span>
       </label>
       {accepted && <div className="tc-accept-note">Your acceptance will be recorded with the date, time and version ({value}) when you complete registration.</div>}
-      {open && (
+      {/* Portal to <body>: the forms sit inside .glass-card, whose hover transform would otherwise
+          turn the card into the containing block for this fixed modal (it shrank / grew in a loop) */}
+      {open && createPortal(
         <TermsModal
           onClose={() => setOpen(false)}
           onAccept={(version) => { onChange(version); setOpen(false); }}
-        />
+        />,
+        document.body
       )}
     </div>
   );

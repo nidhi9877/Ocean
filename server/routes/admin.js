@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { sql } from '../db.js';
 import { authenticateToken, authenticateAdmin } from '../middleware/auth.js';
 import { overviewHandler } from './management.js';
+import { getWalletSettings, updateWalletSettings, getWallet, getTransactions, creditWallet, debitWallet } from '../utils/wallet.js';
 
 const router = Router();
 
@@ -84,6 +85,8 @@ router.delete('/users/:id', async (req, res) => {
       sql`DELETE FROM providers WHERE user_id = ${userId}`,
       sql`DELETE FROM user_sessions WHERE user_id = ${userId}`,
       sql`DELETE FROM password_resets WHERE user_id = ${userId}`,
+      sql`DELETE FROM wallet_transactions WHERE user_id = ${userId}`,
+      sql`DELETE FROM wallets WHERE user_id = ${userId}`,
       sql`UPDATE terms_acceptances SET user_id = NULL WHERE user_id = ${userId}`,
       sql`DELETE FROM users WHERE id = ${userId}`,
     ]);
@@ -93,6 +96,99 @@ router.delete('/users/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting account:', error);
     res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
+// ─── Resellers & wallets ────────────────────────────────────────────────────────
+router.get('/resellers', async (req, res) => {
+  try {
+    const [rows, settings] = await Promise.all([sql`
+      SELECT u.id AS user_id, u.username, u.created_at, b.id AS buyer_id, b.email, b.phone, b.country, b.status,
+             COALESCE(w.balance, 0)::float AS balance, w.activated_at,
+             COALESCE(t.recharged, 0)::float AS total_recharged,
+             COALESCE(t.spent, 0)::float AS total_spent,
+             COALESCE(t.enquiries, 0)::int AS enquiries_paid,
+             t.last_tx,
+             (SELECT MAX(s.last_active) FROM user_sessions s WHERE s.user_id = u.id) AS last_seen
+      FROM users u
+      LEFT JOIN buyers b ON b.user_id = u.id
+      LEFT JOIN wallets w ON w.user_id = u.id
+      LEFT JOIN (
+        SELECT user_id,
+               SUM(amount) FILTER (WHERE type = 'credit' AND source IN ('razorpay', 'admin')) AS recharged,
+               SUM(amount) FILTER (WHERE type = 'debit' AND source = 'enquiry') -
+                 COALESCE(SUM(amount) FILTER (WHERE type = 'credit' AND source = 'refund'), 0) AS spent,
+               COUNT(*) FILTER (WHERE type = 'debit' AND source = 'enquiry') -
+                 COUNT(*) FILTER (WHERE type = 'credit' AND source = 'refund') AS enquiries,
+               MAX(created_at) AS last_tx
+        FROM wallet_transactions GROUP BY user_id
+      ) t ON t.user_id = u.id
+      WHERE u.role = 'reseller'
+      ORDER BY u.created_at DESC
+    `, getWalletSettings()]);
+    res.json({ resellers: rows, settings });
+  } catch (error) {
+    console.error('Error fetching resellers:', error);
+    res.status(500).json({ error: 'Failed to fetch resellers' });
+  }
+});
+
+router.get('/resellers/:userId/wallet', async (req, res) => {
+  try {
+    const userId = Number(req.params.userId);
+    const [user] = await sql`SELECT id, username FROM users WHERE id = ${userId} AND role = 'reseller'`;
+    if (!user) return res.status(404).json({ error: 'Reseller not found' });
+    const [wallet, transactions] = await Promise.all([getWallet(userId), getTransactions(userId, 200)]);
+    res.json({ user, wallet, transactions });
+  } catch (error) {
+    console.error('Error fetching reseller wallet:', error);
+    res.status(500).json({ error: 'Failed to fetch wallet' });
+  }
+});
+
+// Manual top-up (offline payment) or correction. type: 'credit' | 'debit'
+router.post('/resellers/:userId/wallet', async (req, res) => {
+  try {
+    const userId = Number(req.params.userId);
+    const { type, note } = req.body;
+    const amount = Number(req.body.amount);
+    if (!['credit', 'debit'].includes(type)) return res.status(400).json({ error: 'Type must be credit or debit' });
+    if (!(amount > 0) || amount > 1000000) return res.status(400).json({ error: 'Enter an amount between ₹1 and ₹10,00,000' });
+    if (!note || !String(note).trim()) return res.status(400).json({ error: 'A note is required (e.g. bank transfer reference)' });
+
+    const [user] = await sql`SELECT id, username FROM users WHERE id = ${userId} AND role = 'reseller'`;
+    if (!user) return res.status(404).json({ error: 'Reseller not found' });
+
+    const cleanNote = `${String(note).trim().slice(0, 300)} (by @${req.user.username})`;
+    if (type === 'credit') {
+      await creditWallet({ userId, amount, source: 'admin', note: cleanNote, createdBy: req.user.id });
+    } else {
+      const result = await debitWallet({ userId, amount, source: 'admin', note: cleanNote, createdBy: req.user.id, requireActivated: false });
+      if (!result.ok) return res.status(400).json({ error: `Cannot deduct more than the current balance (₹${result.wallet.balance}).` });
+    }
+    const wallet = await getWallet(userId);
+    res.json({ message: `Wallet ${type === 'credit' ? 'credited' : 'debited'} ₹${amount} for @${user.username}`, wallet });
+  } catch (error) {
+    console.error('Error adjusting wallet:', error);
+    res.status(500).json({ error: 'Failed to update wallet' });
+  }
+});
+
+router.get('/wallet-settings', async (req, res) => {
+  try {
+    res.json(await getWalletSettings());
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load wallet settings' });
+  }
+});
+
+router.put('/wallet-settings', async (req, res) => {
+  try {
+    const settings = await updateWalletSettings(req.body || {});
+    console.log(`⚙️  Wallet settings updated by @${req.user.username}:`, settings);
+    res.json({ message: 'Wallet settings saved', settings });
+  } catch (error) {
+    res.status(400).json({ error: error.message || 'Failed to save wallet settings' });
   }
 });
 

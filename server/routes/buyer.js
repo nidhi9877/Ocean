@@ -3,8 +3,15 @@ import crypto from 'crypto';
 import { sql } from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { sendInquiryEmail, sendProviderNotification } from '../utils/email.js';
+import { debitWallet, creditWallet, getWalletSettings } from '../utils/wallet.js';
 
 const router = Router();
+
+// Resellers aren't ship owners: the fleet / ship-specification features are buyer-only
+router.use('/ships', authenticateToken, (req, res, next) => {
+  if (req.user.role === 'reseller') return res.status(403).json({ error: 'Ship management is not available for reseller accounts.' });
+  next();
+});
 
 // ─── POST /inquiries — Send inquiry + professional email to vendor ───────────
 // Accepts an array of product selections, inserts inquiry records into the DB,
@@ -49,16 +56,47 @@ router.post('/inquiries', authenticateToken, async (req, res) => {
     // Generate a single broadcast ID for this batch of inquiries
     const broadcast_id = crypto.randomUUID();
 
-    for (const sel of selections) {
-      // Insert inquiry into DB
-      await sql`
-        INSERT INTO inquiries (buyer_id, provider_id, product_id, destination_location, eta, etd, vessel_name, target_price, broadcast_id, cc, bcc)
-        VALUES (${buyer_id}, ${sel.provider_id}, ${sel.product_id}, ${destination_location.trim()}, ${eta.toString().trim()}, ${etd ? etd.toString().trim() : null}, ${vesselName}, NULL, ${broadcast_id}, ${cc || null}, ${bcc || null})
-      `;
+    // Resellers pay a fixed price per Send Enquiry click, taken from their prepaid wallet
+    let charge = null;
+    if (req.user.role === 'reseller') {
+      const { enquiry_price, min_initial_recharge } = await getWalletSettings();
+      const result = await debitWallet({
+        userId: req.user.id, amount: enquiry_price, source: 'enquiry',
+        reference: `enquiry:${broadcast_id}`, note: `Enquiry for ${selections.length} product${selections.length === 1 ? '' : 's'}`,
+      });
+      if (!result.ok) {
+        return res.status(402).json({
+          error: result.reason === 'not_activated'
+            ? `Recharge your wallet with at least ₹${min_initial_recharge} to start sending enquiries.`
+            : `Insufficient wallet balance. Each enquiry costs ₹${enquiry_price}; your balance is ₹${result.wallet.balance}. Please recharge.`,
+          walletError: result.reason,
+          wallet: result.wallet,
+          enquiryPrice: enquiry_price,
+        });
+      }
+      charge = { amount: enquiry_price, balance: result.tx.balance_after };
+    }
+
+    try {
+      for (const sel of selections) {
+        // Insert inquiry into DB
+        await sql`
+          INSERT INTO inquiries (buyer_id, provider_id, product_id, destination_location, eta, etd, vessel_name, target_price, broadcast_id, cc, bcc)
+          VALUES (${buyer_id}, ${sel.provider_id}, ${sel.product_id}, ${destination_location.trim()}, ${eta.toString().trim()}, ${etd ? etd.toString().trim() : null}, ${vesselName}, NULL, ${broadcast_id}, ${cc || null}, ${bcc || null})
+        `;
+      }
+    } catch (insertError) {
+      // Enquiry was not registered — give the reseller their money back
+      if (charge) {
+        await creditWallet({ userId: req.user.id, amount: charge.amount, source: 'refund', reference: `refund:${broadcast_id}`, note: 'Refund — enquiry could not be sent' })
+          .catch(e => console.error('Wallet refund failed:', e));
+      }
+      throw insertError;
     }
 
     res.status(201).json({ 
-      message: 'Inquiries registered successfully.'
+      message: 'Inquiries registered successfully.',
+      ...(charge && { charged: charge.amount, walletBalance: charge.balance }),
     });
   } catch (error) {
     console.error('Error posting inquiry:', error);

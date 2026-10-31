@@ -136,7 +136,7 @@ export default function ManagementDashboard() {
   ];
 
   const buyerColumns = [
-    { key: 'username', label: 'Buyer', render: b => <div><div className="mg-strong">@{b.username}</div><div className="mg-sub">{b.email}</div></div> },
+    { key: 'username', label: 'Buyer', render: b => <div><div className="mg-strong">@{b.username}{b.role === 'reseller' && <span className="mg-type" style={{ marginLeft: 6 }}>reseller</span>}</div><div className="mg-sub">{b.email}</div></div> },
     { key: 'email', label: 'Email', render: b => b.email },
     { key: 'phone', label: 'Phone', sortable: false },
     { key: 'country', label: 'Country', render: b => b.country || '—' },
@@ -312,7 +312,7 @@ export default function ManagementDashboard() {
                           <span className="mg-avatar" aria-hidden="true">{item.kind === 'seller' ? '🏭' : '🚢'}</span>
                           <div className="mg-mini-main">
                             <div className="mg-strong">{item.name}</div>
-                            <div className="mg-sub">{item.kind === 'seller' ? 'Seller' : 'Buyer'} · {timeAgo(item.created_at)}</div>
+                            <div className="mg-sub">{item.kind === 'seller' ? 'Seller' : item.record?.role === 'reseller' ? 'Reseller' : 'Buyer'} · {timeAgo(item.created_at)}</div>
                           </div>
                           <div className="mg-mini-actions">
                             <button className="mg-icon-btn mg-icon-reject" title="Reject" disabled={busy.has(item.key)} onClick={() => reviewOne(item.kind, item.id, 'reject', `Reject ${item.name}?`)}>✕</button>

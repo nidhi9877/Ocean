@@ -184,6 +184,42 @@ export async function initDatabase() {
     `;
     await sql`CREATE INDEX IF NOT EXISTS idx_terms_acceptances_user ON terms_acceptances (user_id, accepted_at DESC)`;
 
+    // ── Reseller wallet (prepaid credit, charged per enquiry) ──
+    // activated_at is set once the balance first reaches the minimum initial recharge;
+    // until then the reseller cannot send enquiries.
+    await sql`
+      CREATE TABLE IF NOT EXISTS wallets (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        balance NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (balance >= 0),
+        activated_at TIMESTAMPTZ,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+    // Ledger — one row per credit / debit. reference is unique so a payment can never be credited twice.
+    await sql`
+      CREATE TABLE IF NOT EXISTS wallet_transactions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        type VARCHAR(10) NOT NULL CHECK (type IN ('credit', 'debit')),
+        amount NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+        balance_after NUMERIC(12,2) NOT NULL,
+        source VARCHAR(20) NOT NULL,
+        reference VARCHAR(120) UNIQUE,
+        note TEXT,
+        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_wallet_tx_user ON wallet_transactions (user_id, created_at DESC)`;
+    // Admin-editable platform settings (key/value)
+    await sql`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key VARCHAR(64) PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
+
     // Execute ALTER TABLE in parallel
     try {
       await Promise.all([
