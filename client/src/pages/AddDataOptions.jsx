@@ -26,7 +26,7 @@ export default function AddDataOptions() {
                 style={{ padding: '2rem 1.5rem', cursor: 'pointer', background: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}
                 onClick={() => navigate('/seller/add-csv')}
               >
-                <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>📄</div>
+
                 <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', marginBottom: '0.75rem', fontFamily: "'Outfit', sans-serif" }}>Upload CSV File</h3>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6' }}>
                   Fastest way for bulk uploads. Upload your existing inventory spreadsheet directly.
@@ -40,7 +40,7 @@ export default function AddDataOptions() {
                 style={{ padding: '2rem 1.5rem', cursor: 'pointer', background: 'var(--bg-surface)', border: '1px solid var(--border-color)' }}
                 onClick={() => navigate('/seller/add-data')}
               >
-                <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>✍️</div>
+
                 <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', marginBottom: '0.75rem', fontFamily: "'Outfit', sans-serif" }}>Add Manually</h3>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.6' }}>
                   Use our built-in spreadsheet-like interface to enter your products one by one.

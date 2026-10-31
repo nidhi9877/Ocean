@@ -111,7 +111,7 @@ export default function ProviderInquiries() {
       <div className="dashboard-container">
         <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h1>Incoming Inquiries 📨</h1>
+            <h1>Incoming Inquiries</h1>
             <p>Review and respond to messages from interested buyers.</p>
           </div>
           <Link to="/seller/dashboard" className="btn btn-secondary">
@@ -125,7 +125,6 @@ export default function ProviderInquiries() {
           </div>
         ) : inquiries.length === 0 ? (
           <div className="glass-card empty-state">
-            <span className="empty-state-icon">📭</span>
             <h3>No inquiries yet</h3>
             <p>When buyers send inquiries for your products, they will appear here.</p>
           </div>
@@ -140,14 +139,14 @@ export default function ProviderInquiries() {
                   
                   <div className="inquiry-details">
                     <div>
-                      <div className="inquiry-section-label">⛴️ Buyer Details</div>
+                      <div className="inquiry-section-label">Buyer Details</div>
                       <p style={{ margin: '0.2rem 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}><strong>Username:</strong> {inquiry.buyer_username}</p>
                       <p style={{ margin: '0.2rem 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}><strong>Phone:</strong> {inquiry.buyer_phone}</p>
                       <p style={{ margin: '0.2rem 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}><strong>Ship:</strong> {inquiry.ship_name} ({inquiry.ship_type})</p>
                       <p style={{ margin: '0.2rem 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}><strong>IMO:</strong> {inquiry.imo_number}</p>
                     </div>
                     <div>
-                      <div className="inquiry-section-label">📍 Request Details</div>
+                      <div className="inquiry-section-label">Request Details</div>
                       <p style={{ margin: '0.2rem 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}><strong>Destination:</strong> {inquiry.destination_location}</p>
                       <p style={{ margin: '0.2rem 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}><strong>Part #:</strong> {inquiry.part_number || 'N/A'}</p>
                       <p style={{ margin: '0.2rem 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}><strong>Date:</strong> {new Date(inquiry.created_at).toLocaleDateString()}</p>
@@ -162,7 +161,7 @@ export default function ProviderInquiries() {
                     className="btn btn-primary"
                     style={{ textAlign: 'center', cursor: 'pointer', border: 'none', display: 'block', width: '100%', padding: '0.55rem' }}
                   >
-                    ✉️ Email Buyer<br/><span style={{ fontSize: '0.8em', opacity: 0.9 }}>{inquiry.buyer_email}</span>
+                    Email Buyer<br/><span style={{ fontSize: '0.8em', opacity: 0.9 }}>{inquiry.buyer_email}</span>
                   </button>
                 </div>
               </div>
@@ -439,10 +438,10 @@ export default function ProviderInquiries() {
                           Select Email Client
                         </div>
                         {[
-                          { id: 'gmail', name: 'Google Mail (Gmail)', icon: '🔴', desc: 'Open in Gmail web' },
-                          { id: 'yahoo', name: 'Yahoo Mail', icon: '🟣', desc: 'Open in Yahoo Mail web' },
-                          { id: 'outlook', name: 'Outlook Web', icon: '🔵', desc: 'Open in Outlook web' },
-                          { id: 'mailto', name: 'Default Mail App', icon: '✉️', desc: 'Use system default client' }
+                          { id: 'gmail', name: 'Google Mail (Gmail)', desc: 'Open in Gmail web' },
+                          { id: 'yahoo', name: 'Yahoo Mail', desc: 'Open in Yahoo Mail web' },
+                          { id: 'outlook', name: 'Outlook Web', desc: 'Open in Outlook web' },
+                          { id: 'mailto', name: 'Default Mail App', desc: 'Use system default client' }
                         ].map(client => (
                           <button
                             key={client.id}
@@ -467,7 +466,7 @@ export default function ProviderInquiries() {
                             onMouseEnter={e => e.currentTarget.style.background = '#f2f2f2'}
                             onMouseLeave={e => e.currentTarget.style.background = 'none'}
                           >
-                            <span style={{ fontSize: '16px' }}>{client.icon}</span>
+                            
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                               <span style={{ fontWeight: '500' }}>{client.name}</span>
                               <span style={{ fontSize: '11px', color: '#888' }}>{client.desc}</span>
@@ -481,15 +480,6 @@ export default function ProviderInquiries() {
 
                 {/* Toolbar icons matching Gmail */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#444746' }}>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Formatting options">Aa</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Attach files">📎</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Insert link">🔗</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Insert emoji">😊</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Insert files using Drive">📁</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Insert photo">📷</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Toggle confidential mode">🔒</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Insert signature">✍️</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="More options">⋮</span>
                 </div>
               </div>
 
@@ -500,10 +490,10 @@ export default function ProviderInquiries() {
                   background: 'none',
                   border: 'none',
                   color: '#444746',
-                  fontSize: '18px',
+                  fontSize: '13px',
                   cursor: 'pointer',
-                  padding: '8px',
-                  borderRadius: '50%',
+                  padding: '6px 10px',
+                  borderRadius: '4px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -512,7 +502,7 @@ export default function ProviderInquiries() {
                 onMouseLeave={e => e.currentTarget.style.background = 'none'}
                 title="Discard draft"
               >
-                🗑️
+                Discard
               </button>
 
             </div>

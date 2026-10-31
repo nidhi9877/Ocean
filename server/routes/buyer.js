@@ -53,6 +53,15 @@ router.post('/inquiries', authenticateToken, async (req, res) => {
     const buyerEmail = buyerProfile[0].buyer_email;
     const buyerName = buyerProfile[0].buyer_name;
 
+    // Frozen (inactive) sellers can't receive enquiries — their listings are hidden
+    const providerIds = [...new Set(selections.map(s => Number(s.provider_id)).filter(Boolean))];
+    if (providerIds.length) {
+      const frozenSellers = await sql`SELECT id FROM providers WHERE id = ANY(${providerIds}) AND frozen_at IS NOT NULL`;
+      if (frozenSellers.length) {
+        return res.status(409).json({ error: 'This seller is currently unavailable. Please choose another listing.' });
+      }
+    }
+
     // Generate a single broadcast ID for this batch of inquiries
     const broadcast_id = crypto.randomUUID();
 
@@ -566,6 +575,7 @@ router.get('/ships/:shipId/market-availability', authenticateToken, async (req, 
       SELECT p.*, pr.company_name, pr.contact_person, pr.email as provider_email, pr.phone as provider_phone
       FROM products p
       JOIN providers pr ON p.provider_id = pr.id
+      WHERE pr.frozen_at IS NULL
       ORDER BY p.category, p.product_name
     `;
 

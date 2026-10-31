@@ -211,6 +211,23 @@ export default function ProviderDashboard() {
     }
   };
 
+  // "Update Inventory": confirms the stock is current (buyers and resellers see today's
+  // date as Last Updated, and it counts as account activity), then opens every row for editing.
+  const [confirmingInventory, setConfirmingInventory] = useState(false);
+  const handleUpdateInventory = async () => {
+    setConfirmingInventory(true);
+    try {
+      const res = await axios.post(`${API}/seller/inventory/confirm`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      setProvider(prev => prev ? { ...prev, inventory_verified_at: res.data.inventoryVerifiedAt } : prev);
+      toast.success('Inventory marked as up to date. Edit any item below and click Save.');
+      if (products.length > 0 && !isBulkEditing) startBulkEdit();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Could not update inventory status.');
+    } finally {
+      setConfirmingInventory(false);
+    }
+  };
+
   const startBulkEdit = () => {
     setIsBulkEditing(true);
     const newEditDataMap = {};
@@ -408,7 +425,7 @@ export default function ProviderDashboard() {
       setIsBulkEditing(false);
       setEditingIds([]);
       setEditDataMap({});
-      toast.success('✅ All changes saved successfully!');
+      toast.success('All changes saved successfully!');
     } catch (err) {
       console.error('Failed to update products:', err);
       alert(err.response?.data?.error || 'Failed to save changes');
@@ -760,8 +777,18 @@ export default function ProviderDashboard() {
               ☰
             </button>
             <div>
-              <h1>Seller Dashboard 🏭</h1>
-              <p>Manage your company profile and product listings</p>
+              <h1>Seller Dashboard</h1>
+              <p>
+                Manage your company profile and product listings
+                {provider && (
+                  <span style={{ display: 'block', fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                    Inventory last updated: <strong>{(() => {
+                      const latest = [provider.inventory_verified_at, ...products.map(p => p.updated_at)].filter(Boolean).map(d => new Date(d)).sort((a, b) => b - a)[0];
+                      return latest ? latest.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never';
+                    })()}</strong>
+                  </span>
+                )}
+              </p>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', position: 'relative' }}>
@@ -770,7 +797,7 @@ export default function ProviderDashboard() {
               onClick={() => setShowDownloadMenu(!showDownloadMenu)}
               disabled={products.length === 0}
             >
-              ⬇️ Download Data
+              Download Data
             </button>
             
             {showDownloadMenu && (
@@ -788,17 +815,27 @@ export default function ProviderDashboard() {
                 zIndex: 10,
                 overflow: 'hidden'
               }}>
-                <button className="menu-item-btn" onClick={() => { downloadCSV(); setShowDownloadMenu(false); }} style={{ padding: '0.75rem 1rem', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-color)', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>📄 Download CSV</button>
-                <button className="menu-item-btn" onClick={() => { downloadExcel(); setShowDownloadMenu(false); }} style={{ padding: '0.75rem 1rem', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-color)', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>📊 Download Excel</button>
-                <button className="menu-item-btn" onClick={() => { downloadPDF(); setShowDownloadMenu(false); }} style={{ padding: '0.75rem 1rem', background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>📑 Download PDF</button>
+                <button className="menu-item-btn" onClick={() => { downloadCSV(); setShowDownloadMenu(false); }} style={{ padding: '0.75rem 1rem', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-color)', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>Download CSV</button>
+                <button className="menu-item-btn" onClick={() => { downloadExcel(); setShowDownloadMenu(false); }} style={{ padding: '0.75rem 1rem', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border-color)', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>Download Excel</button>
+                <button className="menu-item-btn" onClick={() => { downloadPDF(); setShowDownloadMenu(false); }} style={{ padding: '0.75rem 1rem', background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text-primary)' }}>Download PDF</button>
               </div>
             )}
+
+            <button
+              className="btn btn-primary"
+              onClick={handleUpdateInventory}
+              disabled={!provider || confirmingInventory}
+              title="Confirm your stock is current and edit any item"
+              style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }}
+            >
+              {confirmingInventory ? 'Updating…' : 'Update Inventory'}
+            </button>
 
             <button 
               className="btn btn-primary"
               onClick={() => setShowUploadModal(true)}
             >
-              📤 Master Upload
+              Master Upload
             </button>
             
             {/* Department Dropdown */}
@@ -820,7 +857,7 @@ export default function ProviderDashboard() {
               className="btn btn-secondary"
               onClick={() => navigate('/seller/inquiries')}
             >
-              📨 View Inquiries
+              View Inquiries
             </button>
 
             <button
@@ -829,7 +866,7 @@ export default function ProviderDashboard() {
               disabled={!provider}
               style={{ color: '#2563eb', borderColor: 'rgba(37,99,235,0.4)', fontWeight: 600 }}
             >
-              🧠 Seller Intelligence
+              Seller Intelligence
             </button>
           </div>
         </div>
@@ -840,7 +877,6 @@ export default function ProviderDashboard() {
           </div>
         ) : !provider ? (
           <div className="glass-card empty-state">
-            <span className="empty-state-icon">📋</span>
             <h3>No seller profile found</h3>
             <p>Please complete your registration to get started.</p>
           </div>
@@ -865,15 +901,14 @@ export default function ProviderDashboard() {
                 {/* Company Info Card */}
                 <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
                   <div className="form-section-title">
-                    <span className="form-section-icon">🏢</span>
                     {provider.company_name}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                    <p>👤 {provider.contact_person}</p>
-                    <p>📧 {provider.email}</p>
-                    <p>📞 {provider.phone}</p>
-                    <p>📍 {provider.address}{provider.city ? `, ${provider.city}` : ''}{provider.country ? `, ${provider.country}` : ''}</p>
-                    <p>💳 Payment Mode: {provider.payment_mode || 'N/A'}</p>
+                    <p>{provider.contact_person}</p>
+                    <p>{provider.email}</p>
+                    <p>{provider.phone}</p>
+                    <p>{provider.address}{provider.city ? `, ${provider.city}` : ''}{provider.country ? `, ${provider.country}` : ''}</p>
+                    <p>Payment Mode: {provider.payment_mode || 'N/A'}</p>
                   </div>
                   {provider.description && (
                     <p style={{ marginTop: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
@@ -885,17 +920,14 @@ export default function ProviderDashboard() {
                 {/* Stats */}
                 <div className="stats-sidebar-grid">
                   <div className="stat-card">
-                    <div className="stat-icon">📦</div>
                     <div className="stat-value">{products.length}</div>
                     <div className="stat-label">Listed Products</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-icon">📂</div>
                     <div className="stat-value">{new Set(products.map((p) => p.category)).size}</div>
                     <div className="stat-label">Categories</div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-icon">📊</div>
                     <div className="stat-value">{products.reduce((sum, p) => sum + (p.quantity || 0), 0)}</div>
                     <div className="stat-label">Total Stock</div>
                   </div>
@@ -920,7 +952,7 @@ export default function ProviderDashboard() {
                     </button>
                     <input 
                       type="text" 
-                      placeholder="🔍 Search parts, categories, brands..." 
+                      placeholder="Search parts, categories, brands..." 
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       style={{ 
@@ -940,14 +972,14 @@ export default function ProviderDashboard() {
                     {isBulkEditing || editingIds.length > 0 ? (
                       <>
                         <button className="toolbar-btn toolbar-btn-success" onClick={saveBulkEdits} disabled={saving}>
-                          {saving ? '⏳ Saving...' : '💾 Save'}
+                          {saving ? 'Saving...' : 'Save'}
                         </button>
                         <button className="toolbar-btn" onClick={cancelBulkEdits} disabled={saving}>
-                          ✕ Cancel
+                          Cancel
                         </button>
                         <div className="toolbar-separator" />
                         <button className="toolbar-btn" onClick={addNewRow} disabled={saving}>
-                          ➕ Add Row
+                          Add Row
                         </button>
                       </>
                     ) : (
@@ -956,8 +988,7 @@ export default function ProviderDashboard() {
                           <div className="bulk-toolbar-row">
                             {/* Selection count and clear/all */}
                             <div className="bulk-group bulk-selection-group">
-                              <span className="bulk-selection-pill">
-                                ✓ {selectedIds.length} Selected
+                              <span className="bulk-selection-pill">{selectedIds.length} Selected
                               </span>
                               <button 
                                 type="button" 
@@ -1070,7 +1101,7 @@ export default function ProviderDashboard() {
                                 onClick={startEditSelected}
                                 title="Edit selected rows inline"
                               >
-                                ✏️ Edit
+                                Edit
                               </button>
                               <button 
                                 type="button" 
@@ -1079,21 +1110,21 @@ export default function ProviderDashboard() {
                                 disabled={deleting}
                                 title="Delete selected products"
                               >
-                                🗑️ Delete
+                                Delete
                               </button>
                             </div>
                           </div>
                         ) : (
                           <>
                             <button className="toolbar-btn toolbar-btn-primary" onClick={startBulkEdit}>
-                              ✏️ Edit All
+                              Edit All
                             </button>
                             <button className="toolbar-btn" onClick={addNewRow}>
-                              ➕ Add Row
+                              Add Row
                             </button>
                             <div className="toolbar-separator" />
                             <button className="toolbar-btn" onClick={() => setSelectedIds(products.map(p => p.id))}>
-                              ☑ Select All
+                              Select All
                             </button>
                           </>
                         )}
@@ -1336,7 +1367,7 @@ export default function ProviderDashboard() {
                             <td style={{ textAlign: 'center', backgroundColor: '#fee2e2' }}>
                               <button className="table-action-btn delete-btn"
                                 onClick={e => { e.stopPropagation(); deleteProduct(product.id); }}
-                                disabled={deleting} title="Delete row">🗑️</button>
+                                disabled={deleting} title="Delete row">Delete</button>
                             </td>
                           </tr>
                         )})}
@@ -1425,7 +1456,7 @@ export default function ProviderDashboard() {
                   boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
                   textAlign: 'center'
                 }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>⚠️</div>
+
                   <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '1.2rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
                     Unsaved Changes
                   </h3>
@@ -1440,21 +1471,21 @@ export default function ProviderDashboard() {
                       disabled={saving}
                       style={{ minWidth: '110px' }}
                     >
-                      {saving ? '⏳ Saving…' : '💾 Save'}
+                      {saving ? 'Saving…' : 'Save'}
                     </button>
                     <button
                       className="btn btn-secondary"
                       onClick={cancelBulkEdits}
                       style={{ minWidth: '110px' }}
                     >
-                      🗑️ Discard
+                      Discard
                     </button>
                     <button
                       className="btn btn-secondary"
                       onClick={() => setShowUnsavedModal(false)}
                       style={{ minWidth: '110px' }}
                     >
-                      ✕ Keep Editing
+                      Keep Editing
                     </button>
                   </div>
                 </div>

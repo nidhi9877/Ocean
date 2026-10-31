@@ -114,7 +114,7 @@ export default function CountrySelect({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', overflow: 'hidden' }}>
-          <span style={{ fontSize: '1rem', opacity: 0.75 }}>🌍</span>
+
           {value ? (
             <span style={{ color: 'var(--text-primary)', fontWeight: 500, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
               {value}
@@ -178,7 +178,7 @@ export default function CountrySelect({
           {/* Search box inside dropdown */}
           <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border-color, #e2e8f0)', background: 'var(--bg-secondary, #f8fafc)' }}>
             <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: '0.6rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>🔍</span>
+
               <input
                 ref={searchInputRef}
                 type="text"

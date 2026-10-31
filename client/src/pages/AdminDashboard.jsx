@@ -12,14 +12,14 @@ const API = '/api';
 
 const lastSeen = (d) => d ? timeAgo(d) : 'Never';
 const Verified = ({ at }) => at
-  ? <span className="mg-pill mg-pill-approved" title={`Verified ${fmtDateTime(at)}`}><span aria-hidden="true">✓</span>Verified</span>
+  ? <span className="mg-pill mg-pill-approved" title={`Verified ${fmtDateTime(at)}`}>Verified</span>
   : <span className="mg-sub">Not verified</span>;
 
 // Supply coverage = matching listings vs. vessels that carry the equipment
 function CoveragePill({ listings, ships }) {
-  if (!listings) return <span className="mg-pill mg-pill-rejected"><span aria-hidden="true">✕</span>No supply</span>;
+  if (!listings) return <span className="mg-pill mg-pill-rejected">No supply</span>;
   if (listings < ships) return <span className="mg-pill mg-pill-pending"><span aria-hidden="true">!</span>Low supply</span>;
-  return <span className="mg-pill mg-pill-approved"><span aria-hidden="true">✓</span>Covered</span>;
+  return <span className="mg-pill mg-pill-approved">Covered</span>;
 }
 
 // Permanently deletes a buyer/seller login and all of its data. The admin must type the
@@ -180,15 +180,15 @@ export default function AdminDashboard() {
   ];
 
   const nav = [
-    { id: 'overview',     icon: '📊', label: 'Overview' },
-    { id: 'intelligence', icon: '🧠', label: 'Parts Intelligence' },
-    { id: 'buyers',       icon: '🚢', label: 'Buyers',        count: buyers.length },
-    { id: 'sellers',      icon: '🏭', label: 'Sellers',       count: sellers.length },
-    { id: 'resellers',    icon: '🤝', label: 'Resellers & Wallets', count: users.filter(u => u.role === 'reseller').length },
-    { id: 'fleet',        icon: '⚙️', label: 'Fleet Registry', count: fleetParts.length },
-    { id: 'inquiries',    icon: '✉️', label: 'Inquiries',     count: inquiries.length },
-    { id: 'users',        icon: '🔐', label: 'Users & Access', count: users.length },
-    { id: 'terms',        icon: '📜', label: 'T&C Acceptances', count: termsLog.length },
+    { id: 'overview',     label: 'Overview' },
+    { id: 'intelligence', label: 'Parts Intelligence' },
+    { id: 'buyers',       label: 'Buyers',        count: buyers.length },
+    { id: 'sellers',      label: 'Sellers',       count: sellers.length },
+    { id: 'resellers',    label: 'Resellers & Wallets', count: users.filter(u => u.role === 'reseller').length },
+    { id: 'fleet',        label: 'Fleet Registry', count: fleetParts.length },
+    { id: 'inquiries',    label: 'Inquiries',     count: inquiries.length },
+    { id: 'users',        label: 'Users & Access', count: users.length },
+    { id: 'terms',        label: 'T&C Acceptances', count: termsLog.length },
   ];
 
   const subtitles = {
@@ -277,7 +277,7 @@ export default function AdminDashboard() {
           <nav>
             {nav.map(n => (
               <button key={n.id} className={`mg-nav ${section === n.id ? 'active' : ''}`} onClick={() => setSection(n.id)}>
-                <span className="mg-nav-icon" aria-hidden="true">{n.icon}</span>
+                
                 <span>{n.label}</span>
                 {n.count !== undefined && <span className="mg-nav-count">{fmtNum(n.count)}</span>}
               </button>
@@ -291,7 +291,7 @@ export default function AdminDashboard() {
         <main className="mg-main">
           <header className="mg-header">
             <div>
-              <div className="mg-eyebrow">🔒 Restricted · admin only</div>
+              <div className="mg-eyebrow">Restricted · admin only</div>
               <h1 className="mg-title">{section === 'overview' ? `${greeting()}, ${user?.username || 'Admin'}` : nav.find(n => n.id === section)?.label}</h1>
               <p className="mg-subtitle">{subtitles[section]}</p>
             </div>
@@ -306,7 +306,6 @@ export default function AdminDashboard() {
             <>
               {pendingCount > 0 && (
                 <div className="mg-alert">
-                  <span className="mg-alert-icon" aria-hidden="true">🛡️</span>
                   <div><strong>{pendingCount} account{pendingCount > 1 ? 's' : ''} awaiting approval.</strong><span> Open a buyer or seller to approve or reject, or use the Pending filter.</span></div>
                   <button className="mg-btn mg-btn-primary" onClick={() => setSection(buyers.some(b => b.status === 'pending') ? 'buyers' : 'sellers')}>Review</button>
                 </div>
@@ -345,7 +344,7 @@ export default function AdminDashboard() {
                     <ul className="mg-feed">
                       {ov.recentActivity.slice(0, 7).map((a, i) => (
                         <li key={i}>
-                          <span className="mg-avatar" aria-hidden="true">{{ buyer_registered: '🚢', seller_registered: '🏭', inquiry: '✉️' }[a.type]}</span>
+                          <span className="mg-avatar" aria-hidden="true">{{ buyer_registered: 'B', seller_registered: 'S', inquiry: 'E' }[a.type]}</span>
                           <div className="mg-feed-text">
                             {a.type === 'inquiry' ? <><strong>@{a.actor || 'buyer'}</strong> inquired for <strong>{a.detail}</strong></> : <><strong>{a.type === 'buyer_registered' ? `@${a.actor}` : a.actor}</strong> registered as a {a.type === 'buyer_registered' ? 'buyer' : 'seller'}</>}
                           </div>
@@ -413,7 +412,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="mg-card">
                   <div className="mg-card-head"><h3>Supply gaps</h3><span className="mg-card-meta">On fleets, not listed</span></div>
-                  {pi.supplyGaps.length === 0 ? <div className="mg-empty-sm">✓ Every fleet equipment type has at least one listing.</div> : (
+                  {pi.supplyGaps.length === 0 ? <div className="mg-empty-sm">Every fleet equipment type has at least one listing.</div> : (
                     <RankBars items={pi.supplyGaps} labelKey="label" valueKey="ships" color={SERIES[1]} format={(v) => `${v} vessel${v === 1 ? '' : 's'}`} />
                   )}
                 </div>
@@ -683,7 +682,7 @@ function AdminDetailDrawer({ kind, id, authH, onClose, onChanged, onDeleted }) {
 
         {p && (
           <div className="mg-drawer-actions">
-            <button className="mg-btn mg-btn-danger" style={{ marginRight: 'auto' }} disabled={busy} onClick={removeAccount}>🗑 Delete account &amp; data</button>
+            <button className="mg-btn mg-btn-danger" style={{ marginRight: 'auto' }} disabled={busy} onClick={removeAccount}>Delete account &amp; data</button>
             {p.status === 'pending' && (
               <>
                 <button className="mg-btn mg-btn-danger" disabled={busy} onClick={() => decide('reject', `Reject ${name}? They will be notified by email.`)}>Reject</button>

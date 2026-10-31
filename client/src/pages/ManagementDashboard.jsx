@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import Navbar from '../components/Navbar';
 import { LineChart, BarChart, RankBars, Sparkline, SERIES } from '../components/MgmtCharts';
 import { DataTable, StatusPill, termsColumn, termsFields, termsLogColumns, STATUS_META, fmtDate, fmtDateTime, fmtNum, fmtCompact, fmtPct, hoursSince, timeAgo, greeting, delta } from '../components/MgmtUI';
+import InactiveSellers from '../components/InactiveSellers';
 import './ManagementDashboard.css';
 
 const API = '/api';
@@ -26,6 +27,7 @@ export default function ManagementDashboard() {
   const [buyers, setBuyers] = useState([]);
   const [inquiries, setInquiries] = useState([]);
   const [termsLog, setTermsLog] = useState([]);
+  const [reactivationRequests, setReactivationRequests] = useState(0);
 
   const [drawer, setDrawer] = useState(null); // { kind: 'seller' | 'buyer', record }
   const [queueFilter, setQueueFilter] = useState('all');
@@ -160,12 +162,13 @@ export default function ManagementDashboard() {
 
   // ─── Render ────────────────────────────────────────────────────────────────────
   const nav = [
-    { id: 'overview',  icon: '📊', label: 'Overview' },
-    { id: 'approvals', icon: '🛡️', label: 'Approvals', badge: queue.length },
-    { id: 'sellers',   icon: '🏭', label: 'Sellers',   count: sellers.length },
-    { id: 'buyers',    icon: '🚢', label: 'Buyers',    count: buyers.length },
-    { id: 'inquiries', icon: '✉️', label: 'Inquiries', count: inquiries.length },
-    { id: 'terms',     icon: '📜', label: 'T&C Acceptances', count: termsLog.length },
+    { id: 'overview',  label: 'Overview' },
+    { id: 'approvals', label: 'Approvals', badge: queue.length },
+    { id: 'sellers',   label: 'Sellers',   count: sellers.length },
+    { id: 'inactive',  label: 'Inactive Sellers', badge: reactivationRequests },
+    { id: 'buyers',    label: 'Buyers',    count: buyers.length },
+    { id: 'inquiries', label: 'Inquiries', count: inquiries.length },
+    { id: 'terms',     label: 'T&C Acceptances', count: termsLog.length },
   ];
 
   if (loading) {
@@ -202,7 +205,7 @@ export default function ManagementDashboard() {
     if (a.type === 'seller_registered') return <><strong>{a.actor}</strong> registered as a seller</>;
     return <><strong>@{a.actor || 'buyer'}</strong> sent an inquiry for <strong>{a.detail}</strong></>;
   };
-  const activityIcon = { buyer_registered: '🚢', seller_registered: '🏭', inquiry: '✉️' };
+  const activityIcon = { buyer_registered: 'B', seller_registered: 'S', inquiry: 'E' };
 
   return (
     <div className="mg-shell">
@@ -215,7 +218,7 @@ export default function ManagementDashboard() {
           <nav>
             {nav.map(n => (
               <button key={n.id} className={`mg-nav ${section === n.id ? 'active' : ''}`} onClick={() => setSection(n.id)}>
-                <span className="mg-nav-icon" aria-hidden="true">{n.icon}</span>
+                
                 <span>{n.label}</span>
                 {n.badge > 0 && <span className="mg-nav-badge">{n.badge}</span>}
                 {n.count !== undefined && <span className="mg-nav-count">{fmtNum(n.count)}</span>}
@@ -239,6 +242,7 @@ export default function ManagementDashboard() {
                 {section === 'overview' && 'Marketplace health, growth and activity at a glance.'}
                 {section === 'approvals' && 'Review every new buyer and seller before they can access the marketplace.'}
                 {section === 'sellers' && 'All registered seller companies, their catalogue and inquiry activity.'}
+                {section === 'inactive' && 'Sellers frozen for inactivity and their reactivation requests, plus sellers who have been warned.'}
                 {section === 'buyers' && 'All registered buyers, their fleet and purchasing activity.'}
                 {section === 'inquiries' && 'Every purchase inquiry flowing through the marketplace.'}
                 {section === 'terms' && 'Legal record of every Terms & Conditions acceptance — account, document version, exact time, IP address and device.'}
@@ -257,7 +261,7 @@ export default function ManagementDashboard() {
             <>
               {queue.length > 0 && (
                 <div className={`mg-alert ${overdueCount ? 'mg-alert-danger' : ''}`}>
-                  <span className="mg-alert-icon" aria-hidden="true">{overdueCount ? '⚠️' : '🛡️'}</span>
+                  <span className="mg-alert-icon" aria-hidden="true">{overdueCount ? '!' : 'i'}</span>
                   <div>
                     <strong>{queue.length} account{queue.length > 1 ? 's' : ''} awaiting your approval</strong>
                     <span> — {pendingSellers.length} seller{pendingSellers.length !== 1 ? 's' : ''}, {pendingBuyers.length} buyer{pendingBuyers.length !== 1 ? 's' : ''}{overdueCount ? `. ${overdueCount} waiting longer than ${APPROVAL_SLA_HOURS} hours.` : '.'}</span>
@@ -304,12 +308,12 @@ export default function ManagementDashboard() {
                 <div className="mg-card">
                   <div className="mg-card-head"><h3>Approval queue</h3><button className="mg-link" onClick={() => setSection('approvals')}>View all →</button></div>
                   {queue.length === 0 ? (
-                    <div className="mg-empty-sm">✓ All caught up — no pending accounts.</div>
+                    <div className="mg-empty-sm">All caught up — no pending accounts.</div>
                   ) : (
                     <ul className="mg-mini-list">
                       {queue.slice(0, 5).map(item => (
                         <li key={item.key}>
-                          <span className="mg-avatar" aria-hidden="true">{item.kind === 'seller' ? '🏭' : '🚢'}</span>
+                          <span className="mg-avatar" aria-hidden="true">{item.kind === 'seller' ? 'S' : item.record?.role === 'reseller' ? 'R' : 'B'}</span>
                           <div className="mg-mini-main">
                             <div className="mg-strong">{item.name}</div>
                             <div className="mg-sub">{item.kind === 'seller' ? 'Seller' : item.record?.role === 'reseller' ? 'Reseller' : 'Buyer'} · {timeAgo(item.created_at)}</div>
@@ -376,7 +380,7 @@ export default function ManagementDashboard() {
             <div className="mg-card mg-table-card">
               <div className="mg-toolbar">
                 <div className="mg-search">
-                  <span aria-hidden="true">🔍</span>
+
                   <input value={queueQuery} onChange={(e) => setQueueQuery(e.target.value)} placeholder="Search name, email, country…" aria-label="Search approval queue" />
                 </div>
                 <div className="mg-chips">
@@ -420,11 +424,11 @@ export default function ManagementDashboard() {
                               <button className="mg-link mg-strong" onClick={() => setDrawer({ kind: item.kind, record: item.record })}>{item.name}</button>
                               <div className="mg-sub">@{item.username}{item.detail ? ` · ${item.detail}` : ''}</div>
                             </td>
-                            <td><span className={`mg-type mg-type-${item.kind}`}>{item.kind === 'seller' ? '🏭 Seller' : '🚢 Buyer'}</span></td>
+                            <td><span className={`mg-type mg-type-${item.kind}`}>{item.kind === 'seller' ? 'Seller' : item.record?.role === 'reseller' ? 'Reseller' : 'Buyer'}</span></td>
                             <td><div>{item.email}</div><div className="mg-sub">{item.phone}</div></td>
                             <td>{item.country || '—'}</td>
                             <td>
-                              <div className={overdue ? 'mg-overdue' : ''}>{overdue ? '⚠ ' : ''}{timeAgo(item.created_at)}</div>
+                              <div className={overdue ? 'mg-overdue' : ''}>{timeAgo(item.created_at)}</div>
                               <div className="mg-sub">{fmtDateTime(item.created_at)}</div>
                             </td>
                             <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
@@ -444,6 +448,11 @@ export default function ManagementDashboard() {
           )}
 
           {/* ══ DIRECTORIES ══ */}
+          {/* Kept mounted so the sidebar badge shows pending reactivation requests */}
+          <div style={{ display: section === 'inactive' ? 'block' : 'none' }}>
+            <InactiveSellers authH={authH} onCountChange={setReactivationRequests} />
+          </div>
+
           {section === 'sellers' && (
             <DataTable
               rows={sellers}

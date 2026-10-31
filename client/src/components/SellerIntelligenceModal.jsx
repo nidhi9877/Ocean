@@ -8,7 +8,7 @@ const fmt = (n) => Number(n || 0).toLocaleString();
 
 const TABS = {
   spares: {
-    label: '🔧 Spares Demand Status',
+    label: 'Spares Demand Status',
     gradient: 'linear-gradient(135deg, #2563eb, #3b82f6)',
     ownLabel: 'Your Spares (Qty)',
     nameLabel: 'Name of Spares',
@@ -16,7 +16,7 @@ const TABS = {
     empty: 'You have no spare parts listed yet.',
   },
   sets: {
-    label: '📦 Complete Set Demand Status',
+    label: 'Complete Set Demand Status',
     gradient: 'linear-gradient(135deg, #7c3aed, #8b5cf6)',
     ownLabel: 'Your Complete Sets (Qty)',
     nameLabel: 'Name of Complete Set (Manufacturer + Model)',
@@ -93,7 +93,7 @@ export default function SellerIntelligenceModal({ token, onClose }) {
         <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg, rgba(37,99,235,0.08), rgba(124,58,237,0.08))' }}>
           <div>
             <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: '1.3rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
-              <span>🧠</span> Seller Intelligence
+              Seller Intelligence
             </h3>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>
               Where your stock stands in the market — installed base on live ships vs. supply across MarineStockHub
@@ -106,7 +106,7 @@ export default function SellerIntelligenceModal({ token, onClose }) {
         <div style={{ flex: 1, padding: '1.5rem', overflowY: 'auto', background: 'var(--bg-body)' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>⏳</div>
+
               <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Analyzing market demand...</h4>
               <p style={{ fontSize: '0.85rem' }}>Matching your stock against vessels on the platform and other sellers' inventory...</p>
             </div>
@@ -126,7 +126,7 @@ export default function SellerIntelligenceModal({ token, onClose }) {
               {/* Tabs */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.85rem' }}>
                 <h4 style={{ fontSize: '0.95rem', fontWeight: 600, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span>📋</span> Market Demand Status
+                  Market Demand Status
                 </h4>
                 <div role="tablist" style={{ display: 'flex', gap: '0.4rem', background: 'var(--bg-surface)', padding: '0.25rem', borderRadius: 'var(--radius-full)', border: '1px solid var(--border-color)' }}>
                   {Object.entries(TABS).map(([key, t]) => {
@@ -152,7 +152,7 @@ export default function SellerIntelligenceModal({ token, onClose }) {
 
               {rows.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '2.5rem', background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-color)', color: 'var(--text-muted)' }}>
-                  <span style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}>📭</span>
+
                   <p style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{cfg.empty}</p>
                 </div>
               ) : (
@@ -207,13 +207,13 @@ export default function SellerIntelligenceModal({ token, onClose }) {
         {/* Footer */}
         <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', flexWrap: 'wrap', gap: '0.75rem' }}>
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <span>💡</span> Live ships = vessels on the platform with the same manufacturer and model number installed.
+            Live ships = vessels on the platform with the same manufacturer and model number installed.
           </span>
           <div style={{ display: 'flex', gap: '0.6rem' }}>
             <button type="button" className="btn btn-secondary" onClick={onClose} style={{ padding: '0.5rem 1.25rem', fontSize: '0.85rem' }}>Close</button>
             <button type="button" className="btn btn-primary" onClick={downloadExcel} disabled={!data}
               style={{ padding: '0.55rem 1.4rem', fontSize: '0.88rem', display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 600 }}>
-              <span>📥</span> Download (.xlsx)
+                Download (.xlsx)
             </button>
           </div>
         </div>

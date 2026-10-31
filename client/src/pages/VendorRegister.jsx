@@ -122,22 +122,18 @@ export default function VendorRegister() {
       {/* Left Brand Panel */}
       <div className="register-side">
         <div className="login-brand-content">
-          <span className="login-brand-icon">🏭</span>
           <h2 className="login-brand-title" style={{ fontSize: '2rem' }}>Become a Seller</h2>
           <p className="login-brand-subtitle">
             Join MarineStockHub to list your marine spare parts and reach buyers worldwide.
           </p>
           <div className="login-brand-features" style={{ marginTop: '2rem' }}>
             <div className="login-brand-feature">
-              <span className="login-brand-feature-icon">📦</span>
               <span>List unlimited products</span>
             </div>
             <div className="login-brand-feature">
-              <span className="login-brand-feature-icon">📨</span>
               <span>Receive direct buyer inquiries</span>
             </div>
             <div className="login-brand-feature">
-              <span className="login-brand-feature-icon">📊</span>
               <span>Track inventory & analytics</span>
             </div>
           </div>

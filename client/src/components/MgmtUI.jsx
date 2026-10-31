@@ -28,7 +28,7 @@ export const delta = (current, previous) => {
 };
 
 export const STATUS_META = {
-  pending:  { icon: '⏳', label: 'Pending' },
+  pending:  { label: 'Pending' },
   approved: { icon: '✓',  label: 'Approved' },
   rejected: { icon: '✕',  label: 'Rejected' },
   accepted: { icon: '✓',  label: 'Accepted' },
@@ -36,7 +36,7 @@ export const STATUS_META = {
 
 export function StatusPill({ status }) {
   const meta = STATUS_META[status] || { icon: '•', label: status || 'Unknown' };
-  return <span className={`mg-pill mg-pill-${status}`}><span aria-hidden="true">{meta.icon}</span>{meta.label}</span>;
+  return <span className={`mg-pill mg-pill-${status}`}>{meta.label}</span>;
 }
 
 export const toCsv = (rows, allColumns) => {
@@ -90,7 +90,7 @@ export function DataTable({ rows, columns, searchKeys, statusOptions, statusKey 
     <div className="mg-card mg-table-card">
       <div className="mg-toolbar">
         <div className="mg-search">
-          <span aria-hidden="true">🔍</span>
+
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search…" aria-label="Search" />
         </div>
         {statusOptions && (
@@ -104,7 +104,7 @@ export function DataTable({ rows, columns, searchKeys, statusOptions, statusKey 
           </div>
         )}
         <button className="mg-btn mg-btn-ghost" style={{ marginLeft: 'auto' }} onClick={() => downloadCsv(`${exportName}-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(filtered, columns))}>
-          ⬇ Export CSV
+          Export CSV
         </button>
       </div>
 
@@ -149,7 +149,7 @@ export function TermsCell({ at, version }) {
   if (!at) return <span className="mg-sub">Not recorded</span>;
   return (
     <div title={`Version ${version}`}>
-      <span className="mg-pill mg-pill-approved"><span aria-hidden="true">✓</span>Accepted</span>
+      <span className="mg-pill mg-pill-approved">Accepted</span>
       <div className="mg-sub">{fmtDateTime(at)}</div>
     </div>
   );

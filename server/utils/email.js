@@ -84,7 +84,7 @@ function buildInquiryEmailHTML({
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center">
-                    <div style="font-size:36px;margin-bottom:8px;">⚓</div>
+
                     <h1 style="margin:0;font-size:28px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">MARINESTOCKHUB</h1>
                     <p style="margin:6px 0 0 0;font-size:13px;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:2px;">Maritime Spare Parts Marketplace</p>
                   </td>
@@ -99,7 +99,7 @@ function buildInquiryEmailHTML({
               <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
                 <tr>
                   <td style="background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);border-radius:100px;padding:8px 20px;">
-                    <span style="color:#22c55e;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">🔔 New Purchase Inquiry</span>
+                    <span style="color:#22c55e;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">New Purchase Inquiry</span>
                   </td>
                 </tr>
               </table>
@@ -126,7 +126,7 @@ function buildInquiryEmailHTML({
                 <!-- Card header -->
                 <tr>
                   <td colspan="2" style="background:rgba(14,165,233,0.1);border-bottom:1px solid rgba(148,163,184,0.1);padding:14px 20px;">
-                    <span style="font-size:13px;font-weight:700;color:#38bdf8;text-transform:uppercase;letter-spacing:1.5px;">📦 Product Details</span>
+                    <span style="font-size:13px;font-weight:700;color:#38bdf8;text-transform:uppercase;letter-spacing:1.5px;">Product Details</span>
                   </td>
                 </tr>
 
@@ -151,7 +151,7 @@ function buildInquiryEmailHTML({
                 <!-- Target Price Removed -->
                 <tr>
                   <td style="padding:6px 20px 14px 20px;font-size:13px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;vertical-align:top;">Delivery Port</td>
-                  <td style="padding:6px 20px 14px 20px;font-size:15px;color:#e2e8f0;">📍 ${deliveryPort || 'To be discussed'}</td>
+                  <td style="padding:6px 20px 14px 20px;font-size:15px;color:#e2e8f0;">${deliveryPort || 'To be discussed'}</td>
                 </tr>
               </table>
             </td>
@@ -163,7 +163,7 @@ function buildInquiryEmailHTML({
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(15,23,42,0.6);border:1px solid rgba(148,163,184,0.15);border-radius:12px;overflow:hidden;">
                 <tr>
                   <td colspan="2" style="background:rgba(234,179,8,0.1);border-bottom:1px solid rgba(148,163,184,0.1);padding:14px 20px;">
-                    <span style="font-size:13px;font-weight:700;color:#facc15;text-transform:uppercase;letter-spacing:1.5px;">🚚 Delivery Requirements</span>
+                    <span style="font-size:13px;font-weight:700;color:#facc15;text-transform:uppercase;letter-spacing:1.5px;">Delivery Requirements</span>
                   </td>
                 </tr>
                 <tr>
@@ -180,7 +180,7 @@ function buildInquiryEmailHTML({
                 </tr>
                 <tr>
                   <td style="padding:6px 20px 14px 20px;font-size:13px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Vessel Name</td>
-                  <td style="padding:6px 20px 14px 20px;font-size:15px;color:#e2e8f0;">🚢 ${deliveryRequirements?.vessel_name || 'N/A'}</td>
+                  <td style="padding:6px 20px 14px 20px;font-size:15px;color:#e2e8f0;">${deliveryRequirements?.vessel_name || 'N/A'}</td>
                 </tr>
               </table>
             </td>
@@ -192,7 +192,7 @@ function buildInquiryEmailHTML({
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(15,23,42,0.6);border:1px solid rgba(148,163,184,0.15);border-radius:12px;overflow:hidden;">
                 <tr>
                   <td colspan="2" style="background:rgba(99,102,241,0.1);border-bottom:1px solid rgba(148,163,184,0.1);padding:14px 20px;">
-                    <span style="font-size:13px;font-weight:700;color:#818cf8;text-transform:uppercase;letter-spacing:1.5px;">👤 Buyer Information</span>
+                    <span style="font-size:13px;font-weight:700;color:#818cf8;text-transform:uppercase;letter-spacing:1.5px;">Buyer Information</span>
                   </td>
                 </tr>
                 <tr>
@@ -216,13 +216,13 @@ function buildInquiryEmailHTML({
                 <tr>
                   <td style="border-radius:12px;background:linear-gradient(135deg,#16a34a 0%,#15803d 100%);box-shadow:0 6px 20px rgba(22,163,74,0.5);">
                     <a href="${acceptUrl}" target="_blank" style="display:inline-block;padding:18px 48px;font-size:18px;font-weight:800;color:#ffffff;text-decoration:none;letter-spacing:0.5px;text-transform:uppercase;">
-                      ✅ Accept & Secure Deal
+                      Accept & Secure Deal
                     </a>
                   </td>
                 </tr>
               </table>
               <p style="margin:16px 0 0 0;font-size:14px;color:#ef4444;font-weight:700;">
-                ⚠️ This is a broadcast inquiry. The first seller to accept secures the contract.
+                This is a broadcast inquiry. The first seller to accept secures the contract.
               </p>
             </td>
           </tr>
@@ -241,10 +241,10 @@ function buildInquiryEmailHTML({
                 <tr>
                   <td style="padding:16px 20px;">
                     <p style="margin:0;font-size:14px;color:#ef4444;font-weight:700;text-transform:uppercase;">
-                      ⚡ RUTHLESS EXECUTION MODEL
+                      First-to-Accept Policy
                     </p>
                     <p style="margin:8px 0 0 0;font-size:13px;color:#fca5a5;line-height:1.6;">
-                      MarineStockHub operates on a First-to-Accept basis to maximize speed. <strong>No counter-offers. No negotiations.</strong> If you can fulfill the order, click Accept immediately before another seller takes the deal.
+                      This enquiry has been shared with multiple qualified sellers and is awarded on a first-to-accept basis. If you are able to fulfil the requirement, please accept promptly to secure the order.
                     </p>
                   </td>
                 </tr>
@@ -314,7 +314,7 @@ export async function sendInquiryEmail({
     from: SYSTEM_FROM,
     to: vendorEmail,
     replyTo: buyerEmail,  // CRITICAL: vendor replies go directly to the buyer
-    subject: `🚢 New Inquiry: ${productName} — MarineStockHub Marketplace`,
+    subject: `New Inquiry: ${productName} — MarineStockHub Marketplace`,
     html,
   };
 
@@ -324,11 +324,11 @@ export async function sendInquiryEmail({
   const { data, error } = await sendMail(mailOptions);
 
   if (error) {
-    console.error('❌ Resend email error:', error);
+    console.error('Resend email error:', error);
     throw new Error(`Email delivery failed: ${error.message}`);
   }
 
-  console.log(`✅ Inquiry email sent to ${vendorEmail} (Message ID: ${data?.id})`);
+  console.log(`Inquiry email sent to ${vendorEmail} (Message ID: ${data?.id})`);
   return data;
 }
 
@@ -397,7 +397,7 @@ export async function sendPasswordResetEmail({ to, username, token, expiresInMin
         <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
           <tr>
             <td style="background:linear-gradient(135deg,#0ea5e9 0%,#2563eb 100%);padding:32px 40px;text-align:center;">
-              <div style="font-size:32px;margin-bottom:6px;">⚓</div>
+
               <h1 style="margin:0;font-size:24px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">MARINESTOCKHUB</h1>
             </td>
           </tr>
@@ -439,11 +439,11 @@ export async function sendPasswordResetEmail({ to, username, token, expiresInMin
   });
 
   if (error) {
-    console.error('❌ Password reset email error:', error);
+    console.error('Password reset email error:', error);
     throw new Error(`Email delivery failed: ${error.message}`);
   }
 
-  console.log(`✅ Password reset email sent to ${to} (Message ID: ${data?.id})`);
+  console.log(`Password reset email sent to ${to} (Message ID: ${data?.id})`);
   return data;
 }
 
@@ -464,7 +464,7 @@ const ACCOUNT_STATUS_COPY = {
   },
   approved: {
     subject: 'Your MarineStockHub account has been approved',
-    heading: 'Your account is approved 🎉',
+    heading: 'Your account is approved',
     body: 'Good news — your account has been verified and approved by our management team. You can now sign in and start using MarineStockHub.',
     cta: 'Sign In',
   },
@@ -487,7 +487,7 @@ function buildSimpleEmailHTML({ heading, paragraphs, ctaLabel, ctaUrl, bodyHtml 
     <tr><td align="center">
       <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
         <tr><td style="background:linear-gradient(135deg,#0ea5e9 0%,#2563eb 100%);padding:32px 40px;text-align:center;">
-          <div style="font-size:32px;margin-bottom:6px;">⚓</div>
+
           <h1 style="margin:0;font-size:24px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">MARINESTOCKHUB</h1>
         </td></tr>
         <tr><td style="padding:36px 40px 24px 40px;color:#1e293b;">
@@ -533,7 +533,7 @@ export async function sendAccountStatusEmail({ to, username, role, status }) {
 
   const { data, error } = await sendMail({ from: SYSTEM_FROM, to, subject: copy.subject, html });
   if (error) throw new Error(`Email delivery failed: ${error.message}`);
-  console.log(`✅ Account ${status} email sent to ${to} (Message ID: ${data?.id})`);
+  console.log(`Account ${status} email sent to ${to} (Message ID: ${data?.id})`);
   return data;
 }
 
@@ -580,7 +580,7 @@ export async function sendRegistrationOtpEmail({ to, username, code, expiresInMi
     text: `Your MarineStockHub verification code is ${code}. It expires in ${expiresInMinutes} minutes.`,
   });
   if (error) throw new Error(`Email delivery failed: ${error.message}`);
-  console.log(`✅ Registration OTP sent to ${to} (Message ID: ${data?.id})`);
+  console.log(`Registration OTP sent to ${to} (Message ID: ${data?.id})`);
   return data;
 }
 
@@ -600,7 +600,7 @@ export async function sendLowStockEmail({ to, username, companyName, products, t
     </tr>`).join('');
 
   const html = buildSimpleEmailHTML({
-    heading: '⚠️ Low stock warning — please refill or update your stock',
+    heading: 'Low stock warning — please refill or update your stock',
     paragraphs: [
       `Hello <strong>${escapeHtml(companyName || username)}</strong>,`,
       `<strong>${products.length}</strong> of your product${products.length === 1 ? ' is' : 's are'} running low (fewer than ${threshold} units left). Refill them, or update the quantity if your stock has changed, so buyers see accurate availability.`,
@@ -617,6 +617,75 @@ export async function sendLowStockEmail({ to, username, companyName, products, t
   const subject = `Low stock alert: ${products.length} product${products.length === 1 ? '' : 's'} running low on MarineStockHub`;
   const { data, error } = await sendMail({ from: SYSTEM_FROM, to, subject, html });
   if (error) throw new Error(`Email delivery failed: ${error.message}`);
-  console.log(`✅ Low stock email sent to ${to} (${products.length} products, Message ID: ${data?.id})`);
+  console.log(`Low stock email sent to ${to} (${products.length} products, Message ID: ${data?.id})`);
   return data;
+}
+
+// ─── Seller inactivity: warning → freeze → unfreeze ─────────────────────────────
+const fmtDeadline = (d) => new Date(d).toLocaleString('en-IN', {
+  day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  timeZone: process.env.LOW_STOCK_EMAIL_TZ || 'Asia/Kolkata',
+}) + ' IST';
+
+export async function sendInactivityWarningEmail({ to, username, companyName, inactiveDays, deadline }) {
+  if (!to) return;
+  const html = buildSimpleEmailHTML({
+    heading: 'Action required: your seller account has been inactive',
+    paragraphs: [
+      `Hello <strong>${escapeHtml(companyName || username)}</strong>,`,
+      `You have not signed in to MarineStockHub for <strong>${inactiveDays} days</strong>. Buyers rely on current stock information, so please sign in and update your inventory.`,
+      `If you do not sign in before <strong>${fmtDeadline(deadline)}</strong>, your account will be <strong>frozen</strong> and buyers will no longer be able to see your inventory. A frozen account can only be reactivated by MarineStockHub management on request.`,
+    ],
+    ctaLabel: 'Sign In and Update Inventory',
+    ctaUrl: `${FRONTEND_URL}/login`,
+  });
+  const { error } = await sendMail({ from: SYSTEM_FROM, to, subject: 'Action required: sign in within 2 days to keep your MarineStockHub listings visible', html });
+  if (error) throw new Error(`Email delivery failed: ${error.message}`);
+}
+
+export async function sendAccountFrozenEmail({ to, username, companyName }) {
+  if (!to) return;
+  const html = buildSimpleEmailHTML({
+    heading: 'Your seller account has been frozen',
+    paragraphs: [
+      `Hello <strong>${escapeHtml(companyName || username)}</strong>,`,
+      'Because your account was inactive and you did not sign in after our warning, your MarineStockHub seller account has been frozen. Your inventory is currently hidden from all buyers.',
+      'To reactivate your account, sign in and submit a reactivation request. MarineStockHub management will review it and notify you by email.',
+    ],
+    ctaLabel: 'Request Reactivation',
+    ctaUrl: `${FRONTEND_URL}/login`,
+  });
+  const { error } = await sendMail({ from: SYSTEM_FROM, to, subject: 'Your MarineStockHub seller account has been frozen', html });
+  if (error) throw new Error(`Email delivery failed: ${error.message}`);
+}
+
+export async function sendAccountUnfrozenEmail({ to, username, companyName }) {
+  if (!to) return;
+  const html = buildSimpleEmailHTML({
+    heading: 'Your seller account has been reactivated',
+    paragraphs: [
+      `Hello <strong>${escapeHtml(companyName || username)}</strong>,`,
+      'MarineStockHub management has approved your request. Your account is active again and your inventory is visible to buyers.',
+      'Please review and update your stock now, and sign in at least once a week to keep your account active.',
+    ],
+    ctaLabel: 'Sign In',
+    ctaUrl: `${FRONTEND_URL}/login`,
+  });
+  const { error } = await sendMail({ from: SYSTEM_FROM, to, subject: 'Your MarineStockHub seller account has been reactivated', html });
+  if (error) throw new Error(`Email delivery failed: ${error.message}`);
+}
+
+export async function sendUnfreezeRequestAlert({ to, username, companyName, note }) {
+  if (!to) return;
+  const html = buildSimpleEmailHTML({
+    heading: 'Seller reactivation request',
+    paragraphs: [
+      `<strong>${escapeHtml(companyName || username)}</strong> (@${escapeHtml(username)}) has asked for their frozen seller account to be reactivated.`,
+      note ? `Message from the seller: <em>${escapeHtml(note)}</em>` : 'No message was included.',
+    ],
+    ctaLabel: 'Review in Management Console',
+    ctaUrl: `${FRONTEND_URL}/management/dashboard`,
+  });
+  const { error } = await sendMail({ from: SYSTEM_FROM, to, subject: `Reactivation request: ${companyName || username}`, html });
+  if (error) throw new Error(`Email delivery failed: ${error.message}`);
 }

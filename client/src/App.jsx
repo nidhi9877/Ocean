@@ -17,6 +17,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import TermsPage from './pages/TermsPage';
+import SellerFreezeGate from './components/SellerFreezeGate';
 
 import { Toaster } from 'react-hot-toast';
 import './index.css';
@@ -140,7 +141,7 @@ function AppRoutes() {
         path="/seller/dashboard"
         element={
           <ProtectedRoute allowedRole="seller">
-            <ProviderDashboard />
+            <SellerFreezeGate><ProviderDashboard /></SellerFreezeGate>
           </ProtectedRoute>
         }
       />
@@ -148,7 +149,7 @@ function AppRoutes() {
         path="/seller/inquiries"
         element={
           <ProtectedRoute allowedRole="seller">
-            <ProviderInquiries />
+            <SellerFreezeGate><ProviderInquiries /></SellerFreezeGate>
           </ProtectedRoute>
         }
       />
@@ -156,7 +157,7 @@ function AppRoutes() {
         path="/seller/add-options"
         element={
           <ProtectedRoute allowedRole="seller">
-            <AddDataOptions />
+            <SellerFreezeGate><AddDataOptions /></SellerFreezeGate>
           </ProtectedRoute>
         }
       />
@@ -164,7 +165,7 @@ function AppRoutes() {
         path="/seller/add-csv"
         element={
           <ProtectedRoute allowedRole="seller">
-            <AddCsvData />
+            <SellerFreezeGate><AddCsvData /></SellerFreezeGate>
           </ProtectedRoute>
         }
       />
@@ -172,7 +173,7 @@ function AppRoutes() {
         path="/seller/add-data"
         element={
           <ProtectedRoute allowedRole="seller">
-            <AddBulkData />
+            <SellerFreezeGate><AddBulkData /></SellerFreezeGate>
           </ProtectedRoute>
         }
       />

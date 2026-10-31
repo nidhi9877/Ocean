@@ -111,7 +111,7 @@ export function TermsModal({ onAccept, onClose }) {
 
         <div className="tc-modal-foot">
           <span className="tc-foot-note">
-            {reachedEnd ? '✓ You have reached the end of the document.' : 'Scroll to the end of the document to continue.'}
+            {reachedEnd ? 'You have reached the end of the document.' : 'Scroll to the end of the document to continue.'}
           </span>
           <button type="button" className="btn btn-secondary" onClick={onClose}>Decline</button>
           <button type="button" className="btn btn-primary" disabled={!terms || !reachedEnd} onClick={() => onAccept(terms.version)}>

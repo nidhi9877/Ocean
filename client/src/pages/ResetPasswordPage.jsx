@@ -56,7 +56,6 @@ export default function ResetPasswordPage() {
                 alt="MarineStockHub"
                 style={{ maxHeight: '52px', maxWidth: '240px', width: 'auto', margin: '0 auto 1.25rem', objectFit: 'contain' }}
               />
-              <span className="login-icon">🔒</span>
               <h1 className="login-title">Reset Password</h1>
               <p className="login-subtitle">Choose a new password for your account</p>
             </div>
@@ -81,7 +80,7 @@ export default function ResetPasswordPage() {
                     alignItems: 'center',
                     gap: '0.5rem'
                   }}>
-                    <span>⚠️</span>
+
                     <span>{error}</span>
                   </div>
                 )}
@@ -115,7 +114,7 @@ export default function ResetPasswordPage() {
                           color: 'var(--text-muted)'
                         }}
                       >
-                        {showPassword ? '👁️' : '👁️‍🗨️'}
+                        {showPassword ? 'Hide' : 'Show'}
                       </button>
                     </div>
                   </div>

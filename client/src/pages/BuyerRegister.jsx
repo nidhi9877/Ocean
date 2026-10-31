@@ -125,7 +125,6 @@ export default function BuyerRegister({ role = 'buyer' }) {
       {/* Left Brand Panel */}
       <div className="register-side">
         <div className="login-brand-content">
-          <span className="login-brand-icon">🚢</span>
           <h2 className="login-brand-title" style={{ fontSize: '2rem' }}>Welcome Aboard</h2>
           <p className="login-brand-subtitle">
             {isReseller
@@ -134,15 +133,12 @@ export default function BuyerRegister({ role = 'buyer' }) {
           </p>
           <div className="login-brand-features" style={{ marginTop: '2rem' }}>
             <div className="login-brand-feature">
-              <span className="login-brand-feature-icon">🔍</span>
               <span>Search thousands of spare parts</span>
             </div>
             <div className="login-brand-feature">
-              <span className="login-brand-feature-icon">📨</span>
               <span>Send mass inquiries to sellers</span>
             </div>
             <div className="login-brand-feature">
-              <span className="login-brand-feature-icon">⏱️</span>
               <span>Get responses within 24 hours</span>
             </div>
           </div>
@@ -161,8 +157,7 @@ export default function BuyerRegister({ role = 'buyer' }) {
 
             <form onSubmit={handleRegister}>
               <div className="form-section">
-                <div className="form-section-title">
-                  <span className="form-section-icon">👤</span> Account Details
+                <div className="form-section-title"> Account Details
                 </div>
                 
                 <div className="form-row">

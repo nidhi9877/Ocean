@@ -73,7 +73,7 @@ export default function EmailOtpModal({ email, onVerify, onResend, onClose }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15, 23, 42, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
       <div className="glass-card" role="dialog" aria-label="Verify your email" style={{ width: '100%', maxWidth: '440px', padding: '2rem', background: '#fff', textAlign: 'center' }}>
-        <div style={{ fontSize: '2.25rem', marginBottom: '0.5rem' }}>📧</div>
+
         <h2 style={{ margin: '0 0 0.4rem', fontSize: '1.4rem', color: 'var(--text-primary)' }}>Verify your email</h2>
         <p style={{ margin: '0 0 1.5rem', color: 'var(--text-secondary)', fontSize: '0.92rem', lineHeight: 1.5 }}>
           We sent a 6-digit code to <strong style={{ color: 'var(--text-primary)', wordBreak: 'break-all' }}>{email}</strong>. Enter it below to complete your registration.

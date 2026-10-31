@@ -2,8 +2,81 @@ import { Router } from 'express';
 import { sql } from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { validateCompanyEmail } from '../utils/emailValidator.js';
+import jwt from 'jsonwebtoken';
+import { getFreezeStatus } from '../utils/sellerActivity.js';
+import { sendUnfreezeRequestAlert } from '../utils/email.js';
 
 const router = Router();
+
+// ─── Frozen seller lock ─────────────────────────────────────────────────────────
+// A frozen seller can sign in, but every seller endpoint except the freeze status and
+// the reactivation request answers 423 until management reactivates the account.
+// Buyer / public requests pass straight through.
+const FROZEN_ALLOWED = new Set(['/freeze-status', '/unfreeze-request']);
+router.use(async (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token || FROZEN_ALLOWED.has(req.path)) return next();
+  let user;
+  try { user = jwt.verify(token, process.env.JWT_SECRET); } catch { return next(); }
+  if (user.role !== 'seller' && user.role !== 'provider') return next();
+  try {
+    const [p] = await sql`SELECT frozen_at FROM providers WHERE user_id = ${user.id}`;
+    if (p?.frozen_at) {
+      return res.status(423).json({ error: 'Your account is frozen due to inactivity. Request reactivation from MarineStockHub management to continue.', frozen: true });
+    }
+  } catch (err) {
+    console.error('Freeze check failed:', err.message);
+  }
+  next();
+});
+
+router.get('/freeze-status', authenticateToken, async (req, res) => {
+  try {
+    const status = await getFreezeStatus(req.user.id);
+    if (!status) return res.status(404).json({ error: 'Seller profile not found' });
+    res.json(status);
+  } catch (error) {
+    console.error('Freeze status error:', error);
+    res.status(500).json({ error: 'Failed to load account status' });
+  }
+});
+
+router.post('/unfreeze-request', authenticateToken, async (req, res) => {
+  try {
+    const note = String(req.body?.note || '').trim().slice(0, 500) || null;
+    const rows = await sql`
+      UPDATE providers SET unfreeze_requested_at = NOW(), unfreeze_note = ${note}
+      WHERE user_id = ${req.user.id} AND frozen_at IS NOT NULL
+      RETURNING company_name
+    `;
+    if (rows.length === 0) return res.status(400).json({ error: 'Your account is not frozen.' });
+    if (process.env.MANAGEMENT_NOTIFY_EMAIL) {
+      sendUnfreezeRequestAlert({ to: process.env.MANAGEMENT_NOTIFY_EMAIL, username: req.user.username, companyName: rows[0].company_name, note })
+        .catch(err => console.error('Unfreeze request alert failed:', err.message));
+    }
+    res.json({ message: 'Your reactivation request has been sent to MarineStockHub management. You will be notified by email once it is reviewed.', status: await getFreezeStatus(req.user.id) });
+  } catch (error) {
+    console.error('Unfreeze request error:', error);
+    res.status(500).json({ error: 'Failed to send request' });
+  }
+});
+
+// "Update Inventory": the seller confirms their stock is current. Buyers and resellers
+// then see today's date as the inventory's Last Updated, and it counts as activity.
+router.post('/inventory/confirm', authenticateToken, async (req, res) => {
+  try {
+    const rows = await sql`
+      UPDATE providers SET inventory_verified_at = NOW(), inactivity_warned_at = NULL
+      WHERE user_id = ${req.user.id}
+      RETURNING inventory_verified_at
+    `;
+    if (rows.length === 0) return res.status(404).json({ error: 'Seller profile not found' });
+    res.json({ message: 'Inventory marked as up to date.', inventoryVerifiedAt: rows[0].inventory_verified_at });
+  } catch (error) {
+    console.error('Inventory confirm error:', error);
+    res.status(500).json({ error: 'Failed to update inventory status' });
+  }
+});
 
 // Register provider company details + products
 router.post('/register', authenticateToken, async (req, res) => {
@@ -209,6 +282,7 @@ router.get('/products/search', async (req, res) => {
     // Results are ranked by the best similarity score across all searched fields
     const products = await sql`
       SELECT p.*, pr.company_name, pr.contact_person, pr.email as provider_email, COALESCE(p.payment_mode, pr.payment_mode) AS payment_mode,
+             GREATEST(p.updated_at, pr.inventory_verified_at) AS last_updated,
              GREATEST(
                COALESCE(similarity(LOWER(p.product_name), ${searchTerm}), 0),
                COALESCE(similarity(LOWER(COALESCE(p.part_number, '')), ${searchTerm}), 0),
@@ -217,13 +291,14 @@ router.get('/products/search', async (req, res) => {
              ) AS relevance_score
       FROM products p
       JOIN providers pr ON p.provider_id = pr.id
-      WHERE 
+      WHERE pr.frozen_at IS NULL AND (
         LOWER(p.product_name) % ${searchTerm}
         OR LOWER(COALESCE(p.part_number, '')) % ${searchTerm}
         OR LOWER(COALESCE(p.brand, '')) % ${searchTerm}
         OR LOWER(COALESCE(p.category, '')) % ${searchTerm}
         OR LOWER(p.product_name) ILIKE ${'%' + searchTerm + '%'}
         OR LOWER(COALESCE(p.part_number, '')) ILIKE ${'%' + searchTerm + '%'}
+      )
       ORDER BY relevance_score DESC, p.product_name ASC
       LIMIT 100
     `;
@@ -258,10 +333,12 @@ router.get('/products/search', async (req, res) => {
 router.get('/products', async (req, res) => {
   try {
     const products = await sql`
-      SELECT p.*, pr.company_name, pr.contact_person, pr.email as provider_email, COALESCE(p.payment_mode, pr.payment_mode) AS payment_mode, u.username as provider_username
+      SELECT p.*, pr.company_name, pr.contact_person, pr.email as provider_email, COALESCE(p.payment_mode, pr.payment_mode) AS payment_mode, u.username as provider_username,
+             GREATEST(p.updated_at, pr.inventory_verified_at) AS last_updated
       FROM products p
       JOIN providers pr ON p.provider_id = pr.id
       JOIN users u ON pr.user_id = u.id
+      WHERE pr.frozen_at IS NULL
       ORDER BY p.created_at DESC
     `;
 
@@ -603,7 +680,9 @@ router.get('/intelligence', authenticateToken, async (req, res) => {
     const providerId = providerRows[0].id;
 
     const [marketProducts, specs] = await Promise.all([
-      sql`SELECT id, provider_id, product_name, part_number, category, brand, model_number, quantity, equipment_condition, part_category FROM products`,
+      sql`SELECT p.id, p.provider_id, p.product_name, p.part_number, p.category, p.brand, p.model_number, p.quantity, p.equipment_condition, p.part_category
+          FROM products p JOIN providers pr ON pr.id = p.provider_id
+          WHERE pr.frozen_at IS NULL OR pr.id = ${providerId}`,
       sql`SELECT ship_id, equipment, manufacturer, model FROM buyer_specifications WHERE ship_id IS NOT NULL`,
     ]);
 

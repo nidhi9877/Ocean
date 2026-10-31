@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { sql } from './db.js';
 import { sendLowStockEmail } from './utils/email.js';
+import { runSellerInactivityChecks } from './utils/sellerActivity.js';
 
 // Must match LOW_STOCK_THRESHOLD in client/src/pages/ProviderDashboard.jsx (the red pop-up)
 export const LOW_STOCK_THRESHOLD = 5;
@@ -46,6 +47,7 @@ export function initCronJobs() {
   // Schedule to run every hour at minute 0
   cron.schedule('0 * * * *', () => {
     cleanupExpiredRecords('Hourly Cron');
+    runSellerInactivityChecks().catch(err => console.error('[Seller Inactivity] Job failed:', err.message));
   });
 
   // Every evening at 5 PM: email each approved seller the same low-stock warning the dashboard pops up

@@ -256,7 +256,16 @@ export async function initDatabase() {
         sql`ALTER TABLE buyers ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ`,
         sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ`,
         sql`ALTER TABLE buyer_specifications ADD COLUMN IF NOT EXISTS ship_id INTEGER REFERENCES buyer_ships(id) ON DELETE CASCADE`,
-        sql`ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS last_active TIMESTAMPTZ DEFAULT NOW()`
+        sql`ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS last_active TIMESTAMPTZ DEFAULT NOW()`,
+        // Seller inactivity discipline (warn after 7 days without login, freeze 2 days later)
+        sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ`,
+        sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS login_count INTEGER NOT NULL DEFAULT 0`,
+        sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS inactivity_warned_at TIMESTAMPTZ`,
+        sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS frozen_at TIMESTAMPTZ`,
+        sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS unfreeze_requested_at TIMESTAMPTZ`,
+        sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS unfreeze_note TEXT`,
+        sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS activity_reset_at TIMESTAMPTZ`,
+        sql`ALTER TABLE providers ADD COLUMN IF NOT EXISTS inventory_verified_at TIMESTAMPTZ`
       ]);
     } catch (e) {
       console.log('Columns likely already exist or minor error:', e.message);

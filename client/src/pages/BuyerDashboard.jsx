@@ -392,7 +392,7 @@ export default function BuyerDashboard() {
         return;
       }
       setCsvPreview(normalizedRows);
-      toast.success(`✅ Parsed ${normalizedRows.length} specification(s) from ${sourceName}`);
+      toast.success(`Parsed ${normalizedRows.length} specification(s) from ${sourceName}`);
     };
 
     if (ext === 'csv') {
@@ -636,7 +636,7 @@ export default function BuyerDashboard() {
 
       setCsvPreview([]);
       setCsvFileName('');
-      toast.success(`✅ ${csvPreview.length} specification(s) saved!`);
+      toast.success(`${csvPreview.length} specification(s) saved!`);
 
       // Refresh specifications and ships
       await loadShipSpecs(shipId);
@@ -667,7 +667,7 @@ export default function BuyerDashboard() {
       setNewShipName('');
       setNewShipImo('');
       setNewShipType('');
-      toast.success(`🚢 Ship "${r.data.ship_name}" created!`);
+      toast.success(`Ship "${r.data.ship_name}" created!`);
       await loadShips();
       handleExpandShip(r.data.id);
     } catch (err) {
@@ -823,7 +823,7 @@ export default function BuyerDashboard() {
 
       XLSX.writeFile(wb, `${sanitizedName}_equipment_availability_breakdown.xlsx`);
 
-      toast.success(`✅ Downloaded ${sanitizedName}_equipment_availability_breakdown.xlsx!`, { id: toastId });
+      toast.success(`Downloaded ${sanitizedName}_equipment_availability_breakdown.xlsx!`, { id: toastId });
     } catch (err) {
       console.error('Failed to download ship availability breakdown:', err);
       toast.error('Failed to download data. Please try again.', { id: toastId });
@@ -835,7 +835,7 @@ export default function BuyerDashboard() {
   // Backward compatibility alias
   const handleExportShipCsv = handleDownloadShipData;
 
-  // ── Open Export Preview & Options Modal ──
+  // ── Open Buyer Intelligence (export preview) Modal ──
   const handleOpenExportModal = async (ship) => {
     if (!ship || !ship.id) return;
     setExportModalShip(ship);
@@ -1115,7 +1115,7 @@ export default function BuyerDashboard() {
         window.open(emailUrl, '_blank', 'noreferrer');
       }
 
-      toast.success(`✅ Inquiry registered!${charged ? ` ₹${charged} deducted from your wallet (balance ₹${inquiryRes.data.walletBalance}).` : ''} Opening mail client to contact ${selectedProduct.company_name}...`, { duration: 6000 });
+      toast.success(`Inquiry registered!${charged ? ` ₹${charged} deducted from your wallet (balance ₹${inquiryRes.data.walletBalance}).` : ''} Opening mail client to contact ${selectedProduct.company_name}...`, { duration: 6000 });
       setShowComposeModal(false);
     } catch (err) {
       if (err.response?.status === 402) {
@@ -1152,7 +1152,7 @@ export default function BuyerDashboard() {
     setSelectedProduct(product);
     const sellerName = product.provider_username || product.company_name || 'Seller';
     const productName = product.product_name || product.category || 'N/A';
-    const subject = `🚢 Purchase Inquiry: ${productName} — MarineStockHub Marketplace`;
+    const subject = `Purchase Inquiry: ${productName} — MarineStockHub Marketplace`;
     const body = `Dear ${sellerName} Team,\n\nI am interested in purchasing the following listed product:\n\n- Product: ${productName}\n- Brand: ${product.brand || 'N/A'}\n- Model: ${product.model_number || 'N/A'}\n- Part Number: ${product.part_number || 'N/A'}\n\nDelivery Details:\n- Destination Port: ${inquiryMeta.destination.trim()}\n- ETA: ${inquiryMeta.eta.trim()}\n- ETD: ${inquiryMeta.etd ? inquiryMeta.etd.trim() : 'N/A'}\n- Vessel Name: ${inquiryMeta.vesselName ? inquiryMeta.vesselName.trim() : 'N/A'}\n- Minimum Quantity Required: ${filters.minQty}\n\nPlease let me know if you can fulfill this request and provide a price quote.\n\nBest regards,\n${user?.username || 'Buyer'}`;
     
     setShowCc(false);
@@ -1191,15 +1191,15 @@ export default function BuyerDashboard() {
         {/* Header */}
         <div className="dashboard-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'1rem' }}>
           <div>
-            <h1 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.8rem', fontWeight:'700' }}>Welcome, {user?.username} 👋</h1>
+            <h1 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.8rem', fontWeight:'700' }}>Welcome, {user?.username}</h1>
             <p style={{ color:'var(--text-secondary)', marginTop:'0.25rem' }}>Search marine spare parts and send inquiries directly to sellers.</p>
           </div>
           <div style={{ display:'flex', gap:'0.75rem', flexWrap:'wrap' }}>
             {!isReseller && <button onClick={() => setShowShipsModal(true)} className="btn btn-primary" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', background: ships.length > 0 ? 'linear-gradient(135deg, #059669, #10b981)' : undefined, position:'relative' }}>
-              <span>🚢</span> My Ships
+              My Ships
               {ships.length > 0 && <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:20, height:20, borderRadius:'50%', background:'rgba(255,255,255,0.3)', fontSize:'0.7rem', fontWeight:'700' }}>{ships.length}</span>}
             </button>}
-            <a href="/buyer/inquiries" className="btn btn-primary" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem' }}><span>📨</span> My recents</a>
+            <a href="/buyer/inquiries" className="btn btn-primary" style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem' }}>My recents</a>
             {isReseller && <ResellerWallet ref={walletRef} token={token} user={user} onChange={setWalletInfo} />}
           </div>
         </div>
@@ -1222,7 +1222,7 @@ export default function BuyerDashboard() {
         >
           <form onSubmit={handleSearch} style={{ display:'flex', gap:'0.75rem', alignItems:'center', flexWrap:'wrap' }}>
             <div style={{ position:'relative', flex:1, minWidth:'280px' }}>
-              <span style={{ position:'absolute', left:'1rem', top:'50%', transform:'translateY(-50%)', fontSize:'1.15rem', color:'var(--text-muted)', pointerEvents:'none' }}>🔍</span>
+
               <input
                 style={{ width:'100%', padding:'0.9rem 2.8rem 0.9rem 3rem', background:'var(--bg-surface)', border:'2px solid var(--border-color)', borderRadius:'var(--radius-full)', color:'var(--text-primary)', fontFamily:"'Inter',sans-serif", fontSize:'0.95rem', outline:'none', transition:'all 0.2s' }}
                 placeholder="Search by Part Name, Number, Equipment, or Manufacturer..."
@@ -1285,7 +1285,7 @@ export default function BuyerDashboard() {
               <div style={{ position:'relative', display:'inline-flex', alignItems:'center', gap:'0.5rem' }}>
                 <button type="button" onClick={() => setShowShipDropdown(v => !v)}
                   style={{ display:'inline-flex', alignItems:'center', gap:'0.5rem', padding:'0.8rem 1.4rem', background: selectedShipId ? 'rgba(5,150,105,0.08)' : 'var(--bg-surface)', border:`2px solid ${selectedShipId ? '#059669' : 'var(--border-color)'}`, borderRadius:'var(--radius-full)', color: selectedShipId ? '#059669' : 'var(--text-secondary)', fontWeight:'600', fontSize:'0.9rem', cursor:'pointer', transition:'all 0.2s', fontFamily:"'Inter',sans-serif" }}>
-                  <span>🚢</span>
+
                   <span>Ship: <strong>{selectedShip ? selectedShip.ship_name : 'All Equipment'}</strong></span>
                   <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ transition:'transform 0.2s', transform: showShipDropdown ? 'rotate(180deg)' : 'none' }}><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
@@ -1303,7 +1303,7 @@ export default function BuyerDashboard() {
                         style={{ display:'flex', alignItems:'center', gap:'0.5rem', width:'100%', padding:'0.75rem 1rem', background: !selectedShipId ? 'rgba(37,99,235,0.06)' : 'transparent', border:'none', textAlign:'left', cursor:'pointer', fontSize:'0.88rem', fontWeight: !selectedShipId ? '600' : '400', color: !selectedShipId ? 'var(--accent-primary)' : 'var(--text-primary)', fontFamily:"'Inter',sans-serif", transition:'background 0.1s' }}
                         onMouseEnter={e => e.currentTarget.style.background = !selectedShipId ? 'rgba(37,99,235,0.06)' : 'var(--bg-surface)'}
                         onMouseLeave={e => e.currentTarget.style.background = !selectedShipId ? 'rgba(37,99,235,0.06)' : 'transparent'}>
-                        🌍 All Equipment
+                        All Equipment
                         {!selectedShipId && <span style={{ marginLeft:'auto', color:'var(--accent-primary)' }}>✓</span>}
                       </button>
                       <div style={{ height:1, background:'var(--border-color)' }}></div>
@@ -1340,7 +1340,7 @@ export default function BuyerDashboard() {
                               fontFamily:"'Inter',sans-serif"
                             }}
                           >
-                            <span>🚢 {ship.ship_name}</span>
+                            <span>{ship.ship_name}</span>
                             <span style={{ fontSize:'0.72rem', color:'var(--text-muted)', background:'var(--bg-surface)', padding:'0.15rem 0.45rem', borderRadius:'0.5rem', border:'1px solid var(--border-color)' }}>
                               {ship.spec_count} specs
                             </span>
@@ -1365,7 +1365,7 @@ export default function BuyerDashboard() {
                             }}
                             title={`Download market parts for ${ship.ship_name} (.xlsx)`}
                           >
-                            <span>📥 Download</span>
+                            <span>Download</span>
                           </button>
                         </div>
                       ))}
@@ -1408,7 +1408,7 @@ export default function BuyerDashboard() {
             borderRadius:'var(--radius-md)'
           }}>
             <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
-              <span style={{ fontSize:'1.6rem' }}>🚢</span>
+
               <div>
                 <div style={{ fontWeight:'700', fontSize:'0.98rem', color:'#059669', display:'flex', alignItems:'center', gap:'0.6rem', flexWrap:'wrap' }}>
                   <span>Active Ship: <strong>{selectedShip.ship_name}</strong></span>
@@ -1418,12 +1418,11 @@ export default function BuyerDashboard() {
                     {savedSpecs.length} Equipment Specifications
                   </span>
                   {specsFilterActive ? (
-                    <span style={{ fontSize:'0.72rem', background:'rgba(5,150,105,0.15)', color:'#059669', padding:'0.15rem 0.55rem', borderRadius:'1rem', fontWeight:'600', display:'inline-flex', alignItems:'center', gap:'0.3rem' }}>
-                      ✓ Compatibility & Colors Active
+                    <span style={{ fontSize:'0.72rem', background:'rgba(5,150,105,0.15)', color:'#059669', padding:'0.15rem 0.55rem', borderRadius:'1rem', fontWeight:'600', display:'inline-flex', alignItems:'center', gap:'0.3rem' }}>Compatibility & Colors Active
                     </span>
                   ) : (
                     <span style={{ fontSize:'0.72rem', background:'rgba(245,158,11,0.15)', color:'#d97706', padding:'0.15rem 0.55rem', borderRadius:'1rem', fontWeight:'600', display:'inline-flex', alignItems:'center', gap:'0.3rem' }}>
-                      🔍 Search Active (Filtered)
+                      Search Active (Filtered)
                     </span>
                   )}
                 </div>
@@ -1441,7 +1440,7 @@ export default function BuyerDashboard() {
                   onClick={() => {
                     setSpecsFilterActive(true);
                     setSearchQuery('');
-                    toast.success('⚡ Restored Ship Specifications & Compatibility view!');
+                    toast.success('Restored Ship Specifications & Compatibility view!');
                   }}
                   className="btn btn-primary"
                   style={{
@@ -1455,7 +1454,7 @@ export default function BuyerDashboard() {
                     boxShadow:'0 2px 8px rgba(245,158,11,0.25)'
                   }}
                 >
-                  <span>⚡</span> Restore Compatibility View
+                  Restore Compatibility View
                 </button>
               )}
               <button
@@ -1474,7 +1473,7 @@ export default function BuyerDashboard() {
                   boxShadow:'0 2px 8px rgba(5,150,105,0.25)'
                 }}
               >
-                <span>📥</span> {exportingCsv ? 'Downloading...' : 'Download Ship Data'}
+                {exportingCsv ? 'Downloading...' : 'Download Ship Data'}
               </button>
               <button
                 type="button"
@@ -1491,7 +1490,7 @@ export default function BuyerDashboard() {
                   fontWeight:'600'
                 }}
               >
-                <span>📊</span> Preview & Options
+                Buyer Intelligence
               </button>
             </div>
           </div>
@@ -1500,7 +1499,7 @@ export default function BuyerDashboard() {
         {/* Inquiry Details (ETA/ETD/Vessel/Destination) */}
         <div className="glass-card" style={{ padding:'1.25rem 1.5rem', marginBottom:'1.25rem' }}>
           <h4 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1rem', fontWeight:'600', marginBottom:'0.75rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
-            📋 Inquiry Details <span style={{ fontSize:'0.75rem', fontWeight:'400', color:'var(--text-muted)' }}>(Destination & ETA are compulsory)</span>
+            Inquiry Details <span style={{ fontSize:'0.75rem', fontWeight:'400', color:'var(--text-muted)' }}>(Destination & ETA are compulsory)</span>
           </h4>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:'0.75rem' }}>
             <div>
@@ -1525,7 +1524,7 @@ export default function BuyerDashboard() {
         {/* Results — Single unified table */}
         {(!hasSearched && !selectedShipId) ? (
           <div className="glass-card empty-state" style={{ padding:'4rem 2rem', textAlign:'center' }}>
-            <span style={{ fontSize:'3.5rem', display:'block', marginBottom:'1rem', animation:'float 4s ease-in-out infinite' }}>⚓</span>
+
             <h3 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.3rem', fontWeight:'600', marginBottom:'0.5rem' }}>Search the Global Parts Database</h3>
             <p style={{ color:'var(--text-muted)', maxWidth:400, margin:'0 auto' }}>Use the search bar, select a ship, or apply filters to find the marine spare parts you need.</p>
           </div>
@@ -1533,7 +1532,6 @@ export default function BuyerDashboard() {
           specsFilterActive && specClassification.some(sc => !searchQuery.trim() || matchesSearch(searchQuery, sc.spec.equipment, sc.spec.manufacturer, sc.spec.model))
         ) ? (
           <div className="glass-card empty-state" style={{ padding:'3rem', textAlign:'center' }}>
-            <span className="empty-state-icon">🌊</span>
             <p style={{ color:'var(--text-secondary)' }}>
               {searchQuery.trim()
                 ? `No products or equipment found matching "${searchQuery}". Try broadening your search.`
@@ -1564,7 +1562,7 @@ export default function BuyerDashboard() {
                     onClick={() => {
                       setSpecsFilterActive(true);
                       setSearchQuery('');
-                      toast.success(`⚡ Restored full equipment view for ${selectedShip.ship_name}!`);
+                      toast.success(`Restored full equipment view for ${selectedShip.ship_name}!`);
                     }}
                     style={{
                       background:'rgba(5,150,105,0.1)',
@@ -1580,7 +1578,7 @@ export default function BuyerDashboard() {
                       gap:'0.35rem'
                     }}
                   >
-                    ⚡ Show All {selectedShip.ship_name} Equipment
+                    Show All {selectedShip.ship_name} Equipment
                   </button>
                 )}
                 <button className="reset-cols-btn" onClick={resetColumnOrder} title="Reset columns to the default order">
@@ -1742,7 +1740,7 @@ export default function BuyerDashboard() {
                         case 'Last Updated':
                           return (
                             <td key={h} style={{ padding:'0.75rem', fontSize:'0.85rem', color:'var(--text-secondary)' }}>
-                              {p.updated_at ? new Date(p.updated_at).toLocaleDateString() : p.created_at ? new Date(p.created_at).toLocaleDateString() : '-'}
+                              {(() => { const d = p.last_updated || p.updated_at || p.created_at; return d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'; })()}
                             </td>
                           );
                         case 'Action':
@@ -1751,7 +1749,7 @@ export default function BuyerDashboard() {
                               <button className="btn btn-primary" disabled={sending}
                                 style={{ padding:'0.4rem 0.8rem', fontSize:'0.85rem', display:'inline-flex', alignItems:'center', gap:'0.4rem', minWidth:130, opacity:sending?0.7:1, cursor:sending?'not-allowed':'pointer' }}
                                 onClick={() => openComposeModal(p)}>
-                                {sending ? (<><span className="spinner" style={{ width:14, height:14, borderWidth:2 }}/> Sending...</>) : (<>✉️ Send Inquiry</>)}
+                                {sending ? (<><span className="spinner" style={{ width:14, height:14, borderWidth:2 }}/> Sending...</>) : (<>Send Inquiry</>)}
                               </button>
                             </td>
                           );
@@ -1795,7 +1793,7 @@ export default function BuyerDashboard() {
                             padding:'0.2rem 0.6rem', borderRadius:'1rem', fontSize:'0.72rem', fontWeight:'600',
                             background:'rgba(245,158,11,0.15)', color:'#d97706'
                           }}>
-                            ⚠ Different Specs
+                            Different Specs
                           </span>
                         </td>
                         <td style={{ padding:'0.75rem', color:'var(--text-muted)' }}>—</td>
@@ -1809,7 +1807,7 @@ export default function BuyerDashboard() {
                               setHasSearched(true);
                               setCompatibleOptionsMode(true);
                               setCompatibleOptionsSpec({ equipment: sc.spec.equipment, manufacturer: sc.spec.manufacturer, model: sc.spec.model });
-                              toast.success(`🔍 Showing Complete Set alternatives for "${sc.spec.equipment}" (${sc.spec.manufacturer || 'any'})...`);
+                              toast.success(`Showing Complete Set alternatives for "${sc.spec.equipment}" (${sc.spec.manufacturer || 'any'})...`);
                             }}
                             style={{
                               padding:'0.45rem 1rem', fontSize:'0.82rem', borderRadius:'var(--radius-full)',
@@ -1818,7 +1816,7 @@ export default function BuyerDashboard() {
                               fontWeight:'600', whiteSpace:'nowrap', boxShadow:'0 2px 6px rgba(245,158,11,0.25)'
                             }}
                           >
-                            🔍 Explore Compatible Options
+                            Explore Compatible Options
                           </button>
                         </td>
                       </tr>
@@ -1848,7 +1846,7 @@ export default function BuyerDashboard() {
                             padding:'0.2rem 0.6rem', borderRadius:'1rem', fontSize:'0.72rem', fontWeight:'600',
                             background:'rgba(239,68,68,0.15)', color:'#dc2626'
                           }}>
-                            ✗ Not Available
+                            Not Available
                           </span>
                         </td>
                         <td style={{ padding:'0.75rem', color:'var(--text-muted)' }}>—</td>
@@ -1862,7 +1860,7 @@ export default function BuyerDashboard() {
                               display:'inline-flex', alignItems:'center', gap:'0.35rem',
                               fontWeight:'600', whiteSpace:'nowrap'
                             }}>
-                              🚫 Not in Market
+                              Not in Market
                             </span>
                             <span style={{ fontSize:'0.78rem', color:'#dc2626', fontStyle:'italic', lineHeight:'1.3', whiteSpace:'nowrap' }}>
                               {sc.reason || 'Equipment is not available in MarineStockHub Marketplace'}
@@ -1946,9 +1944,9 @@ export default function BuyerDashboard() {
                 
                 {/* Equipment / Category */}
                 <div>
-                  <SectionTitle icon="🔩" label="Equipment / Category" />
+                  <SectionTitle label="Equipment / Category" />
                   <div style={{ position:'relative', marginBottom:'0.75rem' }}>
-                    <span style={{ position:'absolute', left:'0.85rem', top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', fontSize:'0.9rem' }}>🔍</span>
+
                     <input className="form-input" placeholder="Search equipment..." value={equipmentSearch}
                       onChange={e => setEquipmentSearch(e.target.value)}
                       style={{ paddingLeft:'2.5rem' }} />
@@ -1965,9 +1963,9 @@ export default function BuyerDashboard() {
 
                 {/* Manufacturer / Brand */}
                 <div>
-                  <SectionTitle icon="🏭" label="Manufacturer / Brand" />
+                  <SectionTitle label="Manufacturer / Brand" />
                   <div style={{ position:'relative', marginBottom:'0.75rem' }}>
-                    <span style={{ position:'absolute', left:'0.85rem', top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', fontSize:'0.9rem' }}>🔍</span>
+
                     <input className="form-input" placeholder="Search brands..." value={manufacturerSearch}
                       onChange={e => setManufacturerSearch(e.target.value)}
                       style={{ paddingLeft:'2.5rem' }} />
@@ -1984,9 +1982,9 @@ export default function BuyerDashboard() {
 
                 {/* Model */}
                 <div>
-                  <SectionTitle icon="🔎" label="Model" />
+                  <SectionTitle label="Model" />
                   <div style={{ position:'relative', marginBottom:'0.75rem' }}>
-                    <span style={{ position:'absolute', left:'0.85rem', top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', fontSize:'0.9rem' }}>🔍</span>
+
                     <input className="form-input" placeholder="Search model..." value={filters.modelNumber}
                       onChange={e => setFilters(f=>({...f, modelNumber:e.target.value}))}
                       style={{ paddingLeft:'2.5rem' }} />
@@ -1995,9 +1993,9 @@ export default function BuyerDashboard() {
 
                 {/* Part No. */}
                 <div>
-                  <SectionTitle icon="🏷️" label="Part No." />
+                  <SectionTitle label="Part No." />
                   <div style={{ position:'relative', marginBottom:'0.75rem' }}>
-                    <span style={{ position:'absolute', left:'0.85rem', top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', fontSize:'0.9rem' }}>🔍</span>
+
                     <input className="form-input" placeholder="Search part no..." value={filters.partNumber}
                       onChange={e => setFilters(f=>({...f, partNumber:e.target.value}))}
                       style={{ paddingLeft:'2.5rem' }} />
@@ -2006,9 +2004,9 @@ export default function BuyerDashboard() {
 
                 {/* Location */}
                 <div>
-                  <SectionTitle icon="📍" label="Location" />
+                  <SectionTitle label="Location" />
                   <div style={{ position:'relative', marginBottom:'0.75rem' }}>
-                    <span style={{ position:'absolute', left:'0.85rem', top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)', fontSize:'0.9rem' }}>🔍</span>
+
                     <input className="form-input" placeholder="Search locations..." value={locationSearch}
                       onChange={e => setLocationSearch(e.target.value)}
                       style={{ paddingLeft:'2.5rem' }} />
@@ -2025,7 +2023,7 @@ export default function BuyerDashboard() {
 
                 {/* Minimum QTY */}
                 <div>
-                  <SectionTitle icon="📦" label={`Minimum QTY: ${filters.minQty}`} />
+                  <SectionTitle label={`Minimum QTY: ${filters.minQty}`} />
                   <div style={{ padding:'0 0.25rem' }}>
                     <input type="range" min="1" max="100" value={filters.minQty}
                       onChange={e => setFilters(f=>({...f, minQty:Number(e.target.value)}))}
@@ -2038,7 +2036,7 @@ export default function BuyerDashboard() {
 
                 {/* Business Type */}
                 <div>
-                  <SectionTitle icon="🛠️" label="Business Type" />
+                  <SectionTitle label="Business Type" />
                   <select className="form-input" value={filters.serviceType} onChange={e => setFilters(f => ({...f, serviceType: e.target.value}))}>
                     <option value="">Any</option>
                     <option value="Supply">Supply</option>
@@ -2048,7 +2046,7 @@ export default function BuyerDashboard() {
 
                 {/* Category (Part Category) */}
                 <div>
-                  <SectionTitle icon="📂" label="Category" />
+                  <SectionTitle label="Category" />
                   <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
                     {['', 'Spare Part', 'Complete Set'].map(opt => (
                       <button
@@ -2076,7 +2074,7 @@ export default function BuyerDashboard() {
 
                 {/* Condition */}
                 <div>
-                  <SectionTitle icon="⚙️" label="Condition" />
+                  <SectionTitle label="Condition" />
                   <div style={{ display:'flex', gap:'0.5rem', flexWrap:'wrap' }}>
                     {['', 'New', 'Refurbished'].map(opt => (
                       <button
@@ -2107,7 +2105,7 @@ export default function BuyerDashboard() {
 
             {/* Footer */}
             <div style={{ padding:'1rem 1.5rem', borderTop:'1px solid var(--border-color)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <button className="btn btn-secondary" onClick={clearAll} style={{ fontSize:'0.85rem' }}>🧹 Clear All</button>
+              <button className="btn btn-secondary" onClick={clearAll} style={{ fontSize:'0.85rem' }}>Clear All</button>
               <button className="btn btn-primary" onClick={() => { 
                 setShowModal(false); 
                 setHasSearched(true); 
@@ -2387,10 +2385,10 @@ export default function BuyerDashboard() {
                           Select Email Client
                         </div>
                         {[
-                          { id: 'gmail', name: 'Google Mail (Gmail)', icon: '🔴', desc: 'Open in Gmail web' },
-                          { id: 'yahoo', name: 'Yahoo Mail', icon: '🟣', desc: 'Open in Yahoo Mail web' },
-                          { id: 'outlook', name: 'Outlook Web', icon: '🔵', desc: 'Open in Outlook web' },
-                          { id: 'mailto', name: 'Default Mail App', icon: '✉️', desc: 'Use system default client' }
+                          { id: 'gmail', name: 'Google Mail (Gmail)', desc: 'Open in Gmail web' },
+                          { id: 'yahoo', name: 'Yahoo Mail', desc: 'Open in Yahoo Mail web' },
+                          { id: 'outlook', name: 'Outlook Web', desc: 'Open in Outlook web' },
+                          { id: 'mailto', name: 'Default Mail App', desc: 'Use system default client' }
                         ].map(client => (
                           <button
                             key={client.id}
@@ -2415,7 +2413,7 @@ export default function BuyerDashboard() {
                             onMouseEnter={e => e.currentTarget.style.background = '#f2f2f2'}
                             onMouseLeave={e => e.currentTarget.style.background = 'none'}
                           >
-                            <span style={{ fontSize: '16px' }}>{client.icon}</span>
+                            
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                               <span style={{ fontWeight: '500' }}>{client.name}</span>
                               <span style={{ fontSize: '11px', color: '#888' }}>{client.desc}</span>
@@ -2429,15 +2427,6 @@ export default function BuyerDashboard() {
 
                 {/* Toolbar icons matching Gmail */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#444746' }}>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Formatting options">Aa</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Attach files">📎</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Insert link">🔗</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Insert emoji">😊</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Insert files using Drive">📁</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Insert photo">📷</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Toggle confidential mode">🔒</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Insert signature">✍️</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="More options">⋮</span>
                 </div>
               </div>
 
@@ -2448,10 +2437,10 @@ export default function BuyerDashboard() {
                   background: 'none',
                   border: 'none',
                   color: '#444746',
-                  fontSize: '18px',
+                  fontSize: '13px',
                   cursor: 'pointer',
-                  padding: '8px',
-                  borderRadius: '50%',
+                  padding: '6px 10px',
+                  borderRadius: '4px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -2460,7 +2449,7 @@ export default function BuyerDashboard() {
                 onMouseLeave={e => e.currentTarget.style.background = 'none'}
                 title="Discard draft"
               >
-                🗑️
+                Discard
               </button>
 
             </div>
@@ -2479,7 +2468,7 @@ export default function BuyerDashboard() {
             {/* Header */}
             <div style={{ padding:'1.25rem 1.5rem', borderBottom:'1px solid var(--border-color)', display:'flex', justifyContent:'space-between', alignItems:'center', background:'linear-gradient(135deg, rgba(5,150,105,0.06), rgba(16,185,129,0.06))' }}>
               <div>
-                <h3 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.25rem', fontWeight:'700', margin:0, display:'flex', alignItems:'center', gap:'0.5rem', color:'var(--text-primary)' }}>🚢 Manage My Ships</h3>
+                <h3 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.25rem', fontWeight:'700', margin:0, display:'flex', alignItems:'center', gap:'0.5rem', color:'var(--text-primary)' }}>Manage My Ships</h3>
                 <p style={{ fontSize:'0.82rem', color:'var(--text-muted)', margin:'0.2rem 0 0' }}>Add ships, manage specifications manually, or import bulk specifications via Excel (.xlsx).</p>
               </div>
               <div style={{ display:'flex', alignItems:'center', gap:'0.75rem' }}>
@@ -2490,7 +2479,7 @@ export default function BuyerDashboard() {
                   style={{ fontSize:'0.8rem', padding:'0.45rem 0.85rem', display:'inline-flex', alignItems:'center', gap:'0.4rem', color:'#059669', borderColor:'rgba(5,150,105,0.4)', background:'rgba(5,150,105,0.06)', fontWeight:'600' }}
                   title="Download sample .xlsx template for ship equipment specifications"
                 >
-                  <span>📥</span> Download Sample Template (.xlsx)
+                  Download Sample Template (.xlsx)
                 </button>
                 <button onClick={handleCloseShipsModal} style={{ background:'none', border:'none', fontSize:'1.3rem', cursor:'pointer', color:'var(--text-muted)', padding:'0.25rem' }}>✕</button>
               </div>
@@ -2501,7 +2490,7 @@ export default function BuyerDashboard() {
 
               {/* Add New Ship Form */}
               <div className="glass-card" style={{ padding:'1.25rem', marginBottom:'1.5rem' }}>
-                <h4 style={{ fontSize:'0.9rem', fontWeight:'600', marginBottom:'1rem', color:'var(--text-primary)' }}>➕ Add a New Ship</h4>
+                <h4 style={{ fontSize:'0.9rem', fontWeight:'600', marginBottom:'1rem', color:'var(--text-primary)' }}>Add a New Ship</h4>
                 <div style={{ display:'flex', gap:'0.75rem', flexWrap:'wrap', alignItems:'flex-end' }}>
                   <div style={{ flex:2, minWidth:200 }}>
                     <label style={{ display:'block', fontSize:'0.75rem', fontWeight:'600', color:'var(--text-secondary)', marginBottom:'0.25rem' }}>Ship Name *</label>
@@ -2526,7 +2515,7 @@ export default function BuyerDashboard() {
               
               {ships.length === 0 ? (
                 <div style={{ textAlign:'center', padding:'3rem 1rem', color:'var(--text-muted)', background:'var(--bg-surface)', borderRadius:'var(--radius-md)', border:'1px dashed var(--border-color)' }}>
-                  <span style={{ fontSize:'2.5rem', display:'block', marginBottom:'0.75rem' }}>🚢</span>
+
                   <p style={{ fontWeight:'500', color:'var(--text-secondary)', marginBottom:'0.25rem' }}>No ships added yet</p>
                   <p style={{ fontSize:'0.85rem' }}>Create a ship above to start managing its specifications.</p>
                 </div>
@@ -2542,7 +2531,7 @@ export default function BuyerDashboard() {
                       >
                         <div>
                           <h5 style={{ margin:0, fontSize:'1.05rem', fontWeight:'600', display:'flex', alignItems:'center', gap:'0.5rem', color: expandedShipId === ship.id ? '#059669' : 'var(--text-primary)' }}>
-                            🚢 {ship.ship_name}
+                            {ship.ship_name}
                           </h5>
                           <div style={{ display:'flex', gap:'1rem', marginTop:'0.25rem', fontSize:'0.8rem', color:'var(--text-muted)' }}>
                             {ship.imo_number && <span>IMO: {ship.imo_number}</span>}
@@ -2567,7 +2556,7 @@ export default function BuyerDashboard() {
                             }}
                             title={`Download Market Inventory for ${ship.ship_name} (.xlsx)`}
                           >
-                            <span>📥</span> Download Data
+                            Download Data
                           </button>
                           <span style={{ display:'inline-flex', alignItems:'center', gap:'0.35rem', padding:'0.25rem 0.6rem', borderRadius:'1rem', fontSize:'0.75rem', fontWeight:'600', background: ship.spec_count > 0 ? 'rgba(5,150,105,0.1)' : 'rgba(100,100,100,0.1)', color: ship.spec_count > 0 ? '#059669' : 'var(--text-secondary)' }}>
                             {ship.spec_count || 0} Specifications
@@ -2584,7 +2573,7 @@ export default function BuyerDashboard() {
                           {editingShipId === ship.id ? (
                             <div style={{ padding:'1rem', background:'var(--bg-surface)', borderRadius:'var(--radius-sm)', border:'1px solid #059669', marginBottom:'1.25rem' }}>
                               <h5 style={{ margin:'0 0 0.75rem', fontSize:'0.85rem', fontWeight:'600', color:'var(--text-primary)', display:'flex', alignItems:'center', gap:'0.4rem' }}>
-                                ✏️ Update Ship Details
+                                Update Ship Details
                               </h5>
                               <div style={{ display:'flex', gap:'0.75rem', flexWrap:'wrap', alignItems:'flex-end' }}>
                                 <div style={{ flex:2, minWidth:180 }}>
@@ -2601,7 +2590,7 @@ export default function BuyerDashboard() {
                                 </div>
                                 <div style={{ display:'flex', gap:'0.5rem' }}>
                                   <button className="btn btn-primary" onClick={() => handleUpdateShip(ship.id)} disabled={savingShip || !editShipForm.ship_name.trim()} style={{ height:'40px', padding:'0 1rem', background:'linear-gradient(135deg, #059669, #10b981)' }}>
-                                    {savingShip ? 'Saving...' : '💾 Save'}
+                                    {savingShip ? 'Saving...' : 'Save'}
                                   </button>
                                   <button className="btn btn-secondary" onClick={() => setEditingShipId(null)} style={{ height:'40px', padding:'0 0.9rem' }}>
                                     Cancel
@@ -2623,7 +2612,7 @@ export default function BuyerDashboard() {
                                   onClick={() => handleOpenExportModal(ship)}
                                   style={{ padding:'0.35rem 0.75rem', fontSize:'0.78rem', display:'inline-flex', alignItems:'center', gap:'0.35rem', color:'#059669', borderColor:'rgba(5,150,105,0.4)', background:'rgba(5,150,105,0.06)', fontWeight:'600' }}
                                 >
-                                  📥 Download Market Data
+                                  Download Market Data
                                 </button>
                                 <button
                                   type="button"
@@ -2631,7 +2620,7 @@ export default function BuyerDashboard() {
                                   onClick={() => handleStartEditShip(ship)}
                                   style={{ padding:'0.35rem 0.75rem', fontSize:'0.78rem', display:'inline-flex', alignItems:'center', gap:'0.35rem' }}
                                 >
-                                  ✏️ Edit Ship
+                                  Edit Ship
                                 </button>
                                 <button
                                   type="button"
@@ -2639,7 +2628,7 @@ export default function BuyerDashboard() {
                                   onClick={() => { if(window.confirm(`Are you sure you want to delete "${ship.ship_name}" and all its specifications?`)) handleDeleteShip(ship.id, ship.ship_name); }}
                                   style={{ padding:'0.35rem 0.75rem', fontSize:'0.78rem', color:'var(--danger)', borderColor:'rgba(239,68,68,0.3)' }}
                                 >
-                                  🗑️ Delete Ship
+                                  Delete Ship
                                 </button>
                               </div>
                             </div>
@@ -2666,7 +2655,7 @@ export default function BuyerDashboard() {
                                   transition:'all 0.15s'
                                 }}
                               >
-                                📋 Specifications List ({expandedShipSpecs.length})
+                                Specifications List ({expandedShipSpecs.length})
                               </button>
                               <button
                                 type="button"
@@ -2686,7 +2675,7 @@ export default function BuyerDashboard() {
                                   transition:'all 0.15s'
                                 }}
                               >
-                                📤 Bulk Excel Upload
+                                Bulk Excel Upload
                               </button>
                             </div>
 
@@ -2707,7 +2696,7 @@ export default function BuyerDashboard() {
                               }}
                               title="Download sample .xlsx template"
                             >
-                              <span>📥</span> Download Sample Template (.xlsx)
+                              Download Sample Template (.xlsx)
                             </button>
                           </div>
 
@@ -2717,7 +2706,7 @@ export default function BuyerDashboard() {
                               {/* Add Specification Manually Form */}
                               <div style={{ background:'var(--bg-surface)', borderRadius:'var(--radius-sm)', border:'1px solid var(--border-color)', padding:'1rem', marginBottom:'1.25rem' }}>
                                 <h6 style={{ margin:'0 0 0.75rem', fontSize:'0.85rem', fontWeight:'600', color:'var(--text-primary)', display:'flex', alignItems:'center', gap:'0.35rem' }}>
-                                  ➕ Add Specification Manually
+                                  Add Specification Manually
                                 </h6>
                                 <div style={{ display:'flex', gap:'0.75rem', flexWrap:'wrap', alignItems:'flex-end' }}>
                                   <div style={{ flex:2, minWidth:180 }}>
@@ -2757,7 +2746,7 @@ export default function BuyerDashboard() {
                                     disabled={addingManualSpec || !newManualSpec.equipment.trim()}
                                     style={{ height:'40px', padding:'0 1.25rem', background:'linear-gradient(135deg, #059669, #10b981)', fontSize:'0.82rem', fontWeight:'600' }}
                                   >
-                                    {addingManualSpec ? 'Adding...' : '➕ Add Spec'}
+                                    {addingManualSpec ? 'Adding...' : 'Add Spec'}
                                   </button>
                                 </div>
                               </div>
@@ -2776,7 +2765,7 @@ export default function BuyerDashboard() {
                                       value={specSearchQuery}
                                       onChange={e => setSpecSearchQuery(e.target.value)}
                                     />
-                                    <span style={{ position:'absolute', left:'0.55rem', top:'50%', transform:'translateY(-50%)', fontSize:'0.8rem', color:'var(--text-muted)' }}>🔍</span>
+
                                     {specSearchQuery && (
                                       <button onClick={() => setSpecSearchQuery('')} style={{ position:'absolute', right:'0.5rem', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', fontSize:'0.75rem', cursor:'pointer', color:'var(--text-muted)' }}>✕</button>
                                     )}
@@ -2787,11 +2776,11 @@ export default function BuyerDashboard() {
                               {/* Specs Table */}
                               {loadingShipSpecs ? (
                                 <div style={{ textAlign:'center', padding:'2.5rem 1rem', color:'var(--text-muted)' }}>
-                                  ⏳ Loading specifications...
+                                  Loading specifications...
                                 </div>
                               ) : expandedShipSpecs.length === 0 ? (
                                 <div style={{ textAlign:'center', padding:'2.5rem 1rem', background:'var(--bg-surface)', borderRadius:'var(--radius-sm)', border:'1px dashed var(--border-color)', color:'var(--text-muted)' }}>
-                                  <span style={{ fontSize:'1.8rem', display:'block', marginBottom:'0.5rem' }}>📋</span>
+
                                   <p style={{ margin:'0 0 0.35rem', fontWeight:'500', color:'var(--text-secondary)', fontSize:'0.9rem' }}>No specifications added yet for {ship.ship_name}</p>
                                   <p style={{ margin:0, fontSize:'0.8rem' }}>Add specifications manually above, or switch to the <strong>Bulk Excel Upload</strong> tab to upload an Excel file.</p>
                                 </div>
@@ -2854,7 +2843,7 @@ export default function BuyerDashboard() {
                                                     style={{ padding:'0.25rem 0.55rem', fontSize:'0.75rem', background:'#059669' }}
                                                     title="Save changes"
                                                   >
-                                                    {savingSpecId === spec.id ? '...' : '✓ Save'}
+                                                    {savingSpecId === spec.id ? '...' : 'Save'}
                                                   </button>
                                                   <button
                                                     type="button"
@@ -2882,7 +2871,7 @@ export default function BuyerDashboard() {
                                                     style={{ background:'none', border:'1px solid var(--border-color)', borderRadius:'var(--radius-sm)', padding:'0.2rem 0.45rem', fontSize:'0.75rem', cursor:'pointer', color:'var(--text-secondary)' }}
                                                     title="Edit specification"
                                                   >
-                                                    ✏️
+                                                    Edit
                                                   </button>
                                                   <button
                                                     type="button"
@@ -2890,7 +2879,7 @@ export default function BuyerDashboard() {
                                                     style={{ background:'none', border:'1px solid rgba(239,68,68,0.3)', borderRadius:'var(--radius-sm)', padding:'0.2rem 0.45rem', fontSize:'0.75rem', cursor:'pointer', color:'var(--danger)' }}
                                                     title="Delete specification"
                                                   >
-                                                    🗑️
+                                                    Delete
                                                   </button>
                                                 </div>
                                               </td>
@@ -2912,7 +2901,7 @@ export default function BuyerDashboard() {
                               <div style={{ background:'rgba(5,150,105,0.04)', border:'1px solid rgba(5,150,105,0.2)', borderRadius:'var(--radius-sm)', padding:'0.9rem 1.1rem', marginBottom:'1rem', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:'0.75rem' }}>
                                 <div>
                                   <p style={{ margin:0, fontSize:'0.82rem', color:'var(--text-primary)', fontWeight:'500' }}>
-                                    📄 Required Excel columns: <strong>Equipment</strong>. Optional columns: <strong>Manufacturer</strong>, <strong>Model</strong>.
+                                    Required Excel columns: <strong>Equipment</strong>. Optional columns: <strong>Manufacturer</strong>, <strong>Model</strong>.
                                   </p>
                                   <p style={{ margin:'0.2rem 0 0', fontSize:'0.78rem', color:'var(--text-muted)' }}>
                                     Need help with the file format? Download the sample template to see the expected format.
@@ -2924,7 +2913,7 @@ export default function BuyerDashboard() {
                                   className="btn btn-secondary"
                                   style={{ fontSize:'0.78rem', padding:'0.35rem 0.75rem', display:'inline-flex', alignItems:'center', gap:'0.35rem', color:'#059669', borderColor:'#059669', background:'white' }}
                                 >
-                                  📥 Download Sample Template (.xlsx)
+                                  Download Sample Template (.xlsx)
                                 </button>
                               </div>
 
@@ -2977,7 +2966,6 @@ export default function BuyerDashboard() {
                                   style={{ display: 'none' }}
                                   onChange={(e) => { handleSpecsFile(e.target.files[0]); e.target.value = ''; }}
                                 />
-                                <span style={{ fontSize:'2rem', display:'block', marginBottom:'0.5rem' }}>{csvFileName ? '✅' : '📊'}</span>
                                 {csvFileName ? (
                                   <>
                                     <p style={{ fontWeight:'600', color:'#059669', marginBottom:'0.25rem', fontSize:'0.9rem' }}>{csvFileName}</p>
@@ -2989,7 +2977,7 @@ export default function BuyerDashboard() {
                                     <p style={{ fontSize:'0.8rem', color:'var(--text-muted)' }}>Drag & drop your Excel (.xlsx) file here, or click to browse</p>
                                     {ship.spec_count > 0 && csvUploadMode === 'replace' && (
                                       <p style={{ fontSize:'0.75rem', color:'var(--danger)', marginTop:'0.5rem', fontWeight:'500' }}>
-                                        ⚠️ Note: Uploading in "Replace" mode will overwrite {ship.spec_count} existing specification(s).
+                                        Note: Uploading in "Replace" mode will overwrite {ship.spec_count} existing specification(s).
                                       </p>
                                     )}
                                   </>
@@ -3000,7 +2988,7 @@ export default function BuyerDashboard() {
                               {csvPreview.length > 0 && (
                                 <div style={{ marginBottom:'1.25rem' }}>
                                   <h4 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'0.9rem', fontWeight:'600', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                                    👁️ Preview ({csvPreview.length} rows to {csvUploadMode === 'replace' ? 'replace' : 'append'})
+                                    Preview ({csvPreview.length} rows to {csvUploadMode === 'replace' ? 'replace' : 'append'})
                                   </h4>
                                   <div style={{ maxHeight:'180px', overflowY:'auto', border:'1px solid var(--border-color)', borderRadius:'var(--radius-sm)' }}>
                                     <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.8rem' }}>
@@ -3032,7 +3020,7 @@ export default function BuyerDashboard() {
                                       disabled={specsSaving}
                                       style={{ padding:'0.6rem 1.5rem', background:'linear-gradient(135deg, #059669, #10b981)', fontSize:'0.85rem' }}
                                     >
-                                      {specsSaving ? 'Saving...' : `💾 Save ${csvPreview.length} Specs to Ship`}
+                                      {specsSaving ? 'Saving...' : `Save ${csvPreview.length} Specs to Ship`}
                                     </button>
                                     <button
                                       type="button"
@@ -3063,7 +3051,7 @@ export default function BuyerDashboard() {
                 className="btn btn-secondary"
                 style={{ fontSize:'0.82rem', padding:'0.5rem 1rem', display:'inline-flex', alignItems:'center', gap:'0.4rem', color:'#059669', borderColor:'rgba(5,150,105,0.4)', background:'rgba(5,150,105,0.05)' }}
               >
-                <span>📥</span> Download Sample Template (.xlsx)
+                Download Sample Template (.xlsx)
               </button>
               <button className="btn btn-secondary" onClick={handleCloseShipsModal} style={{ padding:'0.6rem 1.5rem' }}>Close</button>
             </div>
@@ -3124,7 +3112,7 @@ export default function BuyerDashboard() {
                   gap:'0.5rem',
                   color:'var(--text-primary)'
                 }}>
-                  <span>📥</span> Download Ship Data — {exportModalShip.ship_name}
+                  Download Ship Data — {exportModalShip.ship_name}
                 </h3>
                 <p style={{ fontSize:'0.82rem', color:'var(--text-muted)', margin:'0.25rem 0 0' }}>
                   Market availability of equipment and spare parts for <strong>{exportModalShip.ship_name}</strong>
@@ -3151,7 +3139,7 @@ export default function BuyerDashboard() {
             <div style={{ flex:1, padding:'1.5rem', overflowY:'auto', background:'var(--bg-body)' }}>
               {loadingExportPreview ? (
                 <div style={{ textAlign:'center', padding:'3rem 1rem', color:'var(--text-muted)' }}>
-                  <div style={{ fontSize:'2.5rem', marginBottom:'1rem' }}>⏳</div>
+
                   <h4 style={{ fontSize:'1.1rem', fontWeight:'600', color:'var(--text-primary)', marginBottom:'0.5rem' }}>
                     Analyzing Market Availability...
                   </h4>
@@ -3243,7 +3231,7 @@ export default function BuyerDashboard() {
                         {/* Section Header & Breakdown Tabs */}
                         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'0.75rem', marginBottom:'0.85rem' }}>
                           <h4 style={{ fontSize:'0.95rem', fontWeight:'600', margin:0, color:'var(--text-primary)', display:'flex', alignItems:'center', gap:'0.4rem' }}>
-                            <span>📋</span> Equipment Availability Breakdown ({allEquipment.length})
+                            Equipment Availability Breakdown ({allEquipment.length})
                           </h4>
 
                           <div style={{ display:'flex', gap:'0.4rem', background:'var(--bg-surface)', padding:'0.25rem', borderRadius:'var(--radius-full)', border:'1px solid var(--border-color)' }}>
@@ -3266,7 +3254,7 @@ export default function BuyerDashboard() {
                                 boxShadow: exportBreakdownTab === 'available' ? '0 2px 6px rgba(5,150,105,0.25)' : 'none'
                               }}
                             >
-                              <span>🟢 Available Items</span>
+                              <span>Available Items</span>
                               <span style={{
                                 background: exportBreakdownTab === 'available' ? 'rgba(255,255,255,0.25)' : 'rgba(5,150,105,0.12)',
                                 color: exportBreakdownTab === 'available' ? 'white' : '#059669',
@@ -3298,7 +3286,7 @@ export default function BuyerDashboard() {
                                 boxShadow: exportBreakdownTab === 'unavailable' ? '0 2px 6px rgba(245,158,11,0.25)' : 'none'
                               }}
                             >
-                              <span>🟠 Not Available Items (Compatible Options)</span>
+                              <span>Not Available Items (Compatible Options)</span>
                               <span style={{
                                 background: exportBreakdownTab === 'unavailable' ? 'rgba(255,255,255,0.25)' : 'rgba(245,158,11,0.15)',
                                 color: exportBreakdownTab === 'unavailable' ? 'white' : '#d97706',
@@ -3315,15 +3303,12 @@ export default function BuyerDashboard() {
 
                         {allEquipment.length === 0 ? (
                           <div style={{ textAlign:'center', padding:'2.5rem', background:'var(--bg-surface)', borderRadius:'var(--radius-md)', border:'1px dashed var(--border-color)', color:'var(--text-muted)' }}>
-                            <span style={{ fontSize:'2rem', display:'block', marginBottom:'0.5rem' }}>⚙️</span>
+
                             <p style={{ fontWeight:'500', color:'var(--text-secondary)', marginBottom:'0.25rem' }}>No equipment specifications configured</p>
                             <p style={{ fontSize:'0.82rem' }}>Add specifications to this ship to see available market spare parts and stock quantities.</p>
                           </div>
                         ) : displayedTabItems.length === 0 ? (
                           <div style={{ textAlign:'center', padding:'2.5rem', background:'var(--bg-surface)', borderRadius:'var(--radius-md)', border:'1px dashed var(--border-color)', color:'var(--text-muted)' }}>
-                            <span style={{ fontSize:'2rem', display:'block', marginBottom:'0.5rem' }}>
-                              {exportBreakdownTab === 'available' ? '🔍' : '🎉'}
-                            </span>
                             <p style={{ fontWeight:'600', color:'var(--text-primary)', marginBottom:'0.25rem' }}>
                               {exportBreakdownTab === 'available'
                                 ? 'No fully compatible items currently found in market'
@@ -3446,7 +3431,7 @@ export default function BuyerDashboard() {
               gap:'0.75rem'
             }}>
               <span style={{ fontSize:'0.78rem', color:'var(--text-muted)', display:'flex', alignItems:'center', gap:'0.35rem' }}>
-                <span>💡</span> Excel file contains two sheets: "Available Items" and "Not Available Items".
+                Excel file contains two sheets: "Available Items" and "Not Available Items".
               </span>
               <div style={{ display:'flex', gap:'0.6rem' }}>
                 <button
@@ -3473,7 +3458,7 @@ export default function BuyerDashboard() {
                     boxShadow:'0 2px 8px rgba(5,150,105,0.25)'
                   }}
                 >
-                  <span>📥</span> {exportingCsv ? 'Downloading...' : 'Download Equipment Availability Breakdown (.xlsx)'}
+                  {exportingCsv ? 'Downloading...' : 'Download Equipment Availability Breakdown (.xlsx)'}
                 </button>
               </div>
             </div>
@@ -3495,10 +3480,10 @@ function Chip({ label, onRemove }) {
   );
 }
 
-function SectionTitle({ icon, label }) {
+function SectionTitle({ label }) {
   return (
     <h4 style={{ fontSize:'0.85rem', fontWeight:'600', color:'var(--text-primary)', marginBottom:'0.75rem', display:'flex', alignItems:'center', gap:'0.4rem', textTransform:'uppercase', letterSpacing:'0.5px' }}>
-      <span>{icon}</span> {label}
+      {label}
     </h4>
   );
 }

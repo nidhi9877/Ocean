@@ -267,7 +267,7 @@ export default function UploadModal({ onClose, onSuccess }) {
                 onChange={handleFileChange} 
                 style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }}
               />
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📁</div>
+
               <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.35rem', fontSize: '1rem' }}>
                 {file ? file.name : "Click to select a file or drag and drop"}
               </h4>
@@ -276,7 +276,7 @@ export default function UploadModal({ onClose, onSuccess }) {
 
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
               <button type="button" onClick={downloadSampleExcel} className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span>📥</span> Download Sample Excel
+                Download Sample Excel
               </button>
             </div>
 
@@ -299,7 +299,7 @@ export default function UploadModal({ onClose, onSuccess }) {
           </form>
         ) : (
           <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
+
             <h3 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Upload Successful!</h3>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
               Successfully uploaded {successStats?.count} products for the "{department}" department. 

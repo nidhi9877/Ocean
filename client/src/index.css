@@ -609,6 +609,9 @@ body {
   gap: 0.75rem;
   color: var(--text-secondary);
   font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0.15rem 0 0.15rem 0.9rem;
+  border-left: 3px solid var(--accent-primary);
 }
 
 .login-brand-feature-icon {
@@ -725,8 +728,9 @@ body {
 }
 
 .role-btn-label {
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
 }
 
 .role-btn-desc {
@@ -1424,6 +1428,12 @@ select.inline-edit-input {
   border-radius: 3px;
   transition: all 0.15s ease;
   opacity: 0.35;
+}
+
+.table-action-btn.delete-btn {
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 0.75rem;
 }
 
 .table-action-btn:hover {
@@ -2572,9 +2582,11 @@ select.inline-edit-input {
   border: 1px solid var(--border-color);
   border-radius: 6px;
   color: var(--text-secondary);
-  font-size: 0.75rem;
-  width: 26px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  min-width: 26px;
   height: 26px;
+  padding: 0 0.6rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;

@@ -34,7 +34,7 @@ export default function TermsPage() {
       <nav className="tc-topbar">
         <Link to="/" className="tc-brand"><img src="/transparent_logo.png" alt="MarineStockHub" /></Link>
         <div className="tc-topbar-actions">
-          <button className="btn btn-secondary btn-sm" onClick={() => window.print()}>🖨 Print / Save PDF</button>
+          <button className="btn btn-secondary btn-sm" onClick={() => window.print()}>Print / Save PDF</button>
           <Link to="/login" className="btn btn-primary btn-sm">Sign In</Link>
         </div>
       </nav>

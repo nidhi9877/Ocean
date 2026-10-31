@@ -38,7 +38,6 @@ export default function ForgotPasswordPage() {
                 alt="MarineStockHub"
                 style={{ maxHeight: '52px', maxWidth: '240px', width: 'auto', margin: '0 auto 1.25rem', objectFit: 'contain' }}
               />
-              <span className="login-icon">🔑</span>
               <h1 className="login-title">Forgot Password</h1>
               <p className="login-subtitle">
                 {sent

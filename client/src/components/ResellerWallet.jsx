@@ -123,7 +123,7 @@ const ResellerWallet = forwardRef(function ResellerWallet({ token, user, onChang
           borderColor: locked || lowBalance ? 'rgba(220,38,38,0.4)' : 'rgba(124,58,237,0.4)',
         }}
       >
-        <span>👛</span> Wallet: {w ? inr(w.balance) : '…'}
+        Wallet: {w ? inr(w.balance) : '…'}
         {locked && <span style={{ fontSize: '0.72rem', fontWeight: 700 }}>· Recharge to activate</span>}
       </button>
 
@@ -140,7 +140,7 @@ const ResellerWallet = forwardRef(function ResellerWallet({ token, user, onChang
           >
             <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg, rgba(124,58,237,0.08), rgba(37,99,235,0.08))' }}>
               <div>
-                <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: '1.3rem', fontWeight: 700, margin: 0 }}>👛 My Wallet</h3>
+                <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: '1.3rem', fontWeight: 700, margin: 0 }}>My Wallet</h3>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>
                   {s ? `${inr(s.enquiry_price)} is deducted each time you send an enquiry.` : 'Loading…'}
                 </p>
@@ -155,7 +155,7 @@ const ResellerWallet = forwardRef(function ResellerWallet({ token, user, onChang
                 <>
                   {notice && (
                     <div style={{ padding: '0.75rem 1rem', marginBottom: '1rem', borderRadius: 'var(--radius-md)', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.3)', color: '#b91c1c', fontSize: '0.88rem', fontWeight: 600 }}>
-                      ⚠️ {notice}
+                      {notice}
                     </div>
                   )}
 
@@ -208,7 +208,7 @@ const ResellerWallet = forwardRef(function ResellerWallet({ token, user, onChang
                     </div>
                   ) : (
                     <div style={{ padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', background: 'var(--bg-surface)', border: '1px dashed var(--border-color)', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
-                      💬 To recharge, contact MarineStockHub support with your username <strong>@{user?.username}</strong>. Your balance is updated as soon as payment is received.
+                      To recharge, contact MarineStockHub support with your username <strong>@{user?.username}</strong>. Your balance is updated as soon as payment is received.
                     </div>
                   )}
 

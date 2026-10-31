@@ -349,6 +349,13 @@ router.post('/login', async (req, res) => {
 
     const effectiveRole = isSeller ? 'seller' : user.role;
 
+    // Track sign-ins: sellers are warned / frozen after a week without logging in.
+    // Signing in before the freeze deadline cancels a pending inactivity warning.
+    await sql`UPDATE users SET last_login_at = NOW(), login_count = COALESCE(login_count, 0) + 1 WHERE id = ${user.id}`;
+    if (isSeller) {
+      await sql`UPDATE providers SET inactivity_warned_at = NULL WHERE user_id = ${user.id} AND frozen_at IS NULL`;
+    }
+
     // Generate JWT token with session ID
     const token = jwt.sign(
       { id: user.id, username: user.username, role: effectiveRole, sessionId: sessionToken },

@@ -95,7 +95,7 @@ export default function BuyerInquiries() {
       });
     } else {
       // Searched product initial inquiry email
-      const subject = `🚢 Purchase Inquiry: ${item.product_name} — MarineStockHub Marketplace`;
+      const subject = `Purchase Inquiry: ${item.product_name} — MarineStockHub Marketplace`;
       const body = `Dear ${item.company_name} Team,\n\nI am interested in purchasing the following listed product:\n\n- Product: ${item.product_name}\n- Brand: ${item.brand || 'N/A'}\n- Model: ${item.model_number || 'N/A'}\n- Part Number: ${item.part_number || 'N/A'}\n\nPlease let me know if you can fulfill this request and provide a price quote.\n\nBest regards,\n${user?.username || 'Buyer'}`;
       
       setShowCc(false);
@@ -152,7 +152,7 @@ export default function BuyerInquiries() {
       <div className="dashboard-container">
         <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h1>My Recents 📨</h1>
+            <h1>My Recents</h1>
             <p>Track your searched products and sent inquiries. Records are automatically retained for <strong>1 week</strong> (7 days).</p>
           </div>
           <Link to="/dashboard" className="btn btn-secondary">
@@ -166,7 +166,6 @@ export default function BuyerInquiries() {
           </div>
         ) : inquiries.length === 0 ? (
           <div className="glass-card empty-state">
-            <span className="empty-state-icon">📭</span>
             <h3>No recent activity</h3>
             <p>You have no recent searches or sent inquiries from the last 7 days. Search for products to view details and contact sellers.</p>
           </div>
@@ -195,7 +194,7 @@ export default function BuyerInquiries() {
                         alignItems: 'center',
                         gap: '0.3rem'
                       }}>
-                        {isSent ? '📤 Sent on' : '🔍 Searched on'}: {new Date(item.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                        {isSent ? 'Sent on' : 'Searched on'}: {new Date(item.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
                       </span>
                       <span style={{
                         fontSize: '0.78rem',
@@ -209,29 +208,29 @@ export default function BuyerInquiries() {
                         alignItems: 'center',
                         gap: '0.3rem'
                       }}>
-                        ⏱️ {expiry.text}
+                        {expiry.text}
                       </span>
                     </div>
                     
                     <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginTop: '0.6rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-                        <span>🏭</span> <strong>Seller:</strong> {item.company_name}
+                        <strong>Seller:</strong> {item.company_name}
                       </div>
                       {isSent ? (
                         <>
                           {item.destination_location && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-                              <span>📍</span> <strong>Destination:</strong> {item.destination_location}
+                              <strong>Destination:</strong> {item.destination_location}
                             </div>
                           )}
                           {item.vessel_name && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-                              <span>🚢</span> <strong>Vessel:</strong> {item.vessel_name}
+                              <strong>Vessel:</strong> {item.vessel_name}
                             </div>
                           )}
                           {item.eta && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-                              <span>⚓</span> <strong>ETA:</strong> {item.eta}
+                              <strong>ETA:</strong> {item.eta}
                             </div>
                           )}
                         </>
@@ -239,17 +238,17 @@ export default function BuyerInquiries() {
                         <>
                           {item.brand && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-                              <span>🏷️</span> <strong>Brand:</strong> {item.brand}
+                              <strong>Brand:</strong> {item.brand}
                             </div>
                           )}
                           {item.model_number && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-                              <span>🔎</span> <strong>Model:</strong> {item.model_number}
+                              <strong>Model:</strong> {item.model_number}
                             </div>
                           )}
                           {item.product_location && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-                              <span>📍</span> <strong>Location:</strong> {item.product_location}
+                              <strong>Location:</strong> {item.product_location}
                             </div>
                           )}
                         </>
@@ -264,7 +263,7 @@ export default function BuyerInquiries() {
                       className="btn btn-primary"
                       style={{ textDecoration: 'none', textAlign: 'center', padding: '0.55rem 1rem', border: 'none', cursor: 'pointer', display: 'block', width: '100%' }}
                     >
-                      {isSent ? '✉️ Follow up mail' : '✉️ Email Seller'}
+                      {isSent ? 'Follow up mail' : 'Email Seller'}
                     </button>
                   </div>
                 </div>
@@ -543,10 +542,10 @@ export default function BuyerInquiries() {
                           Select Email Client
                         </div>
                         {[
-                          { id: 'gmail', name: 'Google Mail (Gmail)', icon: '🔴', desc: 'Open in Gmail web' },
-                          { id: 'yahoo', name: 'Yahoo Mail', icon: '🟣', desc: 'Open in Yahoo Mail web' },
-                          { id: 'outlook', name: 'Outlook Web', icon: '🔵', desc: 'Open in Outlook web' },
-                          { id: 'mailto', name: 'Default Mail App', icon: '✉️', desc: 'Use system default client' }
+                          { id: 'gmail', name: 'Google Mail (Gmail)', desc: 'Open in Gmail web' },
+                          { id: 'yahoo', name: 'Yahoo Mail', desc: 'Open in Yahoo Mail web' },
+                          { id: 'outlook', name: 'Outlook Web', desc: 'Open in Outlook web' },
+                          { id: 'mailto', name: 'Default Mail App', desc: 'Use system default client' }
                         ].map(client => (
                           <button
                             key={client.id}
@@ -571,7 +570,7 @@ export default function BuyerInquiries() {
                             onMouseEnter={e => e.currentTarget.style.background = '#f2f2f2'}
                             onMouseLeave={e => e.currentTarget.style.background = 'none'}
                           >
-                            <span style={{ fontSize: '16px' }}>{client.icon}</span>
+                            
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                               <span style={{ fontWeight: '500' }}>{client.name}</span>
                               <span style={{ fontSize: '11px', color: '#888' }}>{client.desc}</span>
@@ -585,15 +584,6 @@ export default function BuyerInquiries() {
 
                 {/* Toolbar icons matching Gmail */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#444746' }}>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Formatting options">Aa</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Attach files">📎</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Insert link">🔗</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Insert emoji">😊</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Insert files using Drive">📁</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Insert photo">📷</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Toggle confidential mode">🔒</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="Insert signature">✍️</span>
-                  <span style={{ cursor: 'pointer', padding: '6px', borderRadius: '50%', fontSize: '16px', userSelect: 'none' }} title="More options">⋮</span>
                 </div>
               </div>
 
@@ -604,10 +594,10 @@ export default function BuyerInquiries() {
                   background: 'none',
                   border: 'none',
                   color: '#444746',
-                  fontSize: '18px',
+                  fontSize: '13px',
                   cursor: 'pointer',
-                  padding: '8px',
-                  borderRadius: '50%',
+                  padding: '6px 10px',
+                  borderRadius: '4px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -616,7 +606,7 @@ export default function BuyerInquiries() {
                 onMouseLeave={e => e.currentTarget.style.background = 'none'}
                 title="Discard draft"
               >
-                🗑️
+                Discard
               </button>
 
             </div>

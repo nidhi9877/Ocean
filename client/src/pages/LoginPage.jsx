@@ -71,19 +71,15 @@ export default function LoginPage() {
           </p>
           <div className="login-brand-features">
             <div className="login-brand-feature">
-              <span className="login-brand-feature-icon">🔍</span>
               <span>Smart fuzzy search with typo tolerance</span>
             </div>
             <div className="login-brand-feature">
-              <span className="login-brand-feature-icon">📨</span>
               <span>Mass inquiry system to multiple sellers</span>
             </div>
             <div className="login-brand-feature">
-              <span className="login-brand-feature-icon">⏱️</span>
               <span>24-hour guaranteed seller response time</span>
             </div>
             <div className="login-brand-feature">
-              <span className="login-brand-feature-icon">🌍</span>
               <span>Global network of verified suppliers</span>
             </div>
           </div>
@@ -108,7 +104,6 @@ export default function LoginPage() {
                   objectFit: 'contain'
                 }}
               />
-              <span className="login-icon">🚢</span>
               <h1 className="login-title">Sign In</h1>
               <p className="login-subtitle">Access your MarineStockHub account</p>
             </div>
@@ -127,7 +122,7 @@ export default function LoginPage() {
                 alignItems: 'center',
                 gap: '0.5rem'
               }}>
-                <span>⚠️</span>
+
                 <span>{error}</span>
               </div>
             )}
@@ -175,7 +170,7 @@ export default function LoginPage() {
                       color: 'var(--text-muted)'
                     }}
                   >
-                    {showPassword ? '👁️' : '👁️‍🗨️'}
+                    {showPassword ? 'Hide' : 'Show'}
                   </button>
                 </div>
                 <div style={{ textAlign: 'right', marginTop: '0.5rem' }}>
@@ -217,7 +212,6 @@ export default function LoginPage() {
                 onClick={() => navigate('/seller/register')}
                 disabled={loading}
               >
-                <span className="role-btn-icon">🏭</span>
                 <span className="role-btn-label">Seller</span>
                 <span className="role-btn-desc">Sell spare parts</span>
               </button>
@@ -228,7 +222,6 @@ export default function LoginPage() {
                 onClick={() => navigate('/buyer/register')}
                 disabled={loading}
               >
-                <span className="role-btn-icon">🛒</span>
                 <span className="role-btn-label">Buyer</span>
                 <span className="role-btn-desc">Browse & purchase</span>
               </button>
@@ -239,7 +232,6 @@ export default function LoginPage() {
                 onClick={() => navigate('/reseller/register')}
                 disabled={loading}
               >
-                <span className="role-btn-icon">🤝</span>
                 <span className="role-btn-label">Reseller</span>
                 <span className="role-btn-desc">Pay per enquiry</span>
               </button>

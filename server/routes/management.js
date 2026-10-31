@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { sql } from '../db.js';
 import { authenticateToken, authenticateManagement, authenticateAdminOrManagement } from '../middleware/auth.js';
-import { sendAccountStatusEmail } from '../utils/email.js';
+import { sendAccountStatusEmail, sendAccountUnfrozenEmail } from '../utils/email.js';
+import { INACTIVITY_DAYS, GRACE_DAYS } from '../utils/sellerActivity.js';
 
 const router = Router();
 const guard = [authenticateToken, authenticateAdminOrManagement];
@@ -304,5 +305,49 @@ router.put('/sellers/:id/reject', ...guard, reviewAccount('providers', 'rejected
 router.put('/providers/:id/reject', ...guard, reviewAccount('providers', 'rejected'));
 router.put('/buyers/:id/approve', ...guard, reviewAccount('buyers', 'approved'));
 router.put('/buyers/:id/reject', ...guard, reviewAccount('buyers', 'rejected'));
+
+// ─── Seller inactivity: frozen accounts & reactivation ──────────────────────────
+// Frozen sellers (with any pending reactivation request) and sellers currently in
+// their warning period.
+router.get('/frozen-sellers', ...guard, async (req, res) => {
+  try {
+    const rows = await sql`
+      SELECT p.id, p.company_name, p.contact_person, p.email, p.phone, p.country,
+             p.frozen_at, p.inactivity_warned_at, p.unfreeze_requested_at, p.unfreeze_note,
+             u.username, u.last_login_at,
+             GREATEST(u.last_login_at, p.activity_reset_at, p.inventory_verified_at) AS last_activity,
+             (SELECT COUNT(*)::int FROM products pr WHERE pr.provider_id = p.id) AS product_count
+      FROM providers p JOIN users u ON u.id = p.user_id
+      WHERE p.frozen_at IS NOT NULL OR p.inactivity_warned_at IS NOT NULL
+      ORDER BY (p.unfreeze_requested_at IS NULL), p.unfreeze_requested_at DESC, p.frozen_at DESC NULLS LAST, p.inactivity_warned_at DESC
+    `;
+    res.json({ sellers: rows, rules: { inactivityDays: INACTIVITY_DAYS, graceDays: GRACE_DAYS } });
+  } catch (error) {
+    console.error('Error fetching frozen sellers:', error);
+    res.status(500).json({ error: 'Failed to fetch frozen sellers' });
+  }
+});
+
+// Reactivate a frozen seller. Their inactivity clock restarts from now.
+router.put('/sellers/:id/unfreeze', ...guard, async (req, res) => {
+  try {
+    const rows = await sql`
+      UPDATE providers p
+      SET frozen_at = NULL, inactivity_warned_at = NULL, unfreeze_requested_at = NULL, unfreeze_note = NULL, activity_reset_at = NOW()
+      FROM users u
+      WHERE p.id = ${req.params.id} AND u.id = p.user_id AND p.frozen_at IS NOT NULL
+      RETURNING p.email, p.company_name, u.username
+    `;
+    if (rows.length === 0) return res.status(404).json({ error: 'Frozen seller not found' });
+    const s = rows[0];
+    console.log(`Seller @${s.username} reactivated by @${req.user.username}`);
+    sendAccountUnfrozenEmail({ to: s.email, username: s.username, companyName: s.company_name })
+      .catch(err => console.error('Unfreeze email failed:', err.message));
+    res.json({ message: `${s.company_name || s.username} reactivated — the seller has been notified by email.` });
+  } catch (error) {
+    console.error('Error unfreezing seller:', error);
+    res.status(500).json({ error: 'Failed to reactivate seller' });
+  }
+});
 
 export default router;

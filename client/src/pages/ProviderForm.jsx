@@ -102,7 +102,7 @@ export default function ProviderForm() {
         { ...company, products },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setSuccess('🎉 Registration successful! Your company and products are now listed.');
+      setSuccess('Registration successful! Your company and products are now listed.');
       setTimeout(() => navigate('/seller/dashboard'), 2000);
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed. Please try again.');
@@ -120,7 +120,7 @@ export default function ProviderForm() {
           <div className="glass-card seller-form-card provider-form-card">
             {/* Header */}
             <div className="form-header">
-              <h2>🏭 Seller Registration</h2>
+              <h2>Seller Registration</h2>
               <p>Fill in your company details and list your marine spare parts</p>
             </div>
 
@@ -132,7 +132,6 @@ export default function ProviderForm() {
               {/* Company Details Section */}
               <div className="form-section">
                 <div className="form-section-title">
-                  <span className="form-section-icon">🏢</span>
                   Company Details
                 </div>
 
@@ -261,7 +260,6 @@ export default function ProviderForm() {
               {/* Products Section */}
               <div className="form-section">
                 <div className="form-section-title">
-                  <span className="form-section-icon">⚙️</span>
                   Products / Spare Parts
                 </div>
 
@@ -378,7 +376,7 @@ export default function ProviderForm() {
                 ))}
 
                 <button type="button" className="add-product-btn" onClick={addProduct}>
-                  ➕ Add Another Product
+                  Add Another Product
                 </button>
               </div>
 
@@ -388,7 +386,7 @@ export default function ProviderForm() {
                 className="btn btn-primary btn-block btn-lg"
                 disabled={loading}
               >
-                {loading ? <span className="spinner"></span> : '🚀 Register as Seller'}
+                {loading ? <span className="spinner"></span> : 'Register as Seller'}
               </button>
             </form>
           </div>

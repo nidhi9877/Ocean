@@ -6,7 +6,6 @@ const FALLBACK_ITEMS = [
     type: 'fact',
     category: 'OCEAN FACT',
     title: 'The oceans generate over 50% of the oxygen we breathe, largely produced by marine phytoplankton.',
-    icon: '🌊',
     source: 'National Ocean Service'
   },
   {
@@ -14,7 +13,6 @@ const FALLBACK_ITEMS = [
     type: 'fact',
     category: 'GLOBAL FLEET',
     title: 'Over 90% of international trade is transported across oceans by a global fleet of 55,000+ merchant vessels.',
-    icon: '🚢',
     source: 'International Maritime Organization'
   },
   {
@@ -22,7 +20,6 @@ const FALLBACK_ITEMS = [
     type: 'fact',
     category: 'DEEP ABYSS',
     title: 'The Challenger Deep in Mariana Trench reaches ~10,994m (36,070 ft)—deeper than Mount Everest is tall.',
-    icon: '⚓',
     source: 'Ocean Exploration'
   },
   {
@@ -30,7 +27,6 @@ const FALLBACK_ITEMS = [
     type: 'fact',
     category: 'EFFICIENCY',
     title: 'Commercial container ships emit fewer greenhouse gases per ton-km than air, rail, or highway freight.',
-    icon: '🌱',
     source: 'World Shipping Council'
   },
   {
@@ -38,7 +34,6 @@ const FALLBACK_ITEMS = [
     type: 'fact',
     category: 'CHOKEPOINTS',
     title: 'The Strait of Malacca carries over 85,000 ships per year, connecting the Indian and Pacific Oceans.',
-    icon: '🧭',
     source: 'Global Maritime Logistics'
   },
   {
@@ -46,7 +41,6 @@ const FALLBACK_ITEMS = [
     type: 'fact',
     category: 'PROPULSION',
     title: 'Modern low-speed 2-stroke marine engines exceed 50% thermal efficiency, highest among thermal engines.',
-    icon: '⚙️',
     source: 'Marine Propulsion Review'
   },
   {
@@ -54,7 +48,6 @@ const FALLBACK_ITEMS = [
     type: 'fact',
     category: 'DIGITAL LIFELINE',
     title: 'Over 95% of international internet traffic travels across the seabed via submarine fiber optic cables.',
-    icon: '🌐',
     source: 'Submarine Telecoms'
   },
   {
@@ -62,7 +55,6 @@ const FALLBACK_ITEMS = [
     type: 'fact',
     category: 'MEGA VESSELS',
     title: 'The largest ultra-large container vessels exceed 400m in length and carry up to 24,000 TEU containers.',
-    icon: '📦',
     source: 'Maritime Fleet Review'
   }
 ];
@@ -123,7 +115,7 @@ export default function MarineNewsTicker() {
                 key={`${item.id}-${index}`} 
                 className={`ticker-item ${isNews ? 'ticker-item-news' : 'ticker-item-fact'}`}
               >
-                <span className="ticker-icon">{item.icon || (isNews ? '📰' : '🌊')}</span>
+                
                 <span className="ticker-category-tag" data-cat={item.category || ''}>{item.category || (isNews ? 'MARITIME DISPATCH' : 'OCEAN FACT')}</span>
                 
                 {isNews && item.url ? (
@@ -145,7 +137,7 @@ export default function MarineNewsTicker() {
                   <span className="ticker-source-tag">via {item.source}</span>
                 )}
 
-                <span className="ticker-separator">✦</span>
+                <span className="ticker-separator">|</span>
               </div>
             );
           })}
@@ -161,17 +153,17 @@ export default function MarineNewsTicker() {
           title={isPaused ? 'Resume scrolling' : 'Pause scrolling'}
           aria-label={isPaused ? 'Resume scrolling' : 'Pause scrolling'}
         >
-          {isPaused ? '▶' : '⏸'}
+          {isPaused ? 'Play' : 'Pause'}
         </button>
         <button
           type="button"
-          className={`ticker-control-btn ${loading ? 'spinning' : ''}`}
+          className="ticker-control-btn"
           onClick={() => fetchNews(true)}
           title="Refresh marine news"
           aria-label="Refresh marine news"
           disabled={loading}
         >
-          🔄
+          {loading ? 'Updating…' : 'Refresh'}
         </button>
       </div>
     </div>

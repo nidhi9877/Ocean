@@ -163,7 +163,7 @@ export default function SmartSearchBar({ onSearchResults, selectedCategory }) {
           {isSearching ? (
             <span className="search-spinner"></span>
           ) : (
-            '🔍'
+            ''
           )}
         </span>
         <input
@@ -213,7 +213,6 @@ export default function SmartSearchBar({ onSearchResults, selectedCategory }) {
               onClick={() => selectSuggestion(suggestion)}
               onMouseEnter={() => setActiveIndex(idx)}
             >
-              <span className="suggestion-icon">🔎</span>
               <span className="suggestion-text">{highlightMatch(suggestion, query)}</span>
             </button>
           ))}

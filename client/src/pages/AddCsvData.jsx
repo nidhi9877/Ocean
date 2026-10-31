@@ -148,7 +148,7 @@ export default function AddCsvData() {
           </p>
           <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '1rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(59, 130, 246, 0.2)', marginBottom: '1.5rem' }}>
             <p style={{ color: 'var(--text-primary)', fontWeight: 600, margin: '0 0 0.5rem 0', textAlign: 'center' }}>
-              📌 Mandatory Columns
+              Mandatory Columns
             </p>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, textAlign: 'center' }}>
               Your file must contain the following columns (case-insensitive):<br/>
@@ -165,7 +165,7 @@ export default function AddCsvData() {
                className="btn btn-secondary" 
                style={{ marginTop: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}
              >
-               ⬇️ Download Reference Sheet
+               Download Reference Sheet
              </a>
           </div>
 
@@ -180,7 +180,7 @@ export default function AddCsvData() {
                  onChange={handleFileChange} 
                  style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }}
                />
-               <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📁</div>
+
                <h4 style={{ color: 'var(--text-primary)', marginBottom: '0.35rem', fontSize: '1rem' }}>
                  {file ? file.name : "Click to select a CSV file or drag and drop"}
                </h4>
