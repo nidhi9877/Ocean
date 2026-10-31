@@ -94,16 +94,19 @@ router.post('/register/send-otp', async (req, res) => {
     // Older codes for this email are invalidated; rows from the last hour are kept (expired) for throttling
     await sql`UPDATE email_otps SET expires_at = NOW() WHERE email = ${email} AND expires_at > NOW()`;
     await sql`DELETE FROM email_otps WHERE created_at < NOW() - INTERVAL '1 day'`;
-    await sql`
+    const [otpRow] = await sql`
       INSERT INTO email_otps (email, code_hash, expires_at)
       VALUES (${email}, ${hashOtp(email, code)}, NOW() + (${OTP_TTL_MINUTES} * INTERVAL '1 minute'))
+      RETURNING id
     `;
 
     try {
       await sendRegistrationOtpEmail({ to: email, username, code, expiresInMinutes: OTP_TTL_MINUTES });
     } catch (mailError) {
       console.error('Registration OTP email failed:', mailError.message);
-      return res.status(502).json({ error: 'Could not send the verification email. Please check the address and try again.' });
+      // The code never reached the applicant — drop it so failed sends don't use up the hourly limit
+      await sql`DELETE FROM email_otps WHERE id = ${otpRow.id}`.catch(() => {});
+      return res.status(502).json({ error: 'We could not send the verification email right now. Please try again in a few minutes or contact support.' });
     }
 
     res.json({ message: `A verification code has been sent to ${email}.`, expiresInMinutes: OTP_TTL_MINUTES });
