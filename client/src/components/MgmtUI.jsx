@@ -39,7 +39,8 @@ export function StatusPill({ status }) {
   return <span className={`mg-pill mg-pill-${status}`}><span aria-hidden="true">{meta.icon}</span>{meta.label}</span>;
 }
 
-export const toCsv = (rows, columns) => {
+export const toCsv = (rows, allColumns) => {
+  const columns = allColumns.filter(c => c.csv !== false); // csv: false = UI-only column (e.g. action buttons)
   const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const header = columns.map(c => esc(c.label)).join(',');
   const body = rows.map(r => columns.map(c => esc(c.csv ? c.csv(r) : r[c.key])).join(',')).join('\n');

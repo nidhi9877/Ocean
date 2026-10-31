@@ -41,6 +41,61 @@ router.get('/users', async (req, res) => {
   }
 });
 
+// Permanently delete a buyer / seller account and every record it owns.
+// Deletes are explicit (not left to ON DELETE CASCADE) so older databases whose
+// foreign keys were created without cascades are wiped just as completely.
+// Terms & Conditions acceptance records are kept as legal evidence, unlinked from the account.
+router.delete('/users/:id', async (req, res) => {
+  try {
+    const userId = Number(req.params.id);
+    if (!Number.isInteger(userId)) return res.status(400).json({ error: 'Invalid user id' });
+    if (userId === req.user.id) return res.status(400).json({ error: 'You cannot delete your own account' });
+
+    const [user] = await sql`SELECT id, username, role FROM users WHERE id = ${userId}`;
+    if (!user) return res.status(404).json({ error: 'Account not found' });
+    if (user.role === 'admin' || user.role === 'management') {
+      return res.status(403).json({ error: 'Admin and management accounts cannot be deleted here' });
+    }
+
+    const [counts] = await sql`
+      WITH b AS (SELECT id FROM buyers WHERE user_id = ${userId}),
+           p AS (SELECT id FROM providers WHERE user_id = ${userId})
+      SELECT (SELECT COUNT(*)::int FROM products WHERE provider_id IN (SELECT id FROM p)) AS products,
+             (SELECT COUNT(*)::int FROM inquiries WHERE buyer_id IN (SELECT id FROM b) OR provider_id IN (SELECT id FROM p)) AS inquiries,
+             (SELECT COUNT(*)::int FROM buyer_ships WHERE buyer_id IN (SELECT id FROM b)) AS ships,
+             (SELECT COUNT(*)::int FROM buyer_specifications WHERE buyer_id IN (SELECT id FROM b)) AS parts
+    `;
+
+    await sql.transaction([
+      sql`DELETE FROM buyer_searches
+          WHERE buyer_id IN (SELECT id FROM buyers WHERE user_id = ${userId})
+             OR product_id IN (SELECT pr.id FROM products pr JOIN providers p ON p.id = pr.provider_id WHERE p.user_id = ${userId})`,
+      sql`DELETE FROM inquiries
+          WHERE buyer_id IN (SELECT id FROM buyers WHERE user_id = ${userId})
+             OR provider_id IN (SELECT id FROM providers WHERE user_id = ${userId})
+             OR product_id IN (SELECT pr.id FROM products pr JOIN providers p ON p.id = pr.provider_id WHERE p.user_id = ${userId})`,
+      sql`DELETE FROM buyer_specifications WHERE buyer_id IN (SELECT id FROM buyers WHERE user_id = ${userId})`,
+      sql`DELETE FROM buyer_ships WHERE buyer_id IN (SELECT id FROM buyers WHERE user_id = ${userId})`,
+      sql`DELETE FROM products WHERE provider_id IN (SELECT id FROM providers WHERE user_id = ${userId})`,
+      sql`DELETE FROM email_otps
+          WHERE LOWER(email) IN (SELECT LOWER(email) FROM buyers WHERE user_id = ${userId}
+                                 UNION SELECT LOWER(email) FROM providers WHERE user_id = ${userId})`,
+      sql`DELETE FROM buyers WHERE user_id = ${userId}`,
+      sql`DELETE FROM providers WHERE user_id = ${userId}`,
+      sql`DELETE FROM user_sessions WHERE user_id = ${userId}`,
+      sql`DELETE FROM password_resets WHERE user_id = ${userId}`,
+      sql`UPDATE terms_acceptances SET user_id = NULL WHERE user_id = ${userId}`,
+      sql`DELETE FROM users WHERE id = ${userId}`,
+    ]);
+
+    console.log(`🗑️  Admin @${req.user.username} deleted account @${user.username} (id ${userId})`, counts);
+    res.json({ message: `Account @${user.username} and all its data were deleted`, deleted: counts });
+  } catch (error) {
+    console.error('Error deleting account:', error);
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
 // ─── Sellers ────────────────────────────────────────────────────────────────────
 const getSellers = async (req, res) => {
   try {

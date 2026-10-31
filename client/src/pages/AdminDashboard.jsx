@@ -21,6 +21,29 @@ function CoveragePill({ listings, ships }) {
   return <span className="mg-pill mg-pill-approved"><span aria-hidden="true">✓</span>Covered</span>;
 }
 
+// Permanently deletes a buyer/seller login and all of its data. The admin must type the
+// username to confirm. Returns true when the account was deleted.
+async function deleteAccount({ userId, username, authH }) {
+  const typed = window.prompt(
+    `Permanently delete @${username}?\n\nThis removes the login, profile, listings, fleet, parts, inquiries, searches and sessions. It cannot be undone.\n\nType the username to confirm:`
+  );
+  if (typed === null) return false;
+  if (typed.trim().replace(/^@/, '') !== username) {
+    toast.error('Username did not match — nothing was deleted.');
+    return false;
+  }
+  try {
+    const res = await axios.delete(`${API}/admin/users/${userId}`, authH);
+    toast.success(res.data?.message || 'Account deleted.');
+    return true;
+  } catch (err) {
+    toast.error(err.response?.data?.error || 'Failed to delete account.');
+    return false;
+  }
+}
+
+const canDelete = (role) => role !== 'admin' && role !== 'management';
+
 export default function AdminDashboard() {
   const { token, user } = useAuth();
   const [section, setSection] = useState('overview');
@@ -147,6 +170,12 @@ export default function AdminDashboard() {
     { key: 'active_sessions', label: 'Online', align: 'right', render: u => u.active_sessions ? <span className="mg-pill mg-pill-approved"><span aria-hidden="true">●</span>{u.active_sessions}</span> : '—' },
     { key: 'last_seen', label: 'Last seen', render: u => lastSeen(u.last_seen), sortValue: u => u.last_seen ? new Date(u.last_seen).getTime() : 0, csv: u => fmtDateTime(u.last_seen) },
     { key: 'created_at', label: 'Created', render: u => fmtDate(u.created_at), sortValue: u => new Date(u.created_at).getTime(), csv: u => fmtDate(u.created_at) },
+    { key: 'actions', label: '', sortable: false, csv: false, render: u => canDelete(u.role) ? (
+      <button className="mg-btn mg-btn-danger" style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem' }}
+        onClick={async (e) => { e.stopPropagation(); if (await deleteAccount({ userId: u.id, username: u.username, authH })) fetchAll(true); }}>
+        Delete
+      </button>
+    ) : null },
   ];
 
   const nav = [
@@ -481,6 +510,7 @@ export default function AdminDashboard() {
           authH={authH}
           onClose={() => setDrawer(null)}
           onChanged={() => fetchAll(true)}
+          onDeleted={() => { setDrawer(null); fetchAll(true); }}
         />
       )}
     </div>
@@ -488,7 +518,7 @@ export default function AdminDashboard() {
 }
 
 // ─── Full buyer / seller profile ──────────────────────────────────────────────────
-function AdminDetailDrawer({ kind, id, authH, onClose, onChanged }) {
+function AdminDetailDrawer({ kind, id, authH, onClose, onChanged, onDeleted }) {
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(false);
   const [openShip, setOpenShip] = useState(null);
@@ -524,6 +554,13 @@ function AdminDetailDrawer({ kind, id, authH, onClose, onChanged }) {
     } finally {
       setBusy(false);
     }
+  };
+
+  const removeAccount = async () => {
+    setBusy(true);
+    const deleted = await deleteAccount({ userId: p.user_id, username: p.username, authH });
+    setBusy(false);
+    if (deleted) onDeleted();
   };
 
   const p = data?.profile;
@@ -641,6 +678,7 @@ function AdminDetailDrawer({ kind, id, authH, onClose, onChanged }) {
 
         {p && (
           <div className="mg-drawer-actions">
+            <button className="mg-btn mg-btn-danger" style={{ marginRight: 'auto' }} disabled={busy} onClick={removeAccount}>🗑 Delete account &amp; data</button>
             {p.status === 'pending' && (
               <>
                 <button className="mg-btn mg-btn-danger" disabled={busy} onClick={() => decide('reject', `Reject ${name}? They will be notified by email.`)}>Reject</button>
