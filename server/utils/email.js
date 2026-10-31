@@ -18,10 +18,15 @@ const smtpTransport = process.env.SMTP_HOST
       port: Number(process.env.SMTP_PORT) || 465,
       secure: (Number(process.env.SMTP_PORT) || 465) === 465,
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      // Fail fast instead of hanging for minutes when the host blocks or can't reach the mail server
+      connectionTimeout: 15000,
+      greetingTimeout: 10000,
+      socketTimeout: 20000,
     })
   : null;
 
-// Returns { data, error } like resend.emails.send so callers don't care which transport is used
+// Returns { data, error } like resend.emails.send so callers don't care which transport is used.
+// SMTP is tried first; if it fails and RESEND_API_KEY is set, Resend is used as a fallback.
 async function sendMail(mailOptions) {
   if (!smtpTransport) {
     if (!resend) return { data: null, error: { message: 'No email transport configured (set SMTP_* or RESEND_API_KEY)' } };
@@ -31,7 +36,15 @@ async function sendMail(mailOptions) {
     const info = await smtpTransport.sendMail(mailOptions);
     return { data: { id: info.messageId }, error: null };
   } catch (err) {
-    return { data: null, error: { message: err.message } };
+    const detail = [err.code, err.responseCode, err.message].filter(Boolean).join(' ');
+    console.error(`SMTP send to ${mailOptions.to} via ${process.env.SMTP_HOST}:${process.env.SMTP_PORT || 465} failed: ${detail}`);
+    if (resend) {
+      console.log('Retrying through Resend...');
+      const fallback = await resend.emails.send(mailOptions);
+      if (!fallback.error) return fallback;
+      console.error('Resend fallback failed:', fallback.error.message);
+    }
+    return { data: null, error: { message: detail } };
   }
 }
 
